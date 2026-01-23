@@ -1,0 +1,48 @@
+# =============================================================================
+# Terraform Variables for Production Environment
+# =============================================================================
+# Copy this file to terraform.tfvars and fill in the values
+# IMPORTANT: Never commit terraform.tfvars to version control!
+
+# -----------------------------------------------------------------------------
+# Required Variables
+# -----------------------------------------------------------------------------
+
+# GCP Project ID
+project_id = "your-gcp-project-id"
+
+# Container image URL (Artifact Registry or Container Registry)
+# Example: asia-northeast1-docker.pkg.dev/your-project/video-processor/api:latest
+cloud_run_image = "asia-northeast1-docker.pkg.dev/your-project/video-processor/api:latest"
+
+# Database password (use a strong password)
+# Alternatively, you can set this via environment variable:
+# export TF_VAR_database_password="your-secure-password"
+database_password = "your-secure-database-password"
+
+# -----------------------------------------------------------------------------
+# Optional Variables (with defaults)
+# -----------------------------------------------------------------------------
+
+# GCP Region (default: asia-northeast1)
+# region = "asia-northeast1"
+
+# Environment name (default: prod)
+# environment = "prod"
+
+# Cloud Run scaling settings
+# cloud_run_min_instances = 0
+# cloud_run_max_instances = 10
+
+# Cloud Run resource allocation
+# cloud_run_cpu = "2"
+# cloud_run_memory = "2Gi"
+
+# Cloud SQL machine type (default: db-custom-2-4096)
+# cloud_sql_machine_type = "db-custom-2-4096"
+
+# Enable/disable Cloud SQL deletion protection (default: true)
+# cloud_sql_deletion_protection = true
+
+# Frontend URL for CORS configuration
+# frontend_url = "https://video-processor.vercel.app"
