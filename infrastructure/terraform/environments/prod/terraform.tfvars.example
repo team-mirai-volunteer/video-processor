@@ -1,0 +1,65 @@
+# =============================================================================
+# Example Terraform Variables File
+# =============================================================================
+# Copy this file to terraform.tfvars and fill in the values
+# DO NOT commit terraform.tfvars to version control
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Project Configuration (Required)
+# -----------------------------------------------------------------------------
+project_id   = "your-gcp-project-id"
+project_name = "video-processor"
+region       = "asia-northeast1"
+environment  = "prod"
+
+# -----------------------------------------------------------------------------
+# Networking Configuration
+# -----------------------------------------------------------------------------
+subnet_cidr             = "10.0.0.0/24"
+connector_cidr          = "10.8.0.0/28"
+connector_min_instances = 2
+connector_max_instances = 10
+vpc_egress              = "PRIVATE_RANGES_ONLY"
+
+# -----------------------------------------------------------------------------
+# Database Configuration
+# -----------------------------------------------------------------------------
+database_version                        = "POSTGRES_15"
+database_tier                           = "db-custom-2-4096"  # For prod, use db-custom-2-4096; for dev, use db-f1-micro
+database_availability_type              = "ZONAL"             # For HA, use REGIONAL
+database_disk_size                      = 20
+database_disk_type                      = "PD_SSD"
+database_disk_autoresize                = true
+database_deletion_protection            = true                # Set to false for dev/testing
+database_backup_enabled                 = true
+database_point_in_time_recovery_enabled = true
+database_retained_backups               = 7
+database_name                           = "video_processor"
+database_user                           = "app"
+database_max_connections                = "100"
+database_log_min_duration_statement     = "1000"
+
+# -----------------------------------------------------------------------------
+# Cloud Run Configuration
+# -----------------------------------------------------------------------------
+container_image           = "gcr.io/your-project-id/video-processor-api:latest"
+cloud_run_min_instances   = 0    # Set to 1+ for always-on production
+cloud_run_max_instances   = 10
+cloud_run_cpu             = "2"
+cloud_run_memory          = "2Gi"
+cloud_run_timeout_seconds = 3600 # 1 hour for long video processing
+cloud_run_container_port  = 8080
+health_check_path         = "/health"
+
+# Additional environment variables for Cloud Run
+additional_environment_variables = {
+  # CORS_ORIGIN = "https://your-frontend-domain.vercel.app"
+  # LOG_LEVEL   = "info"
+}
+
+# -----------------------------------------------------------------------------
+# IAM Configuration
+# -----------------------------------------------------------------------------
+enable_storage_access = false
+allow_public_access   = true
