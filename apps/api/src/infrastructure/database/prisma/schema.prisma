@@ -1,0 +1,71 @@
+// schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Video {
+  id                String   @id @default(uuid())
+  googleDriveFileId String   @unique @map("google_drive_file_id")
+  googleDriveUrl    String   @map("google_drive_url")
+  title             String?
+  description       String?
+  durationSeconds   Int?     @map("duration_seconds")
+  fileSizeBytes     BigInt?  @map("file_size_bytes")
+  status            String   @default("pending")
+  errorMessage      String?  @map("error_message")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  clips          Clip[]
+  processingJobs ProcessingJob[]
+
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("videos")
+}
+
+model Clip {
+  id                String   @id @default(uuid())
+  videoId           String   @map("video_id")
+  googleDriveFileId String?  @map("google_drive_file_id")
+  googleDriveUrl    String?  @map("google_drive_url")
+  title             String?
+  startTimeSeconds  Decimal  @map("start_time_seconds") @db.Decimal(10, 3)
+  endTimeSeconds    Decimal  @map("end_time_seconds") @db.Decimal(10, 3)
+  durationSeconds   Decimal  @map("duration_seconds") @db.Decimal(10, 3)
+  transcript        String?
+  status            String   @default("pending")
+  errorMessage      String?  @map("error_message")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([videoId])
+  @@index([status])
+  @@map("clips")
+}
+
+model ProcessingJob {
+  id               String    @id @default(uuid())
+  videoId          String    @map("video_id")
+  clipInstructions String    @map("clip_instructions")
+  status           String    @default("pending")
+  aiResponse       String?   @map("ai_response")
+  errorMessage     String?   @map("error_message")
+  startedAt        DateTime? @map("started_at")
+  completedAt      DateTime? @map("completed_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([videoId])
+  @@index([status])
+  @@map("processing_jobs")
+}
