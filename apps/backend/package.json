@@ -24,6 +24,7 @@
     "@video-processor/shared": "workspace:*",
     "express": "^4.21.2",
     "fluent-ffmpeg": "^2.1.3",
+    "googleapis": "^170.1.0",
     "uuid": "^11.0.5"
   },
   "devDependencies": {
