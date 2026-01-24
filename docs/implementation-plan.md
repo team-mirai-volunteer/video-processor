@@ -69,91 +69,89 @@ Google Drive上の長尺動画をAIで分析し、指定された箇所を20-60�
 ```
 video-processor/
 ├── apps/
-│   ├── web/                          # Next.js フロントエンド
-│   │   ├── app/                      # App Router
-│   │   │   ├── layout.tsx
-│   │   │   ├── page.tsx              # トップ（動画一覧）
-│   │   │   ├── videos/
-│   │   │   │   ├── page.tsx          # 動画一覧
-│   │   │   │   └── [id]/
-│   │   │   │       └── page.tsx      # 動画詳細・クリップ一覧
-│   │   │   └── submit/
-│   │   │       └── page.tsx          # 動画登録フォーム
-│   │   ├── components/
-│   │   │   ├── ui/                   # shadcn components
-│   │   │   └── features/
-│   │   │       ├── video-form/
-│   │   │       ├── video-list/
-│   │   │       └── clip-list/
-│   │   ├── lib/
-│   │   │   ├── api-client.ts         # Backend API client
-│   │   │   └── utils.ts
+│   ├── webapp/                       # Next.js フロントエンド
+│   │   ├── src/
+│   │   │   ├── app/                  # App Router
+│   │   │   │   ├── layout.tsx
+│   │   │   │   ├── page.tsx          # トップ（動画一覧）
+│   │   │   │   ├── videos/
+│   │   │   │   │   ├── page.tsx      # 動画一覧
+│   │   │   │   │   └── [id]/
+│   │   │   │   │       └── page.tsx  # 動画詳細・クリップ一覧
+│   │   │   │   └── submit/
+│   │   │   │       └── page.tsx      # 動画登録フォーム
+│   │   │   ├── components/
+│   │   │   │   ├── ui/               # shadcn components
+│   │   │   │   └── features/
+│   │   │   │       ├── video-form/
+│   │   │   │       ├── video-list/
+│   │   │   │       └── clip-list/
+│   │   │   └── lib/
+│   │   │       ├── api-client.ts     # Backend API client
+│   │   │       └── utils.ts
+│   │   ├── test/                     # フロントエンドテスト
+│   │   │   └── e2e/                  # E2Eテスト (Playwright)
 │   │   ├── next.config.js
 │   │   ├── tailwind.config.js
 │   │   └── package.json
 │   │
-│   └── api/                          # Cloud Run バックエンド
-│       ├── src/
-│       │   ├── index.ts              # エントリーポイント
-│       │   ├── presentation/
-│       │   │   ├── routes/
-│       │   │   │   ├── index.ts
-│       │   │   │   ├── videos.ts
-│       │   │   │   ├── clips.ts
-│       │   │   │   └── health.ts
-│       │   │   └── middleware/
-│       │   │       ├── error-handler.ts
-│       │   │       └── logger.ts
-│       │   ├── application/
-│       │   │   ├── usecases/
-│       │   │   │   ├── submit-video.usecase.ts
-│       │   │   │   ├── process-video.usecase.ts
-│       │   │   │   ├── get-videos.usecase.ts
-│       │   │   │   └── get-clips.usecase.ts
-│       │   │   └── services/
-│       │   │       └── video-processing.service.ts
-│       │   ├── domain/
-│       │   │   ├── models/
-│       │   │   │   ├── video.ts
-│       │   │   │   ├── clip.ts
-│       │   │   │   └── processing-job.ts
-│       │   │   ├── services/
-│       │   │   │   └── timestamp-extractor.service.ts
-│       │   │   └── gateways/
-│       │   │       ├── video-repository.gateway.ts
-│       │   │       ├── clip-repository.gateway.ts
-│       │   │       ├── storage.gateway.ts
-│       │   │       └── ai.gateway.ts
-│       │   └── infrastructure/
-│       │       ├── repositories/
-│       │       │   ├── video.repository.ts
-│       │       │   ├── clip.repository.ts
-│       │       │   └── processing-job.repository.ts
-│       │       ├── clients/
-│       │       │   ├── google-drive.client.ts
-│       │       │   ├── gemini.client.ts
-│       │       │   └── ffmpeg.client.ts
-│       │       └── database/
-│       │           ├── prisma/
-│       │           │   └── schema.prisma
-│       │           └── connection.ts
-│       ├── tests/
-│       │   ├── unit/
-│       │   ├── integration/
-│       │   └── e2e/
-│       ├── Dockerfile
-│       └── package.json
-│
-├── packages/
-│   └── shared/                       # 共通型定義・ユーティリティ
-│       ├── src/
-│       │   ├── types/
-│       │   │   ├── video.ts
-│       │   │   ├── clip.ts
-│       │   │   └── api.ts
-│       │   └── utils/
-│       │       └── google-drive.ts
-│       └── package.json
+│   ├── backend/                      # Cloud Run バックエンド
+│   │   ├── src/
+│   │   │   ├── index.ts              # エントリーポイント
+│   │   │   ├── presentation/
+│   │   │   │   ├── routes/
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   ├── videos.ts
+│   │   │   │   │   ├── clips.ts
+│   │   │   │   │   └── health.ts
+│   │   │   │   └── middleware/
+│   │   │   │       ├── error-handler.ts
+│   │   │   │       └── logger.ts
+│   │   │   ├── application/
+│   │   │   │   ├── usecases/
+│   │   │   │   │   ├── submit-video.usecase.ts
+│   │   │   │   │   ├── process-video.usecase.ts
+│   │   │   │   │   ├── get-videos.usecase.ts
+│   │   │   │   │   └── get-clips.usecase.ts
+│   │   │   │   └── services/
+│   │   │   │       └── video-processing.service.ts
+│   │   │   ├── domain/
+│   │   │   │   ├── models/
+│   │   │   │   │   ├── video.ts
+│   │   │   │   │   ├── clip.ts
+│   │   │   │   │   └── processing-job.ts
+│   │   │   │   ├── services/
+│   │   │   │   │   └── timestamp-extractor.service.ts
+│   │   │   │   └── gateways/
+│   │   │   │       ├── video-repository.gateway.ts
+│   │   │   │       ├── clip-repository.gateway.ts
+│   │   │   │       ├── storage.gateway.ts
+│   │   │   │       └── ai.gateway.ts
+│   │   │   └── infrastructure/
+│   │   │       ├── repositories/
+│   │   │       │   ├── video.repository.ts
+│   │   │       │   ├── clip.repository.ts
+│   │   │       │   └── processing-job.repository.ts
+│   │   │       ├── clients/
+│   │   │       │   ├── google-drive.client.ts
+│   │   │       │   ├── gemini.client.ts
+│   │   │       │   └── ffmpeg.client.ts
+│   │   │       └── database/
+│   │   │           ├── prisma/
+│   │   │           │   └── schema.prisma
+│   │   │           └── connection.ts
+│   │   ├── test/
+│   │   │   ├── unit/                 # ユニットテスト (application, domain)
+│   │   │   ├── integration/          # 統合テスト (infrastructure)
+│   │   │   └── e2e/                  # E2Eテスト
+│   │   ├── Dockerfile
+│   │   └── package.json
+│   │
+│   └── shared/                       # 共通型定義
+│       └── types/
+│           ├── video.ts
+│           ├── clip.ts
+│           └── api.ts
 │
 ├── infrastructure/
 │   └── terraform/
@@ -551,9 +549,143 @@ const TIMESTAMP_EXTRACTION_PROMPT = `
 
 ---
 
-## 6. 環境変数
+## 6. エラーハンドリング方針
 
-### 6.1 フロントエンド (Vercel)
+### 6.1 バックエンドのレイヤー別エラーハンドリング
+
+バックエンドはアーキテクチャレイヤーごとに異なるエラーハンドリングルールを採用します。
+
+| レイヤー | エラーハンドリング方針 |
+|---------|----------------------|
+| **domain** | 発生しうるエラーを全てドメイン型として表現し、Result型で返す |
+| **application** | エラーをthrowし、presentationでハンドリング |
+| **infrastructure** | エラーをthrowし、presentationでハンドリング |
+| **presentation** | 全レイヤーからのエラーを集約してHTTPレスポンスに変換 |
+
+### 6.2 Domainレイヤーのエラー表現
+
+```typescript
+// domain/types/result.ts
+type Result<T, E> =
+  | { success: true; value: T }
+  | { success: false; error: E };
+
+// domain/models/video.ts
+type VideoError =
+  | { type: 'INVALID_URL'; message: string }
+  | { type: 'DURATION_OUT_OF_RANGE'; message: string }
+  | { type: 'UNSUPPORTED_FORMAT'; message: string };
+
+class Video {
+  static create(params: VideoParams): Result<Video, VideoError> {
+    // バリデーションロジック
+    if (!isValidGoogleDriveUrl(params.url)) {
+      return { success: false, error: { type: 'INVALID_URL', message: '...' } };
+    }
+    return { success: true, value: new Video(params) };
+  }
+}
+```
+
+### 6.3 その他レイヤーのエラーハンドリング
+
+```typescript
+// application/usecases/submit-video.usecase.ts
+class SubmitVideoUseCase {
+  async execute(input: SubmitVideoInput): Promise<VideoResponse> {
+    // Domainのエラーはここでハンドリング
+    const videoResult = Video.create(input);
+    if (!videoResult.success) {
+      throw new ValidationError(videoResult.error.message);
+    }
+
+    // infrastructureからのエラーはそのままthrow
+    await this.videoRepository.save(videoResult.value);
+    return videoResult.value.toResponse();
+  }
+}
+
+// presentation/middleware/error-handler.ts
+function errorHandler(err: Error, req: Request, res: Response, next: NextFunction) {
+  if (err instanceof ValidationError) {
+    return res.status(400).json({ error: err.message });
+  }
+  if (err instanceof NotFoundError) {
+    return res.status(404).json({ error: err.message });
+  }
+  // 予期しないエラー
+  console.error(err);
+  return res.status(500).json({ error: 'Internal Server Error' });
+}
+```
+
+---
+
+## 7. テスト方針
+
+### 7.1 フロントエンド (apps/webapp)
+
+| テスト種別 | 方針 |
+|-----------|------|
+| **E2Eテスト** | 原則としてE2Eテストでカバー（Playwright使用） |
+| **ユニットテスト** | 複雑なロジックがある場合のみ作成 |
+
+```
+apps/webapp/
+└── test/
+    └── e2e/
+        ├── video-list.spec.ts
+        ├── video-submit.spec.ts
+        └── video-detail.spec.ts
+```
+
+### 7.2 バックエンド (apps/backend)
+
+| レイヤー | テスト方針 |
+|---------|-----------|
+| **presentation** | テスト不要（薄いレイヤーのため） |
+| **application** | ユニットテストでカバー |
+| **domain** | ユニットテストでカバー |
+| **infrastructure** | 統合テスト（integrationテスト）でカバー |
+
+```
+apps/backend/
+└── test/
+    ├── unit/
+    │   ├── application/
+    │   │   └── usecases/
+    │   │       ├── submit-video.usecase.test.ts
+    │   │       └── process-video.usecase.test.ts
+    │   └── domain/
+    │       ├── models/
+    │       │   ├── video.test.ts
+    │       │   └── clip.test.ts
+    │       └── services/
+    │           └── timestamp-extractor.service.test.ts
+    ├── integration/
+    │   └── infrastructure/
+    │       ├── repositories/
+    │       │   └── video.repository.test.ts
+    │       └── clients/
+    │           └── google-drive.client.test.ts
+    └── e2e/
+        └── api.test.ts
+```
+
+### 7.3 テストツール
+
+| 用途 | ツール |
+|------|--------|
+| ユニットテスト | Jest / Vitest |
+| 統合テスト | Jest / Vitest + Testcontainers |
+| E2Eテスト（フロントエンド） | Playwright |
+| E2Eテスト（バックエンド） | Supertest |
+
+---
+
+## 8. 環境変数
+
+### 8.1 フロントエンド (Vercel)
 
 ```env
 # Backend API
@@ -563,7 +695,7 @@ NEXT_PUBLIC_API_URL=https://api-xxxxx.a.run.app
 GOOGLE_GENERATIVE_AI_API_KEY=xxx
 ```
 
-### 6.2 バックエンド (Cloud Run)
+### 8.2 バックエンド (Cloud Run)
 
 ```env
 # Database
@@ -585,9 +717,9 @@ NODE_ENV=production
 
 ---
 
-## 7. Terraform モジュール設計
+## 9. Terraform モジュール設計
 
-### 7.1 モジュール構成
+### 9.1 モジュール構成
 
 ```
 modules/
@@ -597,7 +729,7 @@ modules/
 └── iam/            # サービスアカウント, IAM バインディング
 ```
 
-### 7.2 主要リソース
+### 9.2 主要リソース
 
 #### Cloud SQL
 - PostgreSQL 15
@@ -626,9 +758,9 @@ modules/
 
 ---
 
-## 8. 並列実装計画
+## 10. 並列実装計画
 
-### 8.1 依存関係図
+### 10.1 依存関係図
 
 ```
                     ┌─────────────────┐
@@ -641,15 +773,15 @@ modules/
               │              │              │
               ▼              ▼              ▼
     ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-    │   packages/ │  │    apps/    │  │ infrastructure/│
-    │   shared/   │  │    web/     │  │   terraform/   │
+    │    apps/    │  │    apps/    │  │ infrastructure/│
+    │   shared/   │  │   webapp/   │  │   terraform/   │
     │  (型定義)   │  │ (Frontend)  │  │              │
     └──────┬──────┘  └──────┬──────┘  └──────────────┘
            │                │                 │
            │                │          (独立して実装可能)
            ▼                ▼
     ┌─────────────────────────────┐
-    │         apps/api/           │
+    │       apps/backend/         │
     │        (Backend)            │
     │                             │
     │  shared型に依存              │
@@ -657,29 +789,30 @@ modules/
     └─────────────────────────────┘
 ```
 
-### 8.2 並列実装可能なタスク群
+### 10.2 並列実装可能なタスク群
 
 ```
 【並列グループ A】プロジェクト基盤（最初に実行）
-├── A1: pnpm workspace + 共通設定 (biome, tsconfig)
-├── A2: packages/shared 型定義
+├── A1: pnpm workspace + 共通設定 (biome, tsconfig) + CI設定
+├── A2: apps/shared 型定義
 └── A3: Terraform基盤モジュール
 
 【並列グループ B】アプリケーション（グループA完了後）
-├── B1: Frontend (apps/web)
+├── B1: Frontend (apps/webapp)
 │   ├── Next.js初期設定
 │   ├── shadcn/ui セットアップ
 │   ├── ページコンポーネント
-│   └── APIクライアント (モック対応)
+│   ├── APIクライアント (モック対応)
+│   └── E2Eテスト (Playwright)
 │
-├── B2: Backend (apps/api)
+├── B2: Backend (apps/backend)
 │   ├── Express/Fastify 初期設定
 │   ├── Prisma セットアップ
 │   ├── DDDレイヤー実装
 │   │   ├── presentation (ルート)
-│   │   ├── application (ユースケース)
-│   │   ├── domain (モデル, サービス)
-│   │   └── infrastructure (リポジトリ, クライアント)
+│   │   ├── application (ユースケース) + ユニットテスト
+│   │   ├── domain (モデル, サービス) + ユニットテスト
+│   │   └── infrastructure (リポジトリ, クライアント) + 統合テスト
 │   └── Dockerfile
 │
 └── B3: Terraform 環境構築
@@ -690,7 +823,7 @@ modules/
     └── environments/prod
 ```
 
-### 8.3 タスク詳細
+### 10.3 タスク詳細
 
 #### A1: プロジェクト基盤
 ```
@@ -702,11 +835,10 @@ modules/
 - .nvmrc
 ```
 
-#### A2: 共通型定義 (packages/shared)
+#### A2: 共通型定義 (apps/shared)
 ```
 - Video, Clip, ProcessingJob 型
 - API リクエスト/レスポンス型
-- Google Drive URL パーサー
 ```
 
 #### A3: Terraform基盤
@@ -716,30 +848,40 @@ modules/
 - 基本的なモジュール構造
 ```
 
-#### B1: Frontend詳細
+#### B1: Frontend詳細 (apps/webapp)
 ```
-- next.config.js
-- tailwind.config.js
-- app/layout.tsx (ヘッダー、フッター)
-- app/page.tsx (動画一覧)
-- app/submit/page.tsx (登録フォーム)
-- app/videos/[id]/page.tsx (詳細)
-- components/ui/* (shadcn)
-- components/features/* (機能コンポーネント)
-- lib/api-client.ts
+src/
+├── app/
+│   ├── layout.tsx (ヘッダー、フッター)
+│   ├── page.tsx (動画一覧)
+│   ├── submit/page.tsx (登録フォーム)
+│   └── videos/[id]/page.tsx (詳細)
+├── components/
+│   ├── ui/* (shadcn)
+│   └── features/* (機能コンポーネント)
+└── lib/api-client.ts
+test/
+└── e2e/* (Playwrightテスト)
 ```
 
-#### B2: Backend詳細
+#### B2: Backend詳細 (apps/backend)
 ```
-- src/index.ts (Expressエントリーポイント)
-- presentation/routes/* (各エンドポイント)
-- application/usecases/* (ビジネスロジック)
-- domain/models/* (エンティティ)
-- domain/gateways/* (インターフェース)
-- infrastructure/repositories/* (DB操作)
-- infrastructure/clients/* (外部サービス)
-- Dockerfile
-- tests/*
+src/
+├── index.ts (Expressエントリーポイント)
+├── presentation/routes/* (各エンドポイント)
+├── application/usecases/* (ビジネスロジック)
+├── domain/models/* (エンティティ)
+├── domain/gateways/* (インターフェース)
+├── infrastructure/repositories/* (DB操作)
+└── infrastructure/clients/* (外部サービス)
+test/
+├── unit/
+│   ├── application/* (ユースケーステスト)
+│   └── domain/* (ドメインテスト)
+├── integration/
+│   └── infrastructure/* (リポジトリ、クライアントテスト)
+└── e2e/* (APIテスト)
+Dockerfile
 ```
 
 #### B3: Terraform詳細
@@ -753,48 +895,93 @@ modules/
 
 ---
 
-## 9. 実装優先順位
+## 11. 実装優先順位
+
+### 重要な実装方針
+
+> **テスト駆動開発 & CI優先**
+> - 序盤から実装には必ず対応するテストをセットで実装する
+> - 序盤からCIでテストを実行するようにする
 
 ### Phase 1: 基盤（並列実行可能）
-1. **A1**: pnpm workspace + 設定ファイル
-2. **A2**: packages/shared 型定義
+1. **A1**: pnpm workspace + 設定ファイル + **GitHub Actions CI設定**
+2. **A2**: apps/shared 型定義
 3. **A3**: Terraform modules 骨格
 
 ### Phase 2: アプリケーション（並列実行可能）
-4. **B1**: Frontend 実装
-5. **B2**: Backend 実装
+4. **B1**: Frontend 実装 + **E2Eテスト**
+5. **B2**: Backend 実装 + **ユニットテスト・統合テスト**
 6. **B3**: Terraform 環境構築
 
 ### Phase 3: 統合
 7. 各コンポーネントの結合確認用ドキュメント作成
 
+### CI/CD パイプライン
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+      - run: pnpm install
+      - run: pnpm lint
+
+  test-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+      - run: pnpm install
+      - run: pnpm --filter backend test:unit
+      - run: pnpm --filter backend test:integration
+
+  test-webapp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+      - run: pnpm install
+      - run: pnpm --filter webapp test:e2e
+```
+
 ---
 
-## 10. 注意事項・制約
+## 12. 注意事項・制約
 
-### 10.1 Cloud Run制約
+### 12.1 Cloud Run制約
 - 最大リクエストタイムアウト: 60分
 - 最大メモリ: 32GB
 - 最大CPU: 8
 - 一時ストレージ: /tmp に最大数GB
 
-### 10.2 Google Drive API制約
+### 12.2 Google Drive API制約
 - ファイルダウンロード: 大きいファイルはチャンクダウンロード推奨
 - アップロード: resumable upload推奨
 - レート制限に注意
 
-### 10.3 FFmpeg
+### 12.3 FFmpeg
 - Cloud Runでは公式Debianイメージにffmpegをインストール
 - または ffmpeg-static npm パッケージを使用
 
-### 10.4 今回スコープ外
+### 12.4 今回スコープ外
 - 認証機能（内部ツールのため不要）
 - 複数動画の一括処理
 - AI自動判定での切り抜き箇所提案
 
 ---
 
-## 11. 次のステップ
+## 13. 次のステップ
 
 このドキュメントを確認後、並列で以下のエージェントを起動して実装を進めます：
 
