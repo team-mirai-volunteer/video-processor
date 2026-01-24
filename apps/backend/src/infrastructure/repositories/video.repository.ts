@@ -1,0 +1,124 @@
+import type { PrismaClient } from '@prisma/client';
+import type { VideoStatus } from '@video-processor/shared';
+import type {
+  FindVideosOptions,
+  FindVideosResult,
+  VideoRepositoryGateway,
+  VideoWithClipCount,
+} from '../../domain/gateways/video-repository.gateway.js';
+import { Video, type VideoProps } from '../../domain/models/video.js';
+
+export class VideoRepository implements VideoRepositoryGateway {
+  constructor(private readonly prisma: PrismaClient) {}
+
+  async save(video: Video): Promise<void> {
+    const props = video.toProps();
+    await this.prisma.video.upsert({
+      where: { id: props.id },
+      create: {
+        id: props.id,
+        googleDriveFileId: props.googleDriveFileId,
+        googleDriveUrl: props.googleDriveUrl,
+        title: props.title,
+        description: props.description,
+        durationSeconds: props.durationSeconds,
+        fileSizeBytes: props.fileSizeBytes ? BigInt(props.fileSizeBytes) : null,
+        status: props.status,
+        errorMessage: props.errorMessage,
+        createdAt: props.createdAt,
+        updatedAt: props.updatedAt,
+      },
+      update: {
+        googleDriveUrl: props.googleDriveUrl,
+        title: props.title,
+        description: props.description,
+        durationSeconds: props.durationSeconds,
+        fileSizeBytes: props.fileSizeBytes ? BigInt(props.fileSizeBytes) : null,
+        status: props.status,
+        errorMessage: props.errorMessage,
+        updatedAt: props.updatedAt,
+      },
+    });
+  }
+
+  async findById(id: string): Promise<Video | null> {
+    const record = await this.prisma.video.findUnique({
+      where: { id },
+    });
+
+    if (!record) {
+      return null;
+    }
+
+    return this.toDomain(record);
+  }
+
+  async findByGoogleDriveFileId(fileId: string): Promise<Video | null> {
+    const record = await this.prisma.video.findUnique({
+      where: { googleDriveFileId: fileId },
+    });
+
+    if (!record) {
+      return null;
+    }
+
+    return this.toDomain(record);
+  }
+
+  async findMany(options: FindVideosOptions): Promise<FindVideosResult> {
+    const skip = (options.page - 1) * options.limit;
+
+    const where = options.status ? { status: options.status } : {};
+
+    const [records, total] = await Promise.all([
+      this.prisma.video.findMany({
+        where,
+        skip,
+        take: options.limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          _count: {
+            select: { clips: true },
+          },
+        },
+      }),
+      this.prisma.video.count({ where }),
+    ]);
+
+    const videos: VideoWithClipCount[] = records.map((record) => ({
+      video: this.toDomain(record),
+      clipCount: record._count.clips,
+    }));
+
+    return { videos, total };
+  }
+
+  private toDomain(record: {
+    id: string;
+    googleDriveFileId: string;
+    googleDriveUrl: string;
+    title: string | null;
+    description: string | null;
+    durationSeconds: number | null;
+    fileSizeBytes: bigint | null;
+    status: string;
+    errorMessage: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }): Video {
+    const props: VideoProps = {
+      id: record.id,
+      googleDriveFileId: record.googleDriveFileId,
+      googleDriveUrl: record.googleDriveUrl,
+      title: record.title,
+      description: record.description,
+      durationSeconds: record.durationSeconds,
+      fileSizeBytes: record.fileSizeBytes ? Number(record.fileSizeBytes) : null,
+      status: record.status as VideoStatus,
+      errorMessage: record.errorMessage,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+    };
+    return Video.fromProps(props);
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "name": "backend",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "prisma generate --schema=src/infrastructure/database/prisma/schema.prisma",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "test": "vitest",
+    "test:unit": "vitest run test/unit",
+    "test:integration": "vitest run test/integration",
+    "test:e2e": "vitest run test/e2e",
+    "db:generate": "prisma generate --schema=src/infrastructure/database/prisma/schema.prisma",
+    "db:push": "prisma db push --schema=src/infrastructure/database/prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=src/infrastructure/database/prisma/schema.prisma",
+    "db:studio": "prisma studio --schema=src/infrastructure/database/prisma/schema.prisma"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.2.1",
+    "express": "^4.21.2",
+    "uuid": "^11.0.5",
+    "@video-processor/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.7",
+    "@types/uuid": "^10.0.0",
+    "prisma": "^6.2.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.4"
+  }
+}
