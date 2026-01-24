@@ -33,6 +33,7 @@
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/node": "^22.10.7",
     "@types/uuid": "^10.0.0",
+    "dotenv": "^17.2.3",
     "prisma": "^6.2.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
