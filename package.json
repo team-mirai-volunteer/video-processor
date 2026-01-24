@@ -7,10 +7,19 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "typecheck": "pnpm -r run typecheck"
+    "typecheck": "pnpm -r run typecheck",
+    "prepare": "simple-git-hooks"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged"
+  },
+  "lint-staged": {
+    "*.{js,ts,jsx,tsx,json}": "biome check --write"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "lint-staged": "^16.2.7",
+    "simple-git-hooks": "^2.13.1",
     "typescript": "^5.7.3"
   }
 }
