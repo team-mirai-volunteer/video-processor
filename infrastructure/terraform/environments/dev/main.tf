@@ -30,6 +30,8 @@ resource "google_project_service" "apis" {
     "secretmanager.googleapis.com",
     "cloudtrace.googleapis.com",
     "logging.googleapis.com",
+    "drive.googleapis.com",
+    "artifactregistry.googleapis.com",
   ])
 
   project            = var.project_id
@@ -49,12 +51,30 @@ module "iam" {
 module "networking" {
   source = "../../modules/networking"
 
-  project_id   = var.project_id
-  project_name = var.project_name
-  region       = var.region
-  subnet_cidr  = var.subnet_cidr
+  project_id     = var.project_id
+  project_name   = var.project_name
+  region         = var.region
+  subnet_cidr    = var.subnet_cidr
+  connector_cidr = var.connector_cidr
 
   depends_on = [google_project_service.apis]
+}
+
+# Secret Manager - Database Password
+resource "google_secret_manager_secret" "database_password" {
+  secret_id = "${var.project_name}-database-password"
+  project   = var.project_id
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.apis]
+}
+
+resource "google_secret_manager_secret_version" "database_password" {
+  secret      = google_secret_manager_secret.database_password.id
+  secret_data = var.database_password
 }
 
 # Cloud SQL Module
@@ -98,10 +118,12 @@ module "cloud_run" {
   max_instances   = var.cloud_run_max_instances
 
   environment_variables = {
-    NODE_ENV             = "development"
-    DATABASE_URL         = "postgresql://${var.database_user}:${var.database_password}@/video_processor?host=/cloudsql/${module.cloud_sql.instance_connection_name}"
-    GOOGLE_CLOUD_PROJECT = var.project_id
-    CORS_ORIGIN          = var.cors_origin
+    NODE_ENV                           = "development"
+    DATABASE_URL                       = "postgresql://${var.database_user}:${var.database_password}@/video_processor?host=/cloudsql/${module.cloud_sql.instance_connection_name}"
+    GOOGLE_CLOUD_PROJECT               = var.project_id
+    CORS_ORIGIN                        = var.cors_origin
+    GOOGLE_DRIVE_SERVICE_ACCOUNT_EMAIL = var.google_drive_service_account_email
+    GOOGLE_DRIVE_OUTPUT_FOLDER_ID      = var.google_drive_output_folder_id
   }
 
   allow_unauthenticated = var.allow_unauthenticated
