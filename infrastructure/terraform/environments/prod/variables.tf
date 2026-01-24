@@ -23,6 +23,12 @@ variable "subnet_cidr" {
   default     = "10.0.0.0/24"
 }
 
+variable "connector_cidr" {
+  description = "The CIDR range for the VPC Access Connector"
+  type        = string
+  default     = "10.8.0.0/28"
+}
+
 # Database Configuration
 variable "database_tier" {
   description = "The machine type for Cloud SQL (db-f1-micro for dev, db-custom-2-4096 for prod)"
@@ -118,4 +124,17 @@ variable "allow_unauthenticated" {
   description = "Whether to allow unauthenticated access to Cloud Run"
   type        = bool
   default     = false
+}
+
+# Google Drive Configuration
+variable "google_drive_service_account_email" {
+  description = "The service account email for Google Drive API access"
+  type        = string
+  default     = ""
+}
+
+variable "google_drive_output_folder_id" {
+  description = "The Google Drive folder ID for output clips"
+  type        = string
+  default     = ""
 }

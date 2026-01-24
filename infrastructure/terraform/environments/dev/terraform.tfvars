@@ -4,7 +4,8 @@ project_name = "video-processor-dev"
 region       = "asia-northeast1"
 
 # Networking Configuration
-subnet_cidr = "10.1.0.0/24"
+subnet_cidr    = "10.1.0.0/24"
+connector_cidr = "10.9.0.0/28"
 
 # Database Configuration (Development settings - minimal resources)
 database_tier                = "db-f1-micro"
@@ -25,3 +26,7 @@ cloud_run_min_instances = 0
 cloud_run_max_instances = 2
 cors_origin             = "*"
 allow_unauthenticated   = true
+
+# Google Drive Configuration
+# google_drive_service_account_email should be provided via environment variable or secret
+# google_drive_output_folder_id should be provided via environment variable or secret
