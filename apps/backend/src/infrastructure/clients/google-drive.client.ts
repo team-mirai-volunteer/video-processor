@@ -58,6 +58,7 @@ export class GoogleDriveClient implements StorageGateway {
       const response = await this.drive.files.get({
         fileId,
         fields: 'id, name, mimeType, size, webViewLink, parents',
+        supportsAllDrives: true,
       });
 
       const file = response.data;
@@ -85,7 +86,7 @@ export class GoogleDriveClient implements StorageGateway {
   async downloadFile(fileId: string): Promise<Buffer> {
     try {
       const response = await this.drive.files.get(
-        { fileId, alt: 'media' },
+        { fileId, alt: 'media', supportsAllDrives: true },
         { responseType: 'arraybuffer' }
       );
 
@@ -111,6 +112,7 @@ export class GoogleDriveClient implements StorageGateway {
           body: Readable.from(params.content),
         },
         fields: 'id, name, mimeType, size, webViewLink, parents',
+        supportsAllDrives: true,
       });
 
       const file = response.data;
@@ -144,6 +146,7 @@ export class GoogleDriveClient implements StorageGateway {
           parents: parentId ? [parentId] : undefined,
         },
         fields: 'id, name, mimeType, size, webViewLink, parents',
+        supportsAllDrives: true,
       });
 
       const file = response.data;
@@ -179,6 +182,8 @@ export class GoogleDriveClient implements StorageGateway {
       const searchResponse = await this.drive.files.list({
         q: query,
         fields: 'files(id, name, mimeType, size, webViewLink, parents)',
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
       });
 
       const files = searchResponse.data.files;
@@ -211,7 +216,7 @@ export class GoogleDriveClient implements StorageGateway {
    */
   async deleteFile(fileId: string): Promise<void> {
     try {
-      await this.drive.files.delete({ fileId });
+      await this.drive.files.delete({ fileId, supportsAllDrives: true });
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`Failed to delete file ${fileId}: ${error.message}`);
@@ -233,6 +238,8 @@ export class GoogleDriveClient implements StorageGateway {
       const response = await this.drive.files.list({
         q: query,
         fields: 'files(id, name, mimeType, size, webViewLink, parents)',
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
       });
 
       const files = response.data.files ?? [];
