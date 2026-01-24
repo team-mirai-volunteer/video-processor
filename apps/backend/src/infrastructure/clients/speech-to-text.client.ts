@@ -1,4 +1,4 @@
-import { SpeechClient } from '@google-cloud/speech';
+import { v2 } from '@google-cloud/speech';
 import type { google } from '@google-cloud/speech/build/protos/protos.js';
 import type {
   TranscribeParams,
@@ -8,29 +8,20 @@ import type {
 } from '../../domain/gateways/transcription.gateway.js';
 
 /**
- * Threshold in seconds for using LongRunningRecognize instead of Recognize
- * Speech-to-Text API recommends LongRunningRecognize for audio longer than 60 seconds
- */
-const LONG_RUNNING_THRESHOLD_SECONDS = 60;
-
-/**
- * Default sample rate for audio files (Hz)
- */
-const DEFAULT_SAMPLE_RATE = 16000;
-
-/**
  * Google Cloud Speech-to-Text API v2 client implementation using Chirp model
  * Implements TranscriptionGateway interface
  */
 export class SpeechToTextClient implements TranscriptionGateway {
-  private readonly client: SpeechClient;
+  private readonly client: v2.SpeechClient;
   private readonly projectId: string;
   private readonly location: string;
 
   constructor() {
-    this.client = new SpeechClient();
     this.projectId = process.env.GOOGLE_CLOUD_PROJECT ?? '';
-    this.location = process.env.SPEECH_TO_TEXT_LOCATION ?? 'asia-northeast1';
+    this.location = process.env.SPEECH_TO_TEXT_LOCATION ?? 'us-central1';
+    this.client = new v2.SpeechClient({
+      apiEndpoint: `${this.location}-speech.googleapis.com`,
+    });
 
     if (!this.projectId) {
       throw new Error('GOOGLE_CLOUD_PROJECT environment variable is required');
@@ -43,40 +34,18 @@ export class SpeechToTextClient implements TranscriptionGateway {
    * @returns Transcription result with segments and timestamps
    */
   async transcribe(params: TranscribeParams): Promise<TranscriptionResult> {
-    const { audioBuffer, sampleRateHertz, languageCode } = params;
-
-    // Estimate audio duration based on buffer size and sample rate
-    // For 16-bit mono audio: duration = bytes / (sampleRate * 2)
-    const estimatedSampleRate = sampleRateHertz ?? DEFAULT_SAMPLE_RATE;
-    const estimatedDuration = audioBuffer.length / (estimatedSampleRate * 2);
+    const { audioBuffer, languageCode } = params;
 
     const config: google.cloud.speech.v2.IRecognitionConfig = {
       autoDecodingConfig: {},
-      languageCodes: languageCode ? [languageCode] : ['ja-JP', 'en-US'],
+      languageCodes: languageCode ? [languageCode] : ['ja-JP'],
       model: 'chirp',
       features: {
         enableWordTimeOffsets: true,
-        enableWordConfidence: true,
       },
     };
 
     const recognizer = `projects/${this.projectId}/locations/${this.location}/recognizers/_`;
-
-    if (estimatedDuration > LONG_RUNNING_THRESHOLD_SECONDS) {
-      return this.transcribeLongRunning(audioBuffer, config, recognizer);
-    }
-
-    return this.transcribeSync(audioBuffer, config, recognizer);
-  }
-
-  /**
-   * Synchronous transcription for short audio (< 60 seconds)
-   */
-  private async transcribeSync(
-    audioBuffer: Buffer,
-    config: google.cloud.speech.v2.IRecognitionConfig,
-    recognizer: string
-  ): Promise<TranscriptionResult> {
     const request: google.cloud.speech.v2.IRecognizeRequest = {
       recognizer,
       config,
@@ -85,46 +54,6 @@ export class SpeechToTextClient implements TranscriptionGateway {
 
     const [response] = await this.client.recognize(request);
     return this.parseResponse(response);
-  }
-
-  /**
-   * Long-running transcription for audio > 60 seconds
-   */
-  private async transcribeLongRunning(
-    audioBuffer: Buffer,
-    config: google.cloud.speech.v2.IRecognitionConfig,
-    recognizer: string
-  ): Promise<TranscriptionResult> {
-    const request: google.cloud.speech.v2.IBatchRecognizeRequest = {
-      recognizer,
-      config,
-      files: [
-        {
-          content: audioBuffer,
-        },
-      ],
-      recognitionOutputConfig: {
-        inlineResponseConfig: {},
-      },
-    };
-
-    const [operation] = await this.client.batchRecognize(request);
-    const [response] = await operation.promise();
-
-    // Extract results from batch response
-    const results = response.results ?? {};
-    const fileResults = Object.values(results);
-
-    if (fileResults.length === 0 || !fileResults[0]?.transcript) {
-      return {
-        fullText: '',
-        segments: [],
-        languageCode: 'ja-JP',
-        durationSeconds: 0,
-      };
-    }
-
-    return this.parseResponse(fileResults[0].transcript);
   }
 
   /**
