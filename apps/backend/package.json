@@ -20,6 +20,7 @@
     "db:studio": "prisma studio --schema=src/infrastructure/database/prisma/schema.prisma"
   },
   "dependencies": {
+    "@google-cloud/speech": "^6.7.0",
     "@prisma/client": "^6.2.1",
     "@video-processor/shared": "workspace:*",
     "express": "^4.21.2",

@@ -145,4 +145,46 @@ describe.skipIf(!runIntegrationTests)('FFmpegClient Integration', () => {
       await expect(client.extractClip(invalidBuffer, 0, 1)).rejects.toThrow();
     });
   });
+
+  describe('extractAudio', () => {
+    it('should extract WAV audio from video', async () => {
+      const audioBuffer = await client.extractAudio(testVideoBuffer, 'wav');
+
+      expect(audioBuffer).toBeInstanceOf(Buffer);
+      expect(audioBuffer.length).toBeGreaterThan(0);
+
+      // WAV files start with 'RIFF' magic bytes
+      const magic = audioBuffer.slice(0, 4).toString('ascii');
+      expect(magic).toBe('RIFF');
+    });
+
+    it('should extract FLAC audio from video', async () => {
+      const audioBuffer = await client.extractAudio(testVideoBuffer, 'flac');
+
+      expect(audioBuffer).toBeInstanceOf(Buffer);
+      expect(audioBuffer.length).toBeGreaterThan(0);
+
+      // FLAC files start with 'fLaC' magic bytes
+      const magic = audioBuffer.slice(0, 4).toString('ascii');
+      expect(magic).toBe('fLaC');
+    });
+
+    it('should produce 16kHz mono audio for WAV', async () => {
+      const audioBuffer = await client.extractAudio(testVideoBuffer, 'wav');
+
+      // Parse WAV header to verify sample rate and channels
+      // WAV header: bytes 22-23 = num channels, bytes 24-27 = sample rate
+      const numChannels = audioBuffer.readUInt16LE(22);
+      const sampleRate = audioBuffer.readUInt32LE(24);
+
+      expect(numChannels).toBe(1); // mono
+      expect(sampleRate).toBe(16000); // 16kHz
+    });
+
+    it('should throw an error for invalid video data', async () => {
+      const invalidBuffer = Buffer.from('not a video');
+
+      await expect(client.extractAudio(invalidBuffer, 'wav')).rejects.toThrow();
+    });
+  });
 });

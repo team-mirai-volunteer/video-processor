@@ -77,6 +77,43 @@ export class FFmpegClient implements VideoProcessingService {
   }
 
   /**
+   * Extract audio from video
+   * @param videoBuffer The video content
+   * @param format Output format ('wav' | 'flac')
+   * @returns Audio data as buffer (16kHz, mono, 16bit)
+   */
+  async extractAudio(videoBuffer: Buffer, format: 'wav' | 'flac'): Promise<Buffer> {
+    const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'ffmpeg-'));
+    const inputPath = path.join(tempDir, 'input.mp4');
+    const outputPath = path.join(tempDir, `output.${format}`);
+
+    try {
+      await fs.promises.writeFile(inputPath, videoBuffer);
+
+      await new Promise<void>((resolve, reject) => {
+        const command = ffmpeg(inputPath).noVideo().audioFrequency(16000).audioChannels(1);
+
+        if (format === 'wav') {
+          command.audioCodec('pcm_s16le');
+        } else {
+          command.audioCodec('flac');
+        }
+
+        command
+          .output(outputPath)
+          .on('end', () => resolve())
+          .on('error', (err: Error) => reject(err))
+          .run();
+      });
+
+      const result = await fs.promises.readFile(outputPath);
+      return result;
+    } finally {
+      await this.cleanup(tempDir);
+    }
+  }
+
+  /**
    * Cleanup temporary directory and its contents
    */
   private async cleanup(tempDir: string): Promise<void> {
