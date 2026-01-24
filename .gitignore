@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Test coverage
+coverage/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+
+# Prisma
+prisma/*.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
