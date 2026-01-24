@@ -1,0 +1,28 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    "apps/backend": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"],
+      "ignore": ["src/**/*.test.ts", "test/**/*.ts"],
+      "ignoreDependencies": ["@types/*", "vitest", "prisma", "tsx"],
+      "ignoreBinaries": ["prisma", "tsx", "vitest"],
+      "vitest": false
+    },
+    "apps/webapp": {
+      "entry": [
+        "src/app/**/*.{ts,tsx}",
+        "src/components/**/*.{ts,tsx}"
+      ],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignore": ["src/**/*.test.{ts,tsx}"],
+      "ignoreDependencies": ["@playwright/test"],
+      "ignoreBinaries": ["next", "playwright"],
+      "playwright": false
+    },
+    "apps/shared": {
+      "entry": ["types/index.ts"],
+      "project": ["types/**/*.ts"]
+    }
+  }
+}
