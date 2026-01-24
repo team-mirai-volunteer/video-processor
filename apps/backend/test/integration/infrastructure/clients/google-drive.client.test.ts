@@ -1,0 +1,271 @@
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { GoogleDriveClient } from '../../../../src/infrastructure/clients/google-drive.client.js';
+
+// Skip integration tests unless INTEGRATION_TEST=true
+const runIntegrationTests = process.env.INTEGRATION_TEST === 'true';
+
+describe.skipIf(!runIntegrationTests)('GoogleDriveClient Integration', () => {
+  let client: GoogleDriveClient;
+  let testFolderId: string | null = null;
+  const createdFileIds: string[] = [];
+
+  beforeAll(() => {
+    // Verify required environment variables
+    if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
+      throw new Error('GOOGLE_SERVICE_ACCOUNT_EMAIL is required for integration tests');
+    }
+    if (!process.env.GOOGLE_PRIVATE_KEY) {
+      throw new Error('GOOGLE_PRIVATE_KEY is required for integration tests');
+    }
+
+    client = GoogleDriveClient.fromEnv();
+  });
+
+  afterAll(async () => {
+    // Clean up created files
+    for (const fileId of createdFileIds) {
+      try {
+        await client.deleteFile(fileId);
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+  });
+
+  describe('createFolder', () => {
+    it('should create a folder in Google Drive', async () => {
+      const folderName = `test-folder-${Date.now()}`;
+      const folder = await client.createFolder(folderName);
+
+      expect(folder.id).toBeDefined();
+      expect(folder.name).toBe(folderName);
+      expect(folder.mimeType).toBe('application/vnd.google-apps.folder');
+
+      testFolderId = folder.id;
+      createdFileIds.push(folder.id);
+    });
+  });
+
+  describe('uploadFile', () => {
+    it('should upload a text file to Google Drive', async () => {
+      const content = Buffer.from('Hello, Google Drive!');
+      const fileName = `test-file-${Date.now()}.txt`;
+
+      const file = await client.uploadFile({
+        name: fileName,
+        mimeType: 'text/plain',
+        content,
+        parentFolderId: testFolderId ?? undefined,
+      });
+
+      expect(file.id).toBeDefined();
+      expect(file.name).toBe(fileName);
+      expect(file.mimeType).toBe('text/plain');
+      expect(file.size).toBeGreaterThan(0);
+
+      createdFileIds.push(file.id);
+    });
+
+    it('should upload a file into a specific folder', async () => {
+      if (!testFolderId) {
+        throw new Error('Test folder not created');
+      }
+
+      const content = Buffer.from('File in folder');
+      const fileName = `nested-file-${Date.now()}.txt`;
+
+      const file = await client.uploadFile({
+        name: fileName,
+        mimeType: 'text/plain',
+        content,
+        parentFolderId: testFolderId,
+      });
+
+      expect(file.id).toBeDefined();
+      expect(file.parents).toContain(testFolderId);
+
+      createdFileIds.push(file.id);
+    });
+  });
+
+  describe('getFileMetadata', () => {
+    it('should get file metadata', async () => {
+      const content = Buffer.from('Metadata test file');
+      const fileName = `metadata-test-${Date.now()}.txt`;
+
+      const uploaded = await client.uploadFile({
+        name: fileName,
+        mimeType: 'text/plain',
+        content,
+      });
+      createdFileIds.push(uploaded.id);
+
+      const metadata = await client.getFileMetadata(uploaded.id);
+
+      expect(metadata.id).toBe(uploaded.id);
+      expect(metadata.name).toBe(fileName);
+      expect(metadata.mimeType).toBe('text/plain');
+      expect(metadata.size).toBeGreaterThan(0);
+      expect(metadata.webViewLink).toBeDefined();
+    });
+
+    it('should throw error for non-existent file', async () => {
+      await expect(client.getFileMetadata('non-existent-file-id')).rejects.toThrow();
+    });
+  });
+
+  describe('downloadFile', () => {
+    it('should download file content', async () => {
+      const originalContent = 'Download test content - 日本語テスト';
+      const content = Buffer.from(originalContent);
+      const fileName = `download-test-${Date.now()}.txt`;
+
+      const uploaded = await client.uploadFile({
+        name: fileName,
+        mimeType: 'text/plain',
+        content,
+      });
+      createdFileIds.push(uploaded.id);
+
+      const downloaded = await client.downloadFile(uploaded.id);
+
+      expect(downloaded.toString()).toBe(originalContent);
+    });
+
+    it('should download binary file', async () => {
+      // Create a simple binary content
+      const binaryContent = Buffer.from([0x00, 0x01, 0x02, 0xff, 0xfe, 0xfd]);
+      const fileName = `binary-test-${Date.now()}.bin`;
+
+      const uploaded = await client.uploadFile({
+        name: fileName,
+        mimeType: 'application/octet-stream',
+        content: binaryContent,
+      });
+      createdFileIds.push(uploaded.id);
+
+      const downloaded = await client.downloadFile(uploaded.id);
+
+      expect(Buffer.compare(downloaded, binaryContent)).toBe(0);
+    });
+  });
+
+  describe('findOrCreateFolder', () => {
+    it('should create folder if not exists', async () => {
+      const folderName = `find-or-create-${Date.now()}`;
+
+      const folder = await client.findOrCreateFolder(folderName);
+
+      expect(folder.id).toBeDefined();
+      expect(folder.name).toBe(folderName);
+      expect(folder.mimeType).toBe('application/vnd.google-apps.folder');
+
+      createdFileIds.push(folder.id);
+    });
+
+    it('should return existing folder if exists', async () => {
+      const folderName = `existing-folder-${Date.now()}`;
+
+      // Create folder first
+      const created = await client.createFolder(folderName);
+      createdFileIds.push(created.id);
+
+      // Find or create should return the existing folder
+      const found = await client.findOrCreateFolder(folderName);
+
+      expect(found.id).toBe(created.id);
+      expect(found.name).toBe(folderName);
+    });
+
+    it('should create nested folder with parent', async () => {
+      if (!testFolderId) {
+        throw new Error('Test folder not created');
+      }
+
+      const nestedFolderName = `nested-folder-${Date.now()}`;
+
+      const folder = await client.findOrCreateFolder(nestedFolderName, testFolderId);
+
+      expect(folder.id).toBeDefined();
+      expect(folder.name).toBe(nestedFolderName);
+      expect(folder.parents).toContain(testFolderId);
+
+      createdFileIds.push(folder.id);
+    });
+  });
+
+  describe('listFiles', () => {
+    it('should list files in folder', async () => {
+      // Create a test folder with files
+      const folderName = `list-test-${Date.now()}`;
+      const folder = await client.createFolder(folderName);
+      createdFileIds.push(folder.id);
+
+      // Upload some files
+      const file1 = await client.uploadFile({
+        name: 'file1.txt',
+        mimeType: 'text/plain',
+        content: Buffer.from('File 1'),
+        parentFolderId: folder.id,
+      });
+      createdFileIds.push(file1.id);
+
+      const file2 = await client.uploadFile({
+        name: 'file2.txt',
+        mimeType: 'text/plain',
+        content: Buffer.from('File 2'),
+        parentFolderId: folder.id,
+      });
+      createdFileIds.push(file2.id);
+
+      const files = await client.listFiles(folder.id);
+
+      expect(files.length).toBe(2);
+      expect(files.some((f) => f.name === 'file1.txt')).toBe(true);
+      expect(files.some((f) => f.name === 'file2.txt')).toBe(true);
+    });
+  });
+
+  describe('deleteFile', () => {
+    it('should delete a file', async () => {
+      const file = await client.uploadFile({
+        name: `delete-test-${Date.now()}.txt`,
+        mimeType: 'text/plain',
+        content: Buffer.from('To be deleted'),
+      });
+
+      await client.deleteFile(file.id);
+
+      // Verify file is deleted
+      await expect(client.getFileMetadata(file.id)).rejects.toThrow();
+    });
+
+    it('should throw error for non-existent file', async () => {
+      await expect(client.deleteFile('non-existent-file-id')).rejects.toThrow();
+    });
+  });
+});
+
+describe('GoogleDriveClient.fromEnv', () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('should throw error when GOOGLE_SERVICE_ACCOUNT_EMAIL is not set', () => {
+    vi.stubEnv('GOOGLE_SERVICE_ACCOUNT_EMAIL', '');
+    vi.stubEnv('GOOGLE_PRIVATE_KEY', 'test-key');
+
+    expect(() => GoogleDriveClient.fromEnv()).toThrow('GOOGLE_SERVICE_ACCOUNT_EMAIL');
+  });
+
+  it('should throw error when GOOGLE_PRIVATE_KEY is not set', () => {
+    vi.stubEnv('GOOGLE_SERVICE_ACCOUNT_EMAIL', 'test@example.com');
+    vi.stubEnv('GOOGLE_PRIVATE_KEY', '');
+
+    expect(() => GoogleDriveClient.fromEnv()).toThrow('GOOGLE_PRIVATE_KEY');
+  });
+});

@@ -21,9 +21,10 @@
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",
+    "@video-processor/shared": "workspace:*",
     "express": "^4.21.2",
-    "uuid": "^11.0.5",
-    "@video-processor/shared": "workspace:*"
+    "googleapis": "^170.1.0",
+    "uuid": "^11.0.5"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
