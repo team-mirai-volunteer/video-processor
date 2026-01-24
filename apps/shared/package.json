@@ -13,6 +13,7 @@
   },
   "files": ["dist"],
   "scripts": {
+    "postinstall": "tsc",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
