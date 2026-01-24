@@ -1,0 +1,219 @@
+import type {
+  GetClipsResponse,
+  GetVideoResponse,
+  GetVideosQuery,
+  GetVideosResponse,
+  SubmitVideoRequest,
+  SubmitVideoResponse,
+} from '@video-processor/shared';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
+
+class ApiError extends Error {
+  constructor(
+    public status: number,
+    message: string
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const url = `${API_BASE_URL}${endpoint}`;
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new ApiError(response.status, error.error || 'Request failed');
+  }
+
+  return response.json();
+}
+
+// Mock data
+const mockVideos: GetVideosResponse = {
+  data: [
+    {
+      id: '1',
+      googleDriveUrl: 'https://drive.google.com/file/d/abc123/view',
+      title: 'チームみらい紹介動画',
+      status: 'completed',
+      clipCount: 3,
+      createdAt: new Date('2024-01-15T10:00:00Z'),
+    },
+    {
+      id: '2',
+      googleDriveUrl: 'https://drive.google.com/file/d/def456/view',
+      title: '政策説明ライブ配信',
+      status: 'processing',
+      clipCount: 0,
+      createdAt: new Date('2024-01-16T14:30:00Z'),
+    },
+    {
+      id: '3',
+      googleDriveUrl: 'https://drive.google.com/file/d/ghi789/view',
+      title: '質疑応答セッション',
+      status: 'pending',
+      clipCount: 0,
+      createdAt: new Date('2024-01-17T09:00:00Z'),
+    },
+  ],
+  pagination: {
+    page: 1,
+    limit: 20,
+    total: 3,
+    totalPages: 1,
+  },
+};
+
+const mockVideoDetail: GetVideoResponse = {
+  id: '1',
+  googleDriveFileId: 'abc123',
+  googleDriveUrl: 'https://drive.google.com/file/d/abc123/view',
+  title: 'チームみらい紹介動画',
+  description: 'チームみらいの活動紹介動画です。',
+  durationSeconds: 3600,
+  fileSizeBytes: 1500000000,
+  status: 'completed',
+  errorMessage: null,
+  clips: [
+    {
+      id: 'clip-1',
+      videoId: '1',
+      googleDriveFileId: 'clip-abc1',
+      googleDriveUrl: 'https://drive.google.com/file/d/clip-abc1/view',
+      title: '自己紹介',
+      startTimeSeconds: 0,
+      endTimeSeconds: 45,
+      durationSeconds: 45,
+      transcript: 'こんにちは、チームみらいです。今日は私たちの活動についてご紹介します。',
+      status: 'completed',
+      errorMessage: null,
+      createdAt: new Date('2024-01-15T10:30:00Z'),
+      updatedAt: new Date('2024-01-15T10:35:00Z'),
+    },
+    {
+      id: 'clip-2',
+      videoId: '1',
+      googleDriveFileId: 'clip-abc2',
+      googleDriveUrl: 'https://drive.google.com/file/d/clip-abc2/view',
+      title: '政策説明',
+      startTimeSeconds: 300,
+      endTimeSeconds: 360,
+      durationSeconds: 60,
+      transcript: '私たちの政策は、若者の政治参加を促進することです。',
+      status: 'completed',
+      errorMessage: null,
+      createdAt: new Date('2024-01-15T10:35:00Z'),
+      updatedAt: new Date('2024-01-15T10:40:00Z'),
+    },
+    {
+      id: 'clip-3',
+      videoId: '1',
+      googleDriveFileId: 'clip-abc3',
+      googleDriveUrl: 'https://drive.google.com/file/d/clip-abc3/view',
+      title: '質疑応答ハイライト',
+      startTimeSeconds: 1800,
+      endTimeSeconds: 1840,
+      durationSeconds: 40,
+      transcript: 'ご質問ありがとうございます。その点については...',
+      status: 'completed',
+      errorMessage: null,
+      createdAt: new Date('2024-01-15T10:40:00Z'),
+      updatedAt: new Date('2024-01-15T10:45:00Z'),
+    },
+  ],
+  processingJobs: [
+    {
+      id: 'job-1',
+      status: 'completed',
+      clipInstructions: '自己紹介、政策説明、質疑応答のハイライトを切り抜いてください。',
+      completedAt: new Date('2024-01-15T10:45:00Z'),
+    },
+  ],
+  createdAt: new Date('2024-01-15T10:00:00Z'),
+  updatedAt: new Date('2024-01-15T10:45:00Z'),
+};
+
+// API Client
+export const apiClient = {
+  async getVideos(query?: GetVideosQuery): Promise<GetVideosResponse> {
+    if (USE_MOCK) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return mockVideos;
+    }
+
+    const params = new URLSearchParams();
+    if (query?.page) params.set('page', query.page.toString());
+    if (query?.limit) params.set('limit', query.limit.toString());
+    if (query?.status) params.set('status', query.status);
+
+    const queryString = params.toString();
+    return fetchApi<GetVideosResponse>(`/api/videos${queryString ? `?${queryString}` : ''}`);
+  },
+
+  async getVideo(id: string): Promise<GetVideoResponse> {
+    if (USE_MOCK) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      if (id === '1') {
+        return mockVideoDetail;
+      }
+      throw new ApiError(404, 'Video not found');
+    }
+
+    return fetchApi<GetVideoResponse>(`/api/videos/${id}`);
+  },
+
+  async getClips(videoId: string): Promise<GetClipsResponse> {
+    if (USE_MOCK) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return {
+        data: mockVideoDetail.clips.map((clip) => ({
+          id: clip.id,
+          title: clip.title,
+          startTimeSeconds: clip.startTimeSeconds,
+          endTimeSeconds: clip.endTimeSeconds,
+          durationSeconds: clip.durationSeconds,
+          googleDriveUrl: clip.googleDriveUrl,
+          transcript: clip.transcript,
+          status: clip.status,
+        })),
+      };
+    }
+
+    return fetchApi<GetClipsResponse>(`/api/videos/${videoId}/clips`);
+  },
+
+  async submitVideo(request: SubmitVideoRequest): Promise<SubmitVideoResponse> {
+    if (USE_MOCK) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return {
+        id: 'new-video-id',
+        googleDriveFileId: 'new-file-id',
+        googleDriveUrl: request.googleDriveUrl,
+        status: 'pending',
+        processingJob: {
+          id: 'new-job-id',
+          status: 'pending',
+          clipInstructions: request.clipInstructions,
+        },
+        createdAt: new Date(),
+      };
+    }
+
+    return fetchApi<SubmitVideoResponse>('/api/videos', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+};
+
+export { ApiError };
