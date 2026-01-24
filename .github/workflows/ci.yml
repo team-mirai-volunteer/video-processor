@@ -62,10 +62,10 @@ jobs:
         run: pnpm install
 
       - name: Run backend unit tests
-        run: pnpm --filter backend test:unit --if-present
+        run: pnpm --filter backend run --if-present test:unit
 
       - name: Run backend integration tests
-        run: pnpm --filter backend test:integration --if-present
+        run: pnpm --filter backend run --if-present test:integration
 
   test-webapp:
     runs-on: ubuntu-latest
@@ -88,4 +88,4 @@ jobs:
         continue-on-error: true
 
       - name: Run webapp E2E tests
-        run: pnpm --filter webapp test:e2e --if-present
+        run: pnpm --filter webapp run --if-present test:e2e
