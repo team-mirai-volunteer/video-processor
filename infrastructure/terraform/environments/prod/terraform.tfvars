@@ -4,7 +4,8 @@ project_name = "video-processor"
 region       = "asia-northeast1"
 
 # Networking Configuration
-subnet_cidr = "10.0.0.0/24"
+subnet_cidr    = "10.0.0.0/24"
+connector_cidr = "10.8.0.0/28"
 
 # Database Configuration (Production settings)
 database_tier                = "db-custom-2-4096"
@@ -25,3 +26,7 @@ cloud_run_min_instances = 0
 cloud_run_max_instances = 10
 cors_origin             = "https://video-processor.vercel.app"
 allow_unauthenticated   = false
+
+# Google Drive Configuration
+# google_drive_service_account_email should be provided via environment variable or secret
+# google_drive_output_folder_id should be provided via environment variable or secret
