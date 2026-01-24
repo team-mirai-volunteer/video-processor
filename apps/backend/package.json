@@ -20,10 +20,11 @@
     "db:studio": "prisma studio --schema=src/infrastructure/database/prisma/schema.prisma"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.2.1",
+    "@video-processor/shared": "workspace:*",
     "express": "^4.21.2",
-    "uuid": "^11.0.5",
-    "@video-processor/shared": "workspace:*"
+    "uuid": "^11.0.5"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
