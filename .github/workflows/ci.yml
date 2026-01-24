@@ -93,4 +93,4 @@ jobs:
         run: pnpm --filter webapp exec playwright install --with-deps chromium
 
       - name: Run webapp E2E tests
-        run: pnpm --filter webapp test:e2e --project=chromium --if-present
+        run: pnpm --filter webapp test:e2e -- --project=chromium
