@@ -1,0 +1,35 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    "apps/backend": {
+      "entry": ["src/application/errors.ts", "src/domain/models/*.ts"],
+      "project": ["src/**/*.ts"],
+      "ignore": [
+        "src/**/*.test.ts",
+        "test/**/*.ts",
+        "src/application/services/video-processing.service.ts",
+        "src/application/usecases/process-video.usecase.ts",
+        "src/domain/gateways/*.ts",
+        "src/domain/services/timestamp-extractor.service.ts",
+        "src/infrastructure/clients/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@types/*",
+        "@google-cloud/speech",
+        "fluent-ffmpeg",
+        "googleapis",
+        "dotenv"
+      ],
+      "vitest": false
+    },
+    "apps/webapp": {
+      "entry": ["src/app/**/*.{ts,tsx}", "src/components/**/*.{ts,tsx}"],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignore": ["src/**/*.test.{ts,tsx}"],
+      "playwright": false
+    },
+    "apps/shared": {
+      "project": ["types/**/*.ts"]
+    }
+  }
+}
