@@ -16,6 +16,23 @@ export type VideoStatus =
   | 'failed';
 
 /**
+ * Transcription phase enum (detailed progress during transcribing status)
+ * - downloading: 動画をダウンロード中
+ * - extracting_audio: 音声を抽出中
+ * - transcribing: 文字起こし中
+ * - saving: 文字起こしを保存中
+ * - uploading: ファイルをアップロード中
+ * - refining: AIで校正中
+ */
+export type TranscriptionPhase =
+  | 'downloading'
+  | 'extracting_audio'
+  | 'transcribing'
+  | 'saving'
+  | 'uploading'
+  | 'refining';
+
+/**
  * Transcription segment with timestamp
  */
 export interface TranscriptionSegment {
@@ -51,6 +68,7 @@ export interface Video {
   durationSeconds: number | null;
   fileSizeBytes: number | null;
   status: VideoStatus;
+  transcriptionPhase: TranscriptionPhase | null;
   errorMessage: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -80,6 +98,7 @@ export interface VideoWithRelations {
   durationSeconds: number | null;
   fileSizeBytes: number | null;
   status: VideoStatus;
+  transcriptionPhase: TranscriptionPhase | null;
   errorMessage: string | null;
   clips: import('./clip.js').Clip[];
   processingJobs: import('./processing-job.js').ProcessingJobSummary[];

@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import type { VideoStatus } from '@video-processor/shared';
+import type { TranscriptionPhase, VideoStatus } from '@video-processor/shared';
 import type {
   FindVideosOptions,
   FindVideosResult,
@@ -24,6 +24,7 @@ export class VideoRepository implements VideoRepositoryGateway {
         durationSeconds: props.durationSeconds,
         fileSizeBytes: props.fileSizeBytes ? BigInt(props.fileSizeBytes) : null,
         status: props.status,
+        transcriptionPhase: props.transcriptionPhase,
         errorMessage: props.errorMessage,
         gcsUri: props.gcsUri,
         gcsExpiresAt: props.gcsExpiresAt,
@@ -37,6 +38,7 @@ export class VideoRepository implements VideoRepositoryGateway {
         durationSeconds: props.durationSeconds,
         fileSizeBytes: props.fileSizeBytes ? BigInt(props.fileSizeBytes) : null,
         status: props.status,
+        transcriptionPhase: props.transcriptionPhase,
         errorMessage: props.errorMessage,
         gcsUri: props.gcsUri,
         gcsExpiresAt: props.gcsExpiresAt,
@@ -112,6 +114,7 @@ export class VideoRepository implements VideoRepositoryGateway {
     durationSeconds: number | null;
     fileSizeBytes: bigint | null;
     status: string;
+    transcriptionPhase: string | null;
     errorMessage: string | null;
     gcsUri: string | null;
     gcsExpiresAt: Date | null;
@@ -127,6 +130,7 @@ export class VideoRepository implements VideoRepositoryGateway {
       durationSeconds: record.durationSeconds,
       fileSizeBytes: record.fileSizeBytes ? Number(record.fileSizeBytes) : null,
       status: record.status as VideoStatus,
+      transcriptionPhase: record.transcriptionPhase as TranscriptionPhase | null,
       errorMessage: record.errorMessage,
       gcsUri: record.gcsUri,
       gcsExpiresAt: record.gcsExpiresAt,

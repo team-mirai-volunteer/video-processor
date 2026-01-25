@@ -269,7 +269,18 @@ export default function VideoDetailPage() {
           {video.status === 'transcribing' && (
             <div className="text-center py-8">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">文字起こしを作成中です...</p>
+              <p className="text-muted-foreground">
+                {video.transcriptionPhase === 'downloading' && '動画をダウンロード中...'}
+                {video.transcriptionPhase === 'extracting_audio' && '音声を抽出中...'}
+                {video.transcriptionPhase === 'transcribing' && '文字起こし中...'}
+                {video.transcriptionPhase === 'saving' && '文字起こしを保存中...'}
+                {video.transcriptionPhase === 'uploading' && 'ファイルをアップロード中...'}
+                {video.transcriptionPhase === 'refining' && 'AIで校正中...'}
+                {!video.transcriptionPhase && '文字起こしを作成中です...'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                ページを更新すると最新の進捗を確認できます
+              </p>
             </div>
           )}
           {video.status === 'failed' && (

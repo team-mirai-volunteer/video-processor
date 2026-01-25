@@ -47,6 +47,7 @@ export class GetVideoUseCase {
       durationSeconds: video.durationSeconds,
       fileSizeBytes: video.fileSizeBytes,
       status: video.status,
+      transcriptionPhase: video.transcriptionPhase,
       errorMessage: video.errorMessage,
       clips: clips.map((clip) => ({
         id: clip.id,
