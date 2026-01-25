@@ -9,24 +9,26 @@ RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy workspace configuration
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-COPY apps/shared/package.json ./apps/shared/
-COPY apps/backend/package.json ./apps/backend/
-
-# Install dependencies
-RUN pnpm install --frozen-lockfile
-
-# Copy source files
+# Copy workspace configuration and source files
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.json ./
 COPY apps/shared ./apps/shared
 COPY apps/backend ./apps/backend
-COPY tsconfig.json ./
+
+# Install dependencies (postinstall will run tsc for shared)
+RUN pnpm install --frozen-lockfile
 
 # Generate Prisma client
 RUN pnpm --filter backend db:generate
 
 # Build
 RUN pnpm --filter backend build
+
+# Migration stage (for running prisma db push)
+FROM builder AS migrator
+
+WORKDIR /app/apps/backend
+
+CMD ["./scripts/migrate.sh"]
 
 # Production stage
 FROM node:22-slim AS runner
@@ -44,14 +46,18 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY apps/shared/package.json ./apps/shared/
 COPY apps/backend/package.json ./apps/backend/
 
-# Install production dependencies only
-RUN pnpm install --frozen-lockfile --prod
+# Install production dependencies only (ignore scripts to skip postinstall)
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # Copy built files
 COPY --from=builder /app/apps/shared ./apps/shared
 COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
 COPY --from=builder /app/apps/backend/src/infrastructure/database/prisma ./apps/backend/src/infrastructure/database/prisma
+
+# Copy Prisma client (generated client + runtime)
+COPY --from=builder /app/node_modules/.pnpm/@prisma+client*/node_modules/@prisma/client ./node_modules/@prisma/client
 COPY --from=builder /app/node_modules/.pnpm/@prisma+client*/node_modules/.prisma ./node_modules/.prisma
+
 
 # Set environment
 ENV NODE_ENV=production

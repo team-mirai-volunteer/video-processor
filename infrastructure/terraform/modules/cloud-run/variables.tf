@@ -19,6 +19,11 @@ variable "container_image" {
   type        = string
 }
 
+variable "migration_image" {
+  description = "Migration container image URL"
+  type        = string
+}
+
 variable "cpu" {
   description = "CPU limit"
   type        = string
@@ -41,6 +46,12 @@ variable "max_instances" {
   description = "Maximum number of instances"
   type        = number
   default     = 2
+}
+
+variable "concurrency" {
+  description = "Maximum concurrent requests per instance (must be 1 if cpu < 1)"
+  type        = number
+  default     = 80
 }
 
 variable "request_timeout" {
@@ -77,12 +88,6 @@ variable "database_user" {
   type        = string
 }
 
-variable "database_password" {
-  description = "Database password"
-  type        = string
-  sensitive   = true
-}
-
 # Secrets
 variable "openai_api_key_secret_id" {
   description = "Secret Manager secret ID for OpenAI API key"
@@ -94,6 +99,11 @@ variable "google_credentials_secret_id" {
   type        = string
 }
 
+variable "database_password_secret_id" {
+  description = "Secret Manager secret ID for database password"
+  type        = string
+}
+
 # Application config
 variable "cors_origin" {
   description = "Allowed CORS origin"
@@ -102,5 +112,10 @@ variable "cors_origin" {
 
 variable "google_drive_output_folder_id" {
   description = "Google Drive output folder ID"
+  type        = string
+}
+
+variable "service_account_email" {
+  description = "Service account email for Cloud Run"
   type        = string
 }

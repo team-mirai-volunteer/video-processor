@@ -72,7 +72,11 @@ case "${ACTION}" in
     ;;
   apply)
     terraform init -upgrade ${BACKEND_CONFIG}
-    terraform apply
+    if [[ "${ENV}" == "prod" ]]; then
+      terraform apply
+    else
+      terraform apply -auto-approve
+    fi
     ;;
   destroy)
     echo "Warning: This will destroy all resources in ${ENV} environment!"

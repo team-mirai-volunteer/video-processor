@@ -17,3 +17,8 @@ output "google_credentials_secret_version" {
   description = "Secret Manager secret version for Google credentials"
   value       = google_secret_manager_secret_version.google_credentials.name
 }
+
+output "database_password_secret_id" {
+  description = "Secret Manager secret ID for database password"
+  value       = google_secret_manager_secret.database_password.secret_id
+}

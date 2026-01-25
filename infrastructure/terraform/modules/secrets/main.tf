@@ -42,3 +42,25 @@ resource "google_secret_manager_secret_iam_member" "google_credentials_access" {
   member    = "serviceAccount:${var.cloud_run_service_account_email}"
   project   = var.project_id
 }
+
+# Secret: Database Password
+resource "google_secret_manager_secret" "database_password" {
+  secret_id = "${var.project_name}-database-password"
+  project   = var.project_id
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "database_password" {
+  secret      = google_secret_manager_secret.database_password.id
+  secret_data = var.database_password
+}
+
+resource "google_secret_manager_secret_iam_member" "database_password_access" {
+  secret_id = google_secret_manager_secret.database_password.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.cloud_run_service_account_email}"
+  project   = var.project_id
+}
