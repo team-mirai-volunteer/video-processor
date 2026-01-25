@@ -103,6 +103,18 @@
       "category": "person",
       "description": "チームみらい立候補者",
       "wrongPatterns": ["古川葵", "古川碧", "古川蒼"]
+    },
+    {
+      "correct": "みらい議会",
+      "category": "service",
+      "description": "チームみらいのサービス名",
+      "wrongPatterns": ["未来議会", "ミライ議会", "みらい議かい"]
+    },
+    {
+      "correct": "みらいまる見え政治資金",
+      "category": "service",
+      "description": "チームみらいのサービス名",
+      "wrongPatterns": ["未来まる見え政治資金", "ミライまる見え政治資金", "みらい丸見え政治資金"]
     }
   ]
 }
