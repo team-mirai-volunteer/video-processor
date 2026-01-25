@@ -1,4 +1,5 @@
 import type {
+  ExtractClipsRequest,
   GetTranscriptionResponse,
   GetVideosQuery,
   SubmitVideoRequest,
@@ -9,9 +10,9 @@ import { type Router as ExpressRouter, Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { NotFoundError } from '../../application/errors.js';
 import { CreateTranscriptUseCase } from '../../application/usecases/create-transcript.usecase.js';
+import { ExtractClipsUseCase } from '../../application/usecases/extract-clips.usecase.js';
 import { GetVideoUseCase } from '../../application/usecases/get-video.usecase.js';
 import { GetVideosUseCase } from '../../application/usecases/get-videos.usecase.js';
-import { ProcessVideoUseCase } from '../../application/usecases/process-video.usecase.js';
 import { SubmitVideoUseCase } from '../../application/usecases/submit-video.usecase.js';
 import { FFmpegClient } from '../../infrastructure/clients/ffmpeg.client.js';
 import { GcsClient } from '../../infrastructure/clients/gcs.client.js';
@@ -32,10 +33,12 @@ const clipRepository = new ClipRepository(prisma);
 const processingJobRepository = new ProcessingJobRepository(prisma);
 const transcriptionRepository = new TranscriptionRepository(prisma);
 
+// Initialize gateways
+const tempStorageGateway = new GcsClient();
+
 // Initialize use cases
 const submitVideoUseCase = new SubmitVideoUseCase({
   videoRepository,
-  processingJobRepository,
   generateId: () => uuidv4(),
 });
 
@@ -50,14 +53,14 @@ const getVideoUseCase = new GetVideoUseCase({
   transcriptionRepository,
 });
 
-const processVideoUseCase = new ProcessVideoUseCase({
+const extractClipsUseCase = new ExtractClipsUseCase({
   videoRepository,
   clipRepository,
-  processingJobRepository,
+  transcriptionRepository,
   storageGateway: GoogleDriveClient.fromEnv(),
+  tempStorageGateway,
   aiGateway: new OpenAIClient(),
   videoProcessingService: new FFmpegClient(),
-  transcriptionGateway: new SpeechToTextClient(),
   generateId: () => uuidv4(),
   outputFolderId: process.env.GOOGLE_DRIVE_OUTPUT_FOLDER_ID,
 });
@@ -74,21 +77,57 @@ const createTranscriptUseCase = new CreateTranscriptUseCase({
 
 /**
  * POST /api/videos
- * Submit a video for processing
+ * Register a video (does not start processing)
  */
 router.post('/', async (req, res, next) => {
   try {
     const body = req.body as SubmitVideoRequest;
     const result = await submitVideoUseCase.execute({
       googleDriveUrl: body.googleDriveUrl,
+    });
+    res.status(201).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/videos/:videoId/transcribe
+ * Start transcription for a video
+ */
+router.post('/:videoId/transcribe', async (req, res, next) => {
+  try {
+    const { videoId } = req.params;
+
+    // Return immediately with transcribing status
+    const response: TranscribeVideoResponse = {
+      videoId: videoId ?? '',
+      status: 'transcribing',
+    };
+    res.status(202).json(response);
+
+    // Execute transcription in background (fire and forget)
+    createTranscriptUseCase.execute(videoId ?? '').catch((error) => {
+      console.error('[CreateTranscriptUseCase] Error:', error);
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/videos/:videoId/extract-clips
+ * Extract clips from a transcribed video
+ */
+router.post('/:videoId/extract-clips', async (req, res, next) => {
+  try {
+    const { videoId } = req.params;
+    const body = req.body as ExtractClipsRequest;
+    const result = await extractClipsUseCase.execute({
+      videoId: videoId ?? '',
       clipInstructions: body.clipInstructions,
     });
     res.status(202).json(result);
-
-    // Start processing in background (fire and forget)
-    processVideoUseCase.execute(result.processingJob.id).catch((error) => {
-      console.error('[ProcessVideoUseCase] Error:', error);
-    });
   } catch (error) {
     next(error);
   }
@@ -121,30 +160,6 @@ router.get('/:id', async (req, res, next) => {
     const { id } = req.params;
     const result = await getVideoUseCase.execute(id ?? '');
     res.json(result);
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * POST /api/videos/:videoId/transcribe
- * Start transcription for a video
- */
-router.post('/:videoId/transcribe', async (req, res, next) => {
-  try {
-    const { videoId } = req.params;
-
-    // Return immediately with transcribing status
-    const response: TranscribeVideoResponse = {
-      videoId: videoId ?? '',
-      status: 'transcribing',
-    };
-    res.status(202).json(response);
-
-    // Execute transcription in background (fire and forget)
-    createTranscriptUseCase.execute(videoId ?? '').catch((error) => {
-      console.error('[CreateTranscriptUseCase] Error:', error);
-    });
   } catch (error) {
     next(error);
   }

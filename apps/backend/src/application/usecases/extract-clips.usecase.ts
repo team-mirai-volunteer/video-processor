@@ -1,49 +1,57 @@
+import type { ExtractClipsResponse } from '@video-processor/shared';
 import type { AiGateway } from '../../domain/gateways/ai.gateway.js';
 import type { ClipRepositoryGateway } from '../../domain/gateways/clip-repository.gateway.js';
-import type { ProcessingJobRepositoryGateway } from '../../domain/gateways/processing-job-repository.gateway.js';
 import type { StorageGateway } from '../../domain/gateways/storage.gateway.js';
-import type { TranscriptionGateway } from '../../domain/gateways/transcription.gateway.js';
+import type { TempStorageGateway } from '../../domain/gateways/temp-storage.gateway.js';
+import type { TranscriptionRepositoryGateway } from '../../domain/gateways/transcription-repository.gateway.js';
 import type { VideoRepositoryGateway } from '../../domain/gateways/video-repository.gateway.js';
 import { Clip } from '../../domain/models/clip.js';
+import type { Video } from '../../domain/models/video.js';
 import { ClipAnalysisPromptService } from '../../domain/services/clip-analysis-prompt.service.js';
 import { TimestampExtractorService } from '../../domain/services/timestamp-extractor.service.js';
-import { NotFoundError } from '../errors.js';
+import { NotFoundError, ValidationError } from '../errors.js';
+import { CLIP_ERROR_CODES, createClipError } from '../errors/clip.errors.js';
 import type { VideoProcessingService } from '../services/video-processing.service.js';
 
-export interface ProcessVideoUseCaseDeps {
+export interface ExtractClipsInput {
+  videoId: string;
+  clipInstructions: string;
+}
+
+export interface ExtractClipsUseCaseDeps {
   videoRepository: VideoRepositoryGateway;
   clipRepository: ClipRepositoryGateway;
-  processingJobRepository: ProcessingJobRepositoryGateway;
+  transcriptionRepository: TranscriptionRepositoryGateway;
   storageGateway: StorageGateway;
+  tempStorageGateway: TempStorageGateway;
   aiGateway: AiGateway;
   videoProcessingService: VideoProcessingService;
-  transcriptionGateway: TranscriptionGateway;
   generateId: () => string;
   /** Optional: Default output folder ID for clips (shared drive folder recommended) */
   outputFolderId?: string;
 }
 
-export class ProcessVideoUseCase {
+export class ExtractClipsUseCase {
   private readonly videoRepository: VideoRepositoryGateway;
   private readonly clipRepository: ClipRepositoryGateway;
-  private readonly processingJobRepository: ProcessingJobRepositoryGateway;
+  private readonly transcriptionRepository: TranscriptionRepositoryGateway;
   private readonly storageGateway: StorageGateway;
+  private readonly tempStorageGateway: TempStorageGateway;
   private readonly aiGateway: AiGateway;
   private readonly videoProcessingService: VideoProcessingService;
-  private readonly transcriptionGateway: TranscriptionGateway;
   private readonly timestampExtractor: TimestampExtractorService;
   private readonly clipAnalysisPromptService: ClipAnalysisPromptService;
   private readonly generateId: () => string;
   private readonly outputFolderId?: string;
 
-  constructor(deps: ProcessVideoUseCaseDeps) {
+  constructor(deps: ExtractClipsUseCaseDeps) {
     this.videoRepository = deps.videoRepository;
     this.clipRepository = deps.clipRepository;
-    this.processingJobRepository = deps.processingJobRepository;
+    this.transcriptionRepository = deps.transcriptionRepository;
     this.storageGateway = deps.storageGateway;
+    this.tempStorageGateway = deps.tempStorageGateway;
     this.aiGateway = deps.aiGateway;
     this.videoProcessingService = deps.videoProcessingService;
-    this.transcriptionGateway = deps.transcriptionGateway;
     this.timestampExtractor = new TimestampExtractorService();
     this.clipAnalysisPromptService = new ClipAnalysisPromptService();
     this.generateId = deps.generateId;
@@ -53,95 +61,77 @@ export class ProcessVideoUseCase {
   private log(message: string, data?: Record<string, unknown>): void {
     const timestamp = new Date().toISOString();
     const logData = data ? ` ${JSON.stringify(data)}` : '';
-    console.log(`[ProcessVideoUseCase] [${timestamp}] ${message}${logData}`);
+    console.log(`[ExtractClipsUseCase] [${timestamp}] ${message}${logData}`);
   }
 
-  async execute(processingJobId: string): Promise<void> {
-    this.log('Starting execution', { processingJobId, outputFolderId: this.outputFolderId });
+  async execute(input: ExtractClipsInput): Promise<ExtractClipsResponse> {
+    const { videoId, clipInstructions } = input;
+    this.log('Starting execution', {
+      videoId,
+      clipInstructions: clipInstructions.substring(0, 100),
+    });
 
-    // Get processing job
-    const job = await this.processingJobRepository.findById(processingJobId);
-    if (!job) {
-      throw new NotFoundError('ProcessingJob', processingJobId);
+    // Validate input
+    if (!clipInstructions.trim()) {
+      throw new ValidationError('clipInstructions is required');
     }
-    this.log('Found processing job', { jobId: job.id, videoId: job.videoId });
 
-    // Get video
-    const video = await this.videoRepository.findById(job.videoId);
+    // 1. Get video
+    const video = await this.videoRepository.findById(videoId);
     if (!video) {
-      throw new NotFoundError('Video', job.videoId);
+      throw new NotFoundError('Video', videoId);
     }
-    this.log('Found video', { videoId: video.id, googleDriveFileId: video.googleDriveFileId });
+    this.log('Found video', { videoId: video.id, status: video.status });
+
+    // 2. Get transcription
+    const transcription = await this.transcriptionRepository.findByVideoId(videoId);
+    if (!transcription) {
+      const error = createClipError(
+        CLIP_ERROR_CODES.TRANSCRIPTION_NOT_FOUND,
+        `Transcription not found for video ${videoId}. Please run transcription first.`
+      );
+      throw new ValidationError(error.message);
+    }
+    this.log('Found transcription', {
+      transcriptionId: transcription.id,
+      segmentsCount: transcription.segments.length,
+    });
 
     try {
-      // Update status to analyzing
-      const analyzingJobResult = job.withStatus('analyzing');
-      if (!analyzingJobResult.success) {
-        throw new Error(analyzingJobResult.error.message);
-      }
-      await this.processingJobRepository.save(analyzingJobResult.value);
-      await this.videoRepository.save(video.withStatus('processing'));
-      this.log('Status updated to analyzing');
+      // Update video status to extracting
+      await this.videoRepository.save(video.withStatus('extracting'));
+      this.log('Status updated to extracting');
 
-      // Get video metadata from Google Drive
-      this.log('Fetching video metadata from Google Drive...');
+      // 3. Get video metadata
       const metadata = await this.storageGateway.getFileMetadata(video.googleDriveFileId);
-      this.log('Got video metadata', {
-        name: metadata.name,
-        size: metadata.size,
-        parents: metadata.parents,
-      });
-      const videoWithMetadataResult = video.withMetadata({
-        title: metadata.name,
-        fileSizeBytes: metadata.size,
-      });
-      if (videoWithMetadataResult.success) {
-        await this.videoRepository.save(videoWithMetadataResult.value);
-      }
+      this.log('Got video metadata', { name: metadata.name });
 
-      // Download video for audio extraction
-      this.log('Downloading video from Google Drive...');
-      const videoBuffer = await this.storageGateway.downloadFile(video.googleDriveFileId);
-      this.log('Video downloaded', { sizeBytes: videoBuffer.length });
-
-      // Extract audio from video (FLAC is smaller than WAV)
-      this.log('Extracting audio from video...');
-      const audioBuffer = await this.videoProcessingService.extractAudio(videoBuffer, 'flac');
-      this.log('Audio extracted', { sizeBytes: audioBuffer.length });
-
-      // Transcribe audio using Speech-to-Text (Batch API for long audio support)
-      this.log('Starting transcription (Batch API)...');
-      const transcription = await this.transcriptionGateway.transcribeLongAudio({
-        audioBuffer,
-        mimeType: 'audio/flac',
-      });
-      this.log('Transcription completed', {
-        fullTextLength: transcription.fullText.length,
-        segmentsCount: transcription.segments.length,
-        durationSeconds: transcription.durationSeconds,
-      });
-
-      // Build prompt and analyze with AI
+      // 4. AI analysis (clip point suggestion)
       this.log('Building prompt and calling AI...');
       const prompt = this.clipAnalysisPromptService.buildPrompt({
-        transcription,
-        videoTitle: metadata.name,
-        clipInstructions: job.clipInstructions,
+        transcription: {
+          fullText: transcription.fullText,
+          segments: transcription.segments,
+          languageCode: transcription.languageCode,
+          durationSeconds: transcription.durationSeconds,
+        },
+        videoTitle: video.title ?? metadata.name,
+        clipInstructions,
       });
       const aiResponseText = await this.aiGateway.generate(prompt);
       this.log('AI response received', { responseLength: aiResponseText.length });
       const aiResponse = this.clipAnalysisPromptService.parseResponse(aiResponseText);
       this.log('AI response parsed', { clipsCount: aiResponse.clips.length });
 
-      // Save AI response
-      const jobWithResponse = analyzingJobResult.value.withAiResponse(aiResponseText);
-      await this.processingJobRepository.save(jobWithResponse);
-
-      // Extract timestamps
+      // 5. Extract timestamps
       const timestamps = this.timestampExtractor.extractTimestamps(aiResponse.clips);
       this.log('Timestamps extracted', { timestampsCount: timestamps.length });
 
-      // Create clips
+      // 6. Get video buffer (from GCS or Google Drive)
+      const videoBuffer = await this.getVideoBuffer(video);
+      this.log('Video buffer obtained', { sizeBytes: videoBuffer.length });
+
+      // 7. Create clips
       const clips: Clip[] = [];
       for (const ts of timestamps) {
         const clipResult = Clip.createWithFlexibleDuration(
@@ -163,37 +153,16 @@ export class ProcessVideoUseCase {
 
       await this.clipRepository.saveMany(clips);
 
-      // Update status to extracting
-      const extractingJobResult = jobWithResponse.withStatus('extracting');
-      if (!extractingJobResult.success) {
-        throw new Error(extractingJobResult.error.message);
-      }
-      await this.processingJobRepository.save(extractingJobResult.value);
-      this.log('Status updated to extracting');
-
-      // Get or create output folder
-      // Use configured output folder (shared drive) if available, otherwise fall back to video's parent
+      // 8. Get or create output folder
       const parentFolder = this.outputFolderId ?? metadata.parents?.[0];
       this.log('Determining output folder', {
         configuredOutputFolderId: this.outputFolderId,
-        videoParentFolder: metadata.parents?.[0],
         selectedParentFolder: parentFolder,
       });
       const shortsFolder = await this.storageGateway.findOrCreateFolder('ショート用', parentFolder);
-      this.log('Output folder ready', {
-        shortsFolderId: shortsFolder.id,
-        shortsFolderName: shortsFolder.name,
-      });
+      this.log('Output folder ready', { shortsFolderId: shortsFolder.id });
 
-      // Update status to uploading
-      const uploadingJobResult = extractingJobResult.value.withStatus('uploading');
-      if (!uploadingJobResult.success) {
-        throw new Error(uploadingJobResult.error.message);
-      }
-      await this.processingJobRepository.save(uploadingJobResult.value);
-      this.log('Status updated to uploading');
-
-      // Process each clip
+      // 9. Process each clip
       for (const [i, clip] of clips.entries()) {
         this.log(`Processing clip ${i + 1}/${clips.length}`, {
           clipId: clip.id,
@@ -242,11 +211,12 @@ export class ProcessVideoUseCase {
         }
       }
 
-      // Create metadata file
+      // 10. Create metadata file
       this.log('Creating metadata file...');
       const metadataContent = {
         videoId: video.id,
         videoTitle: metadata.name,
+        clipInstructions,
         clips: clips.map((c) => ({
           id: c.id,
           title: c.title,
@@ -258,38 +228,66 @@ export class ProcessVideoUseCase {
       };
 
       await this.storageGateway.uploadFile({
-        name: `${video.id}_metadata.json`,
+        name: `${video.id}_clips_metadata.json`,
         mimeType: 'application/json',
         content: Buffer.from(JSON.stringify(metadataContent, null, 2)),
         parentFolderId: shortsFolder.id,
       });
       this.log('Metadata file uploaded');
 
-      // Update job to completed
-      const completedJobResult = uploadingJobResult.value.withStatus('completed');
-      if (!completedJobResult.success) {
-        throw new Error(completedJobResult.error.message);
-      }
-      await this.processingJobRepository.save(completedJobResult.value);
-
-      // Update video to completed
-      const updatedVideo = videoWithMetadataResult.success ? videoWithMetadataResult.value : video;
-      await this.videoRepository.save(updatedVideo.withStatus('completed'));
+      // 11. Update video to completed
+      await this.videoRepository.save(video.withStatus('completed'));
       this.log('Processing completed successfully');
+
+      return {
+        videoId: video.id,
+        status: 'completed',
+      };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.log('Processing failed', { error: errorMessage });
-
-      // Update job to failed
-      const failedJobResult = job.withStatus('failed', errorMessage);
-      if (failedJobResult.success) {
-        await this.processingJobRepository.save(failedJobResult.value);
-      }
 
       // Update video to failed
       await this.videoRepository.save(video.withStatus('failed', errorMessage));
 
       throw error;
     }
+  }
+
+  /**
+   * Get video buffer from GCS (if available) or Google Drive
+   * フォールバック戦略: GCS → Google Drive
+   */
+  private async getVideoBuffer(video: Video): Promise<Buffer> {
+    // Note: video.gcsUri is expected to be added by Session A
+    // For now, we check if tempStorageGateway can be used
+    // If GCS URI is not available, download from Google Drive
+
+    // TODO: Once Session A implements gcsUri on Video model, use:
+    // if (video.gcsUri && await this.tempStorageGateway.exists(video.gcsUri)) {
+    //   return this.tempStorageGateway.download(video.gcsUri);
+    // }
+
+    // Download from Google Drive
+    this.log('Downloading video from Google Drive...');
+    const buffer = await this.storageGateway.downloadFile(video.googleDriveFileId);
+    this.log('Video downloaded', { sizeBytes: buffer.length });
+
+    // Try to save to GCS for future use (best effort)
+    try {
+      const { gcsUri, expiresAt } = await this.tempStorageGateway.upload({
+        videoId: video.id,
+        content: buffer,
+      });
+      this.log('Video saved to GCS', { gcsUri, expiresAt });
+      // Note: VideoレコードへのGCS情報保存はSession Aがモデル拡張後に実装
+    } catch (gcsError) {
+      // GCS upload failure is not critical, continue with the buffer
+      this.log('GCS upload failed (non-critical)', {
+        error: gcsError instanceof Error ? gcsError.message : 'Unknown error',
+      });
+    }
+
+    return buffer;
   }
 }

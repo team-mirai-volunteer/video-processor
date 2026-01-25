@@ -48,10 +48,10 @@ export interface HealthResponse {
 
 /**
  * POST /api/videos request body
+ * 動画登録のみ（処理は開始しない）
  */
 export interface SubmitVideoRequest {
   googleDriveUrl: string;
-  clipInstructions: string;
 }
 
 /**
@@ -62,11 +62,6 @@ export interface SubmitVideoResponse {
   googleDriveFileId: string;
   googleDriveUrl: string;
   status: VideoStatus;
-  processingJob: {
-    id: string;
-    status: string;
-    clipInstructions: string;
-  };
   createdAt: Date;
 }
 
@@ -117,6 +112,25 @@ export interface GetClipResponse {
   errorMessage: string | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+// ============================================================================
+// Extract Clips API
+// ============================================================================
+
+/**
+ * POST /api/videos/:videoId/extract-clips request body
+ */
+export interface ExtractClipsRequest {
+  clipInstructions: string;
+}
+
+/**
+ * POST /api/videos/:videoId/extract-clips response
+ */
+export interface ExtractClipsResponse {
+  videoId: string;
+  status: VideoStatus;
 }
 
 // ============================================================================

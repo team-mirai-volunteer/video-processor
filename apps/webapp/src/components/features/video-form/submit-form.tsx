@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { ApiError, apiClient } from '@/lib/api-client';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -13,7 +12,6 @@ import { useState } from 'react';
 export function SubmitForm() {
   const router = useRouter();
   const [googleDriveUrl, setGoogleDriveUrl] = useState('');
-  const [clipInstructions, setClipInstructions] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +23,6 @@ export function SubmitForm() {
     try {
       const response = await apiClient.submitVideo({
         googleDriveUrl,
-        clipInstructions,
       });
       router.push(`/videos/${response.id}`);
     } catch (err) {
@@ -43,9 +40,10 @@ export function SubmitForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>動画情報</CardTitle>
+        <CardTitle>動画登録</CardTitle>
         <CardDescription>
-          切り抜きたい動画のGoogle Drive URLと、切り抜き指示を入力してください
+          切り抜きたい動画のGoogle Drive URLを入力してください。
+          登録後、トランスクリプトを作成してから切り抜き指示を入力できます。
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -66,22 +64,6 @@ export function SubmitForm() {
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="clipInstructions">切り抜き指示</Label>
-            <Textarea
-              id="clipInstructions"
-              placeholder="以下の箇所を切り抜いてください：&#10;1. 冒頭の自己紹介部分&#10;2. 政策について語っている部分（約5分あたり）&#10;3. 質疑応答のハイライト"
-              value={clipInstructions}
-              onChange={(e) => setClipInstructions(e.target.value)}
-              rows={6}
-              required
-              disabled={loading}
-            />
-            <p className="text-sm text-muted-foreground">
-              どの箇所を切り抜きたいか、具体的に指示してください。AIがこの指示を元に動画を分析し、該当箇所を特定します。
-            </p>
-          </div>
-
           {error && (
             <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">{error}</div>
           )}
@@ -95,7 +77,7 @@ export function SubmitForm() {
             >
               キャンセル
             </Button>
-            <Button type="submit" disabled={loading || !isValidUrl || !clipInstructions.trim()}>
+            <Button type="submit" disabled={loading || !isValidUrl}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

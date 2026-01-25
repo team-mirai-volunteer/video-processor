@@ -27,6 +27,8 @@ export type {
 // API types
 export type {
   ErrorResponse,
+  ExtractClipsRequest,
+  ExtractClipsResponse,
   GetClipResponse,
   GetClipsResponse,
   GetTranscriptionResponse,
