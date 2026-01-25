@@ -1,16 +1,18 @@
 import type { ClipExtractionResponse } from '@video-processor/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { VideoProcessingService } from '../../../../src/application/services/video-processing.service.js';
 import { ExtractClipsUseCase } from '../../../../src/application/usecases/extract-clips.usecase.js';
 import type { AiGateway } from '../../../../src/domain/gateways/ai.gateway.js';
 import type { ClipRepositoryGateway } from '../../../../src/domain/gateways/clip-repository.gateway.js';
+import type { RefinedTranscriptionRepositoryGateway } from '../../../../src/domain/gateways/refined-transcription-repository.gateway.js';
 import type { StorageGateway } from '../../../../src/domain/gateways/storage.gateway.js';
 import type { TempStorageGateway } from '../../../../src/domain/gateways/temp-storage.gateway.js';
 import type {
   TranscriptionEntity,
   TranscriptionRepositoryGateway,
 } from '../../../../src/domain/gateways/transcription-repository.gateway.js';
+import type { VideoProcessingGateway } from '../../../../src/domain/gateways/video-processing.gateway.js';
 import type { VideoRepositoryGateway } from '../../../../src/domain/gateways/video-repository.gateway.js';
+import { RefinedTranscription } from '../../../../src/domain/models/refined-transcription.js';
 import { Video } from '../../../../src/domain/models/video.js';
 
 describe('ExtractClipsUseCase', () => {
@@ -53,10 +55,17 @@ describe('ExtractClipsUseCase', () => {
     generate: vi.fn(),
   };
 
-  const mockVideoProcessingService: VideoProcessingService = {
+  const mockVideoProcessingGateway: VideoProcessingGateway = {
     extractClip: vi.fn(),
     getVideoDuration: vi.fn(),
     extractAudio: vi.fn(),
+  };
+
+  const mockRefinedTranscriptionRepository: RefinedTranscriptionRepositoryGateway = {
+    save: vi.fn(),
+    findById: vi.fn(),
+    findByTranscriptionId: vi.fn(),
+    deleteByTranscriptionId: vi.fn(),
   };
 
   let useCase: ExtractClipsUseCase;
@@ -68,10 +77,11 @@ describe('ExtractClipsUseCase', () => {
       videoRepository: mockVideoRepository,
       clipRepository: mockClipRepository,
       transcriptionRepository: mockTranscriptionRepository,
+      refinedTranscriptionRepository: mockRefinedTranscriptionRepository,
       storageGateway: mockStorageGateway,
       tempStorageGateway: mockTempStorageGateway,
       aiGateway: mockAiGateway,
-      videoProcessingService: mockVideoProcessingService,
+      videoProcessingGateway: mockVideoProcessingGateway,
       generateId: () => 'test-id',
     });
   });
@@ -108,6 +118,23 @@ describe('ExtractClipsUseCase', () => {
       createdAt: new Date(),
     };
 
+    const mockRefinedTranscription = RefinedTranscription.fromProps({
+      id: 'refined-1',
+      transcriptionId: 'transcription-1',
+      fullText: 'Hello, this is a test video.',
+      sentences: [
+        {
+          text: 'Hello, this is a test video.',
+          startTimeSeconds: 0,
+          endTimeSeconds: 5,
+          originalSegmentIndices: [0],
+        },
+      ],
+      dictionaryVersion: '1.0.0',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
     const mockAiResponse: ClipExtractionResponse = {
       clips: [
         {
@@ -143,6 +170,19 @@ describe('ExtractClipsUseCase', () => {
       ).rejects.toThrow('Transcription not found for video video-1');
     });
 
+    it('should throw error if refined transcription not found', async () => {
+      vi.mocked(mockVideoRepository.findById).mockResolvedValue(mockVideo);
+      vi.mocked(mockTranscriptionRepository.findByVideoId).mockResolvedValue(mockTranscription);
+      vi.mocked(mockRefinedTranscriptionRepository.findByTranscriptionId).mockResolvedValue(null);
+
+      await expect(
+        useCase.execute({
+          videoId: 'video-1',
+          clipInstructions: 'Extract highlights',
+        })
+      ).rejects.toThrow('Refined transcription not found for video video-1');
+    });
+
     it('should throw error if clipInstructions is empty', async () => {
       await expect(
         useCase.execute({
@@ -156,6 +196,9 @@ describe('ExtractClipsUseCase', () => {
       // Setup mocks
       vi.mocked(mockVideoRepository.findById).mockResolvedValue(mockVideo);
       vi.mocked(mockTranscriptionRepository.findByVideoId).mockResolvedValue(mockTranscription);
+      vi.mocked(mockRefinedTranscriptionRepository.findByTranscriptionId).mockResolvedValue(
+        mockRefinedTranscription
+      );
       vi.mocked(mockStorageGateway.getFileMetadata).mockResolvedValue({
         id: 'file-123',
         name: 'Test Video.mp4',
@@ -177,7 +220,7 @@ describe('ExtractClipsUseCase', () => {
         size: 0,
         webViewLink: 'https://drive.google.com/drive/folders/shorts-folder',
       });
-      vi.mocked(mockVideoProcessingService.extractClip).mockResolvedValue(Buffer.from('clip-data'));
+      vi.mocked(mockVideoProcessingGateway.extractClip).mockResolvedValue(Buffer.from('clip-data'));
       vi.mocked(mockStorageGateway.uploadFile).mockResolvedValue({
         id: 'clip-file-1',
         name: 'Introduction.mp4',
@@ -204,6 +247,9 @@ describe('ExtractClipsUseCase', () => {
     it('should update video status to failed on error', async () => {
       vi.mocked(mockVideoRepository.findById).mockResolvedValue(mockVideo);
       vi.mocked(mockTranscriptionRepository.findByVideoId).mockResolvedValue(mockTranscription);
+      vi.mocked(mockRefinedTranscriptionRepository.findByTranscriptionId).mockResolvedValue(
+        mockRefinedTranscription
+      );
       vi.mocked(mockStorageGateway.getFileMetadata).mockRejectedValue(
         new Error('Failed to get metadata')
       );

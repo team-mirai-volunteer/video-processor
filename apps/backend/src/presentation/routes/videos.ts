@@ -89,6 +89,7 @@ const extractClipsUseCase = new ExtractClipsUseCase({
   videoRepository,
   clipRepository,
   transcriptionRepository,
+  refinedTranscriptionRepository,
   storageGateway: GoogleDriveClient.fromEnv(),
   tempStorageGateway,
   aiGateway: new OpenAIClient(),
