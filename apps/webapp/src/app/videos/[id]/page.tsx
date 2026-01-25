@@ -7,8 +7,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError, apiClient } from '@/lib/api-client';
 import { formatBytes, formatDate, formatDuration } from '@/lib/utils';
-import type { VideoWithRelations } from '@video-processor/shared';
-import { ArrowLeft, Calendar, Clock, ExternalLink, HardDrive } from 'lucide-react';
+import type { GetTranscriptionResponse, VideoWithRelations } from '@video-processor/shared';
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  ExternalLink,
+  FileText,
+  HardDrive,
+  Loader2,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -20,12 +28,32 @@ export default function VideoDetailPage() {
   const [video, setVideo] = useState<VideoWithRelations | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [transcription, setTranscription] = useState<GetTranscriptionResponse | null>(null);
+  const [transcriptionLoading, setTranscriptionLoading] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
 
   useEffect(() => {
     async function fetchVideo() {
       try {
         const response = await apiClient.getVideo(id);
         setVideo(response);
+
+        // Try to fetch transcription if video is transcribed or later
+        if (
+          response.status === 'transcribed' ||
+          response.status === 'extracting' ||
+          response.status === 'completed'
+        ) {
+          setTranscriptionLoading(true);
+          try {
+            const transcriptionResponse = await apiClient.getTranscription(id);
+            setTranscription(transcriptionResponse);
+          } catch {
+            // Transcription might not exist yet
+          } finally {
+            setTranscriptionLoading(false);
+          }
+        }
       } catch (err) {
         if (err instanceof ApiError && err.status === 404) {
           setError('動画が見つかりません');
@@ -39,6 +67,20 @@ export default function VideoDetailPage() {
 
     fetchVideo();
   }, [id]);
+
+  const handleTranscribe = async () => {
+    setTranscribing(true);
+    try {
+      await apiClient.transcribeVideo(id);
+      // Refresh video to get updated status
+      const response = await apiClient.getVideo(id);
+      setVideo(response);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'トランスクリプト作成に失敗しました');
+    } finally {
+      setTranscribing(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -140,6 +182,61 @@ export default function VideoDetailPage() {
               {video.errorMessage}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            トランスクリプト
+          </CardTitle>
+          <CardDescription>動画の文字起こし結果です</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {video.status === 'pending' && (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-4">
+                トランスクリプトを作成して、動画の内容を文字に起こします。
+              </p>
+              <Button onClick={handleTranscribe} disabled={transcribing}>
+                {transcribing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {transcribing ? 'トランスクリプト作成中...' : 'トランスクリプト作成'}
+              </Button>
+            </div>
+          )}
+          {video.status === 'transcribing' && (
+            <div className="text-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground">トランスクリプトを作成中です...</p>
+            </div>
+          )}
+          {transcriptionLoading && (
+            <div className="text-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground">トランスクリプトを読み込み中...</p>
+            </div>
+          )}
+          {transcription && !transcriptionLoading && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span>言語: {transcription.languageCode}</span>
+                <span>長さ: {formatDuration(transcription.durationSeconds)}</span>
+              </div>
+              <div className="border rounded-lg p-4 max-h-96 overflow-y-auto">
+                <p className="whitespace-pre-wrap text-sm">{transcription.fullText}</p>
+              </div>
+            </div>
+          )}
+          {!transcription &&
+            !transcriptionLoading &&
+            (video.status === 'transcribed' ||
+              video.status === 'extracting' ||
+              video.status === 'completed') && (
+              <div className="text-center py-8 text-muted-foreground">
+                トランスクリプトが見つかりません
+              </div>
+            )}
         </CardContent>
       </Card>
 

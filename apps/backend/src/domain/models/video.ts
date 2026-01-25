@@ -16,6 +16,8 @@ export interface VideoProps {
   fileSizeBytes: number | null;
   status: VideoStatus;
   errorMessage: string | null;
+  gcsUri: string | null;
+  gcsExpiresAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -51,6 +53,8 @@ export class Video {
   readonly fileSizeBytes: number | null;
   readonly status: VideoStatus;
   readonly errorMessage: string | null;
+  readonly gcsUri: string | null;
+  readonly gcsExpiresAt: Date | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 
@@ -64,6 +68,8 @@ export class Video {
     this.fileSizeBytes = props.fileSizeBytes;
     this.status = props.status;
     this.errorMessage = props.errorMessage;
+    this.gcsUri = props.gcsUri;
+    this.gcsExpiresAt = props.gcsExpiresAt;
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
   }
@@ -99,6 +105,8 @@ export class Video {
         fileSizeBytes: null,
         status: 'pending',
         errorMessage: null,
+        gcsUri: null,
+        gcsExpiresAt: null,
         createdAt: now,
         updatedAt: now,
       })
@@ -166,8 +174,22 @@ export class Video {
       fileSizeBytes: this.fileSizeBytes,
       status: this.status,
       errorMessage: this.errorMessage,
+      gcsUri: this.gcsUri,
+      gcsExpiresAt: this.gcsExpiresAt,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };
+  }
+
+  /**
+   * Update video with GCS info
+   */
+  withGcsInfo(gcsUri: string, gcsExpiresAt: Date): Video {
+    return new Video({
+      ...this.toProps(),
+      gcsUri,
+      gcsExpiresAt,
+      updatedAt: new Date(),
+    });
   }
 }

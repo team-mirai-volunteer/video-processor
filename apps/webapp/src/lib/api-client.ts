@@ -1,10 +1,12 @@
 import type {
   GetClipsResponse,
+  GetTranscriptionResponse,
   GetVideoResponse,
   GetVideosQuery,
   GetVideosResponse,
   SubmitVideoRequest,
   SubmitVideoResponse,
+  TranscribeVideoResponse,
 } from '@video-processor/shared';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
@@ -139,6 +141,23 @@ const mockVideoDetail: GetVideoResponse = {
       completedAt: new Date('2024-01-15T10:45:00Z'),
     },
   ],
+  transcription: {
+    id: 'transcription-1',
+    videoId: '1',
+    fullText:
+      'こんにちは、チームみらいです。今日は私たちの活動についてご紹介します。私たちの政策は、若者の政治参加を促進することです。',
+    segments: [
+      {
+        text: 'こんにちは',
+        startTimeSeconds: 0,
+        endTimeSeconds: 1.5,
+        confidence: 0.95,
+      },
+    ],
+    languageCode: 'ja-JP',
+    durationSeconds: 3600,
+    createdAt: new Date('2024-01-15T10:20:00Z'),
+  },
   createdAt: new Date('2024-01-15T10:00:00Z'),
   updatedAt: new Date('2024-01-15T10:45:00Z'),
 };
@@ -213,6 +232,57 @@ export const apiClient = {
       method: 'POST',
       body: JSON.stringify(request),
     });
+  },
+
+  async transcribeVideo(videoId: string): Promise<TranscribeVideoResponse> {
+    if (USE_MOCK) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return {
+        videoId,
+        status: 'transcribing',
+      };
+    }
+
+    return fetchApi<TranscribeVideoResponse>(`/api/videos/${videoId}/transcribe`, {
+      method: 'POST',
+    });
+  },
+
+  async getTranscription(videoId: string): Promise<GetTranscriptionResponse> {
+    if (USE_MOCK) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return {
+        id: 'transcription-1',
+        videoId,
+        fullText:
+          'これはモックのトランスクリプトです。実際のトランスクリプトは動画の音声から生成されます。',
+        segments: [
+          {
+            text: 'これは',
+            startTimeSeconds: 0,
+            endTimeSeconds: 0.5,
+            confidence: 0.95,
+          },
+          {
+            text: 'モックの',
+            startTimeSeconds: 0.5,
+            endTimeSeconds: 1.0,
+            confidence: 0.92,
+          },
+          {
+            text: 'トランスクリプトです',
+            startTimeSeconds: 1.0,
+            endTimeSeconds: 2.0,
+            confidence: 0.98,
+          },
+        ],
+        languageCode: 'ja-JP',
+        durationSeconds: 60,
+        createdAt: new Date(),
+      };
+    }
+
+    return fetchApi<GetTranscriptionResponse>(`/api/videos/${videoId}/transcription`);
   },
 };
 

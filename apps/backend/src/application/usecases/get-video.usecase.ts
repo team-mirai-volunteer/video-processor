@@ -1,6 +1,7 @@
 import type { GetVideoResponse } from '@video-processor/shared';
 import type { ClipRepositoryGateway } from '../../domain/gateways/clip-repository.gateway.js';
 import type { ProcessingJobRepositoryGateway } from '../../domain/gateways/processing-job-repository.gateway.js';
+import type { TranscriptionRepositoryGateway } from '../../domain/gateways/transcription-repository.gateway.js';
 import type { VideoRepositoryGateway } from '../../domain/gateways/video-repository.gateway.js';
 import { NotFoundError } from '../errors.js';
 
@@ -8,17 +9,20 @@ export interface GetVideoUseCaseDeps {
   videoRepository: VideoRepositoryGateway;
   clipRepository: ClipRepositoryGateway;
   processingJobRepository: ProcessingJobRepositoryGateway;
+  transcriptionRepository: TranscriptionRepositoryGateway;
 }
 
 export class GetVideoUseCase {
   private readonly videoRepository: VideoRepositoryGateway;
   private readonly clipRepository: ClipRepositoryGateway;
   private readonly processingJobRepository: ProcessingJobRepositoryGateway;
+  private readonly transcriptionRepository: TranscriptionRepositoryGateway;
 
   constructor(deps: GetVideoUseCaseDeps) {
     this.videoRepository = deps.videoRepository;
     this.clipRepository = deps.clipRepository;
     this.processingJobRepository = deps.processingJobRepository;
+    this.transcriptionRepository = deps.transcriptionRepository;
   }
 
   async execute(id: string): Promise<GetVideoResponse> {
@@ -28,9 +32,10 @@ export class GetVideoUseCase {
       throw new NotFoundError('Video', id);
     }
 
-    const [clips, processingJobs] = await Promise.all([
+    const [clips, processingJobs, transcription] = await Promise.all([
       this.clipRepository.findByVideoId(id),
       this.processingJobRepository.findByVideoId(id),
+      this.transcriptionRepository.findByVideoId(id),
     ]);
 
     return {
@@ -64,6 +69,17 @@ export class GetVideoUseCase {
         clipInstructions: job.clipInstructions,
         completedAt: job.completedAt,
       })),
+      transcription: transcription
+        ? {
+            id: transcription.id,
+            videoId: transcription.videoId,
+            fullText: transcription.fullText,
+            segments: transcription.segments,
+            languageCode: transcription.languageCode,
+            durationSeconds: transcription.durationSeconds,
+            createdAt: transcription.createdAt,
+          }
+        : null,
       createdAt: video.createdAt,
       updatedAt: video.updatedAt,
     };

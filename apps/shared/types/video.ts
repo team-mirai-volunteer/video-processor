@@ -1,7 +1,14 @@
 /**
  * Video status enum
  */
-export type VideoStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type VideoStatus =
+  | 'pending'
+  | 'transcribing'
+  | 'transcribed'
+  | 'extracting'
+  | 'processing'
+  | 'completed'
+  | 'failed';
 
 /**
  * Video entity type
@@ -48,6 +55,30 @@ export interface VideoWithRelations {
   errorMessage: string | null;
   clips: import('./clip.js').Clip[];
   processingJobs: import('./processing-job.js').ProcessingJobSummary[];
+  transcription: Transcription | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * Transcription segment with timestamp
+ */
+export interface TranscriptionSegment {
+  text: string;
+  startTimeSeconds: number;
+  endTimeSeconds: number;
+  confidence: number;
+}
+
+/**
+ * Transcription entity
+ */
+export interface Transcription {
+  id: string;
+  videoId: string;
+  fullText: string;
+  segments: TranscriptionSegment[];
+  languageCode: string;
+  durationSeconds: number;
+  createdAt: Date;
 }

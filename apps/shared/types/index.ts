@@ -1,5 +1,7 @@
 // Video types
 export type {
+  Transcription,
+  TranscriptionSegment,
   Video,
   VideoStatus,
   VideoSummary,
@@ -27,6 +29,7 @@ export type {
   ErrorResponse,
   GetClipResponse,
   GetClipsResponse,
+  GetTranscriptionResponse,
   GetVideoResponse,
   GetVideosQuery,
   GetVideosResponse,
@@ -35,4 +38,5 @@ export type {
   PaginatedResponse,
   SubmitVideoRequest,
   SubmitVideoResponse,
+  TranscribeVideoResponse,
 } from './api.js';

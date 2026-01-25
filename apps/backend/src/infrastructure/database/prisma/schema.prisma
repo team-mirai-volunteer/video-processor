@@ -8,20 +8,23 @@ datasource db {
 }
 
 model Video {
-  id                String   @id @default(uuid())
-  googleDriveFileId String   @unique @map("google_drive_file_id")
-  googleDriveUrl    String   @map("google_drive_url")
+  id                String    @id @default(uuid())
+  googleDriveFileId String    @unique @map("google_drive_file_id")
+  googleDriveUrl    String    @map("google_drive_url")
   title             String?
   description       String?
-  durationSeconds   Int?     @map("duration_seconds")
-  fileSizeBytes     BigInt?  @map("file_size_bytes")
-  status            String   @default("pending")
-  errorMessage      String?  @map("error_message")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  durationSeconds   Int?      @map("duration_seconds")
+  fileSizeBytes     BigInt?   @map("file_size_bytes")
+  status            String    @default("pending")
+  errorMessage      String?   @map("error_message")
+  gcsUri            String?   @map("gcs_uri")
+  gcsExpiresAt      DateTime? @map("gcs_expires_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   clips          Clip[]
   processingJobs ProcessingJob[]
+  transcription  Transcription?
 
   @@index([status])
   @@index([createdAt(sort: Desc)])
@@ -67,4 +70,18 @@ model ProcessingJob {
   @@index([videoId])
   @@index([status])
   @@map("processing_jobs")
+}
+
+model Transcription {
+  id              String   @id @default(uuid())
+  videoId         String   @unique @map("video_id")
+  fullText        String   @map("full_text")
+  segments        Json
+  languageCode    String   @map("language_code")
+  durationSeconds Decimal  @map("duration_seconds") @db.Decimal(10, 3)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@map("transcriptions")
 }

@@ -118,3 +118,28 @@ export interface GetClipResponse {
   createdAt: Date;
   updatedAt: Date;
 }
+
+// ============================================================================
+// Transcription API
+// ============================================================================
+
+/**
+ * POST /api/videos/:videoId/transcribe response
+ */
+export interface TranscribeVideoResponse {
+  videoId: string;
+  status: VideoStatus;
+}
+
+/**
+ * GET /api/videos/:videoId/transcription response
+ */
+export interface GetTranscriptionResponse {
+  id: string;
+  videoId: string;
+  fullText: string;
+  segments: import('./video.js').TranscriptionSegment[];
+  languageCode: string;
+  durationSeconds: number;
+  createdAt: Date;
+}
