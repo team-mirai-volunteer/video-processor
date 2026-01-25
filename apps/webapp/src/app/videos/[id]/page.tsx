@@ -1,6 +1,7 @@
 'use client';
 
 import { ClipList } from '@/components/features/clip-list';
+import { TranscriptViewer } from '@/components/features/transcript';
 import { StatusBadge } from '@/components/features/video-list';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +10,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiError, apiClient } from '@/lib/api-client';
 import { formatBytes, formatDate, formatDuration } from '@/lib/utils';
-import type { GetTranscriptionResponse, VideoWithRelations } from '@video-processor/shared';
+import type {
+  GetRefinedTranscriptionResponse,
+  GetTranscriptionResponse,
+  VideoWithRelations,
+} from '@video-processor/shared';
 import {
   ArrowLeft,
   Calendar,
@@ -35,6 +40,10 @@ export default function VideoDetailPage() {
   const [transcription, setTranscription] = useState<GetTranscriptionResponse | null>(null);
   const [transcriptionLoading, setTranscriptionLoading] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
+  const [refinedTranscription, setRefinedTranscription] =
+    useState<GetRefinedTranscriptionResponse | null>(null);
+  const [refinedTranscriptionLoading, setRefinedTranscriptionLoading] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
   const [clipInstructions, setClipInstructions] = useState('');
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
@@ -51,13 +60,19 @@ export default function VideoDetailPage() {
         response.status === 'completed'
       ) {
         setTranscriptionLoading(true);
+        setRefinedTranscriptionLoading(true);
         try {
-          const transcriptionResponse = await apiClient.getTranscription(id);
+          const [transcriptionResponse, refinedResponse] = await Promise.all([
+            apiClient.getTranscription(id),
+            apiClient.getRefinedTranscription(id),
+          ]);
           setTranscription(transcriptionResponse);
+          setRefinedTranscription(refinedResponse);
         } catch {
           // Transcription might not exist yet
         } finally {
           setTranscriptionLoading(false);
+          setRefinedTranscriptionLoading(false);
         }
       }
     } catch (err) {
@@ -108,6 +123,20 @@ export default function VideoDetailPage() {
       }
     } finally {
       setExtracting(false);
+    }
+  };
+
+  const handleRefineTranscript = async () => {
+    setIsRefining(true);
+    try {
+      await apiClient.refineTranscript(id);
+      // Fetch the refined transcription after processing
+      const refined = await apiClient.getRefinedTranscription(id);
+      setRefinedTranscription(refined);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'トランスクリプト校正に失敗しました');
+    } finally {
+      setIsRefining(false);
     }
   };
 
@@ -248,15 +277,13 @@ export default function VideoDetailPage() {
             </div>
           )}
           {transcription && !transcriptionLoading && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>言語: {transcription.languageCode}</span>
-                <span>長さ: {formatDuration(transcription.durationSeconds)}</span>
-              </div>
-              <div className="border rounded-lg p-4 max-h-96 overflow-y-auto">
-                <p className="whitespace-pre-wrap text-sm">{transcription.fullText}</p>
-              </div>
-            </div>
+            <TranscriptViewer
+              rawTranscription={transcription}
+              refinedTranscription={refinedTranscription}
+              onRefine={handleRefineTranscript}
+              isRefining={isRefining}
+              isLoadingRefined={refinedTranscriptionLoading}
+            />
           )}
           {!transcription &&
             !transcriptionLoading &&

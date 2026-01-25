@@ -2,10 +2,12 @@ import type {
   ExtractClipsRequest,
   ExtractClipsResponse,
   GetClipsResponse,
+  GetRefinedTranscriptionResponse,
   GetTranscriptionResponse,
   GetVideoResponse,
   GetVideosQuery,
   GetVideosResponse,
+  RefineTranscriptResponse,
   SubmitVideoRequest,
   SubmitVideoResponse,
   TranscribeVideoResponse,
@@ -295,6 +297,66 @@ export const apiClient = {
       method: 'POST',
       body: JSON.stringify(request),
     });
+  },
+
+  async refineTranscript(videoId: string): Promise<RefineTranscriptResponse> {
+    if (USE_MOCK) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      return {
+        videoId,
+        status: 'refined',
+      };
+    }
+
+    return fetchApi<RefineTranscriptResponse>(`/api/videos/${videoId}/refine-transcript`, {
+      method: 'POST',
+    });
+  },
+
+  async getRefinedTranscription(videoId: string): Promise<GetRefinedTranscriptionResponse | null> {
+    if (USE_MOCK) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return {
+        id: 'refined-transcription-1',
+        transcriptionId: 'transcription-1',
+        fullText:
+          'どうも、こんにちは。チームみらい党首の安野たかひろです。本日は年始ということで、チームみらいが2026年に成し遂げること、題して2026年プランを発表したいと思います。',
+        sentences: [
+          {
+            text: 'どうも、こんにちは。',
+            startTimeSeconds: 0.08,
+            endTimeSeconds: 0.8,
+            originalSegmentIndices: [0, 1, 2],
+          },
+          {
+            text: 'チームみらい党首の安野たかひろです。',
+            startTimeSeconds: 0.88,
+            endTimeSeconds: 3.12,
+            originalSegmentIndices: [3, 4, 5, 6, 7],
+          },
+          {
+            text: '本日は年始ということで、チームみらいが2026年に成し遂げること、題して2026年プランを発表したいと思います。',
+            startTimeSeconds: 3.36,
+            endTimeSeconds: 12.68,
+            originalSegmentIndices: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+          },
+        ],
+        dictionaryVersion: '1.0.0',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
+
+    try {
+      return await fetchApi<GetRefinedTranscriptionResponse>(
+        `/api/videos/${videoId}/transcription/refined`
+      );
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
 };
 

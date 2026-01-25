@@ -9,15 +9,15 @@ describe('TimestampExtractorService', () => {
       const clips = [
         {
           title: 'Intro',
-          startTime: '00:00:00',
-          endTime: '00:00:45',
+          startTimeSeconds: 0,
+          endTimeSeconds: 45,
           transcript: 'Hello everyone',
           reason: 'Good intro',
         },
         {
           title: 'Main Topic',
-          startTime: '00:05:30',
-          endTime: '00:06:15',
+          startTimeSeconds: 330,
+          endTimeSeconds: 375,
           transcript: 'The main topic is...',
           reason: 'Key content',
         },
