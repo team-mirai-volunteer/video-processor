@@ -78,14 +78,16 @@ test.describe('Video Detail Page', () => {
     await page.goto('/videos/1');
 
     // Check section title - 文字起こしセクションは常に表示される
-    await expect(page.getByText('文字起こし', { exact: true })).toBeVisible();
+    // getByRole('heading') を使用して、セクションタイトルのみを対象にする（クリップ内の文字起こしラベルを除外）
+    await expect(page.getByRole('heading', { name: '文字起こし' })).toBeVisible();
   });
 
   test('should have link to open video in Google Drive', async ({ page }) => {
     await page.goto('/videos/1');
 
     // Google Driveで開くはButtonコンポーネント内のaタグ
-    const driveLink = page.getByRole('link', { name: /Google Driveで開く/ });
+    // .first() を使用して、メインの動画リンクのみを対象にする（クリップのリンクを除外）
+    const driveLink = page.getByRole('link', { name: /Google Driveで開く/ }).first();
     await expect(driveLink).toBeVisible();
     await expect(driveLink).toHaveAttribute('target', '_blank');
   });
