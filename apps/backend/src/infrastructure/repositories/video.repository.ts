@@ -25,6 +25,8 @@ export class VideoRepository implements VideoRepositoryGateway {
         fileSizeBytes: props.fileSizeBytes ? BigInt(props.fileSizeBytes) : null,
         status: props.status,
         errorMessage: props.errorMessage,
+        gcsUri: props.gcsUri,
+        gcsExpiresAt: props.gcsExpiresAt,
         createdAt: props.createdAt,
         updatedAt: props.updatedAt,
       },
@@ -36,6 +38,8 @@ export class VideoRepository implements VideoRepositoryGateway {
         fileSizeBytes: props.fileSizeBytes ? BigInt(props.fileSizeBytes) : null,
         status: props.status,
         errorMessage: props.errorMessage,
+        gcsUri: props.gcsUri,
+        gcsExpiresAt: props.gcsExpiresAt,
         updatedAt: props.updatedAt,
       },
     });
@@ -103,6 +107,8 @@ export class VideoRepository implements VideoRepositoryGateway {
     fileSizeBytes: bigint | null;
     status: string;
     errorMessage: string | null;
+    gcsUri: string | null;
+    gcsExpiresAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
   }): Video {
@@ -116,6 +122,8 @@ export class VideoRepository implements VideoRepositoryGateway {
       fileSizeBytes: record.fileSizeBytes ? Number(record.fileSizeBytes) : null,
       status: record.status as VideoStatus,
       errorMessage: record.errorMessage,
+      gcsUri: record.gcsUri,
+      gcsExpiresAt: record.gcsExpiresAt,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     };
