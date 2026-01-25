@@ -60,7 +60,7 @@ const extractClipsUseCase = new ExtractClipsUseCase({
   storageGateway: GoogleDriveClient.fromEnv(),
   tempStorageGateway,
   aiGateway: new OpenAIClient(),
-  videoProcessingService: new FFmpegClient(),
+  videoProcessingGateway: new FFmpegClient(),
   generateId: () => uuidv4(),
   outputFolderId: process.env.GOOGLE_DRIVE_OUTPUT_FOLDER_ID,
 });
@@ -71,7 +71,7 @@ const createTranscriptUseCase = new CreateTranscriptUseCase({
   storageGateway: GoogleDriveClient.fromEnv(),
   tempStorageGateway: new GcsClient(),
   transcriptionGateway: new SpeechToTextClient(),
-  videoProcessingService: new FFmpegClient(),
+  videoProcessingGateway: new FFmpegClient(),
   generateId: () => uuidv4(),
 });
 
