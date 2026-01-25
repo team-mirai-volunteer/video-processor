@@ -9,7 +9,9 @@
     "format": "biome format --write .",
     "typecheck": "pnpm -r run typecheck",
     "knip": "knip",
-    "prepare": "simple-git-hooks"
+    "prepare": "simple-git-hooks",
+    "deploy:stg": "cd infrastructure/terraform && ./deploy.sh stg apply",
+    "deploy:prod": "cd infrastructure/terraform && ./deploy.sh prod apply"
   },
   "simple-git-hooks": {
     "pre-commit": "pnpm lint-staged"

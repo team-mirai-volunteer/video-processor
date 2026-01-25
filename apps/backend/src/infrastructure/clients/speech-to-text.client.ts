@@ -43,6 +43,21 @@ export class SpeechToTextClient implements TranscriptionGateway {
   }
 
   private getCredentials(): { client_email: string; private_key: string } | undefined {
+    // Try GOOGLE_APPLICATION_CREDENTIALS_JSON first
+    const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+    if (credentialsJson) {
+      try {
+        const credentials = JSON.parse(credentialsJson);
+        return {
+          client_email: credentials.client_email,
+          private_key: credentials.private_key,
+        };
+      } catch {
+        throw new Error('Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON');
+      }
+    }
+
+    // Fall back to individual env vars
     const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
     const privateKey = process.env.GOOGLE_PRIVATE_KEY;
 

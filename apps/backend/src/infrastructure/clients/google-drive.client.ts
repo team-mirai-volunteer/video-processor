@@ -14,9 +14,9 @@ interface GoogleDriveClientConfig {
 /**
  * Google Drive client implementation using service account authentication.
  *
- * Required environment variables:
- * - GOOGLE_SERVICE_ACCOUNT_EMAIL: The service account email address
- * - GOOGLE_PRIVATE_KEY: The service account private key (with \n replaced by actual newlines)
+ * Required environment variables (one of):
+ * - GOOGLE_APPLICATION_CREDENTIALS_JSON: Full service account JSON
+ * - GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_PRIVATE_KEY: Individual credentials
  */
 export class GoogleDriveClient implements StorageGateway {
   private drive: drive_v3.Drive;
@@ -33,9 +33,24 @@ export class GoogleDriveClient implements StorageGateway {
 
   /**
    * Create a GoogleDriveClient from environment variables.
-   * Throws an error if required environment variables are not set.
+   * Supports both GOOGLE_APPLICATION_CREDENTIALS_JSON (preferred) and individual env vars.
    */
   static fromEnv(): GoogleDriveClient {
+    // Try GOOGLE_APPLICATION_CREDENTIALS_JSON first
+    const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+    if (credentialsJson) {
+      try {
+        const credentials = JSON.parse(credentialsJson);
+        return new GoogleDriveClient({
+          serviceAccountEmail: credentials.client_email,
+          privateKey: credentials.private_key,
+        });
+      } catch {
+        throw new Error('Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON');
+      }
+    }
+
+    // Fall back to individual env vars
     const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
     const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
