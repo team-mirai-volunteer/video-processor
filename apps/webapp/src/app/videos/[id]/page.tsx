@@ -320,51 +320,61 @@ export default function VideoDetailPage() {
             </CardTitle>
             <CardDescription>
               文字起こしを元に、切り抜きたい箇所を指示してください。
-              AIが指示に基づいて最適な箇所を特定し、ショート動画を作成します。
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="clipInstructions">切り抜き指示</Label>
-                <Textarea
-                  id="clipInstructions"
-                  placeholder="以下の箇所を切り抜いてください：&#10;1. 冒頭の自己紹介部分&#10;2. 政策について語っている部分&#10;3. 質疑応答のハイライト"
-                  value={clipInstructions}
-                  onChange={(e) => setClipInstructions(e.target.value)}
-                  rows={6}
-                  disabled={extracting}
-                />
+            {refinedTranscription ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="clipInstructions">切り抜き指示</Label>
+                  <Textarea
+                    id="clipInstructions"
+                    placeholder="以下の箇所を切り抜いてください：&#10;1. 冒頭の自己紹介部分&#10;2. 政策について語っている部分&#10;3. 質疑応答のハイライト"
+                    value={clipInstructions}
+                    onChange={(e) => setClipInstructions(e.target.value)}
+                    rows={6}
+                    disabled={extracting}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    どの箇所を切り抜きたいか、具体的に指示してください。
+                  </p>
+                </div>
+
+                {extractError && (
+                  <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+                    {extractError}
+                  </div>
+                )}
+
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleExtractClips}
+                    disabled={extracting || !clipInstructions.trim()}
+                  >
+                    {extracting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        処理中...
+                      </>
+                    ) : (
+                      <>
+                        <Scissors className="mr-2 h-4 w-4" />
+                        切り抜きを作成
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground mb-4">
+                  切り抜き作成には文字起こしの校正が必要です。
+                </p>
                 <p className="text-sm text-muted-foreground">
-                  どの箇所を切り抜きたいか、具体的に指示してください。
+                  文字起こしカードの「Refined」タブから校正を実行してください。
                 </p>
               </div>
-
-              {extractError && (
-                <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-                  {extractError}
-                </div>
-              )}
-
-              <div className="flex justify-end">
-                <Button
-                  onClick={handleExtractClips}
-                  disabled={extracting || !clipInstructions.trim()}
-                >
-                  {extracting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      処理中...
-                    </>
-                  ) : (
-                    <>
-                      <Scissors className="mr-2 h-4 w-4" />
-                      切り抜きを作成
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       )}

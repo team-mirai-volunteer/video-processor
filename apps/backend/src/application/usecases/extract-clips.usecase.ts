@@ -1,6 +1,7 @@
 import type { ExtractClipsResponse } from '@video-processor/shared';
 import type { AiGateway } from '../../domain/gateways/ai.gateway.js';
 import type { ClipRepositoryGateway } from '../../domain/gateways/clip-repository.gateway.js';
+import type { RefinedTranscriptionRepositoryGateway } from '../../domain/gateways/refined-transcription-repository.gateway.js';
 import type { StorageGateway } from '../../domain/gateways/storage.gateway.js';
 import type { TempStorageGateway } from '../../domain/gateways/temp-storage.gateway.js';
 import type { TranscriptionRepositoryGateway } from '../../domain/gateways/transcription-repository.gateway.js';
@@ -22,6 +23,7 @@ export interface ExtractClipsUseCaseDeps {
   videoRepository: VideoRepositoryGateway;
   clipRepository: ClipRepositoryGateway;
   transcriptionRepository: TranscriptionRepositoryGateway;
+  refinedTranscriptionRepository: RefinedTranscriptionRepositoryGateway;
   storageGateway: StorageGateway;
   tempStorageGateway: TempStorageGateway;
   aiGateway: AiGateway;
@@ -35,6 +37,7 @@ export class ExtractClipsUseCase {
   private readonly videoRepository: VideoRepositoryGateway;
   private readonly clipRepository: ClipRepositoryGateway;
   private readonly transcriptionRepository: TranscriptionRepositoryGateway;
+  private readonly refinedTranscriptionRepository: RefinedTranscriptionRepositoryGateway;
   private readonly storageGateway: StorageGateway;
   private readonly tempStorageGateway: TempStorageGateway;
   private readonly aiGateway: AiGateway;
@@ -48,6 +51,7 @@ export class ExtractClipsUseCase {
     this.videoRepository = deps.videoRepository;
     this.clipRepository = deps.clipRepository;
     this.transcriptionRepository = deps.transcriptionRepository;
+    this.refinedTranscriptionRepository = deps.refinedTranscriptionRepository;
     this.storageGateway = deps.storageGateway;
     this.tempStorageGateway = deps.tempStorageGateway;
     this.aiGateway = deps.aiGateway;
@@ -83,7 +87,7 @@ export class ExtractClipsUseCase {
     }
     this.log('Found video', { videoId: video.id, status: video.status });
 
-    // 2. Get transcription
+    // 2. Get transcription (for durationSeconds)
     const transcription = await this.transcriptionRepository.findByVideoId(videoId);
     if (!transcription) {
       const error = createClipError(
@@ -95,6 +99,22 @@ export class ExtractClipsUseCase {
     this.log('Found transcription', {
       transcriptionId: transcription.id,
       segmentsCount: transcription.segments.length,
+    });
+
+    // 3. Get refined transcription (required for clip extraction)
+    const refinedTranscription = await this.refinedTranscriptionRepository.findByTranscriptionId(
+      transcription.id
+    );
+    if (!refinedTranscription) {
+      const error = createClipError(
+        CLIP_ERROR_CODES.REFINED_TRANSCRIPTION_NOT_FOUND,
+        `Refined transcription not found for video ${videoId}. Please run transcript refinement first.`
+      );
+      throw new ValidationError(error.message);
+    }
+    this.log('Found refined transcription', {
+      refinedTranscriptionId: refinedTranscription.id,
+      sentencesCount: refinedTranscription.sentences.length,
     });
 
     try {
@@ -109,10 +129,9 @@ export class ExtractClipsUseCase {
       // 4. AI analysis (clip point suggestion)
       this.log('Building prompt and calling AI...');
       const prompt = this.clipAnalysisPromptService.buildPrompt({
-        transcription: {
-          fullText: transcription.fullText,
-          segments: transcription.segments,
-          languageCode: transcription.languageCode,
+        refinedTranscription: {
+          fullText: refinedTranscription.fullText,
+          sentences: refinedTranscription.sentences,
           durationSeconds: transcription.durationSeconds,
         },
         videoTitle: video.title ?? metadata.name,

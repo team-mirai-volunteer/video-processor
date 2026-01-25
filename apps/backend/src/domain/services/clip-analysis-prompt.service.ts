@@ -1,8 +1,12 @@
 import type { ClipExtractionResponse } from '@video-processor/shared';
-import type { TranscriptionResult } from '../gateways/transcription.gateway.js';
+import type { RefinedSentence } from '../models/refined-transcription.js';
 
 export interface ClipAnalysisPromptParams {
-  transcription: TranscriptionResult;
+  refinedTranscription: {
+    fullText: string;
+    sentences: RefinedSentence[];
+    durationSeconds: number;
+  };
   videoTitle: string | null;
   clipInstructions: string;
 }
@@ -15,16 +19,16 @@ export class ClipAnalysisPromptService {
    * Build a prompt for AI to analyze transcription and select clips
    */
   buildPrompt(params: ClipAnalysisPromptParams): string {
-    const { transcription, videoTitle, clipInstructions } = params;
+    const { refinedTranscription, videoTitle, clipInstructions } = params;
 
-    const transcriptionText = this.formatTranscriptionForPrompt(transcription);
+    const transcriptionText = this.formatTranscriptionForPrompt(refinedTranscription.sentences);
 
     return `あなたは動画編集アシスタントです。
 以下の文字起こしデータを分析し、ユーザーの指示に基づいて切り抜くべき箇所を特定してください。
 
 ## 動画情報
 - タイトル: ${videoTitle ?? '不明'}
-- 総時間: ${transcription.durationSeconds}秒
+- 総時間: ${refinedTranscription.durationSeconds}秒
 
 ## 文字起こし（タイムスタンプ付き、単位: 秒）
 ${transcriptionText}
@@ -51,7 +55,7 @@ startTimeSeconds/endTimeSecondsは上記の文字起こしのタイムスタン�
 \`\`\`
 
 ## 注意事項
-- 動画の総時間は${transcription.durationSeconds}秒です。startTimeSeconds/endTimeSecondsは必ずこの範囲内（0〜${transcription.durationSeconds}）で指定してください
+- 動画の総時間は${refinedTranscription.durationSeconds}秒です。startTimeSeconds/endTimeSecondsは必ずこの範囲内（0〜${refinedTranscription.durationSeconds}）で指定してください
 - 発言の途中で切れないよう、タイムスタンプを参照して自然な区切りを選んでください
 - transcriptは文字起こしデータからそのまま抜粋してください
 - 必ずJSON形式で出力してください`;
@@ -98,12 +102,12 @@ startTimeSeconds/endTimeSecondsは上記の文字起こしのタイムスタン�
   }
 
   /**
-   * Format transcription segments for prompt
+   * Format refined sentences for prompt
    */
-  private formatTranscriptionForPrompt(transcription: TranscriptionResult): string {
-    return transcription.segments
-      .map((segment) => {
-        return `[${segment.startTimeSeconds}秒 - ${segment.endTimeSeconds}秒] ${segment.text}`;
+  private formatTranscriptionForPrompt(sentences: RefinedSentence[]): string {
+    return sentences
+      .map((sentence) => {
+        return `[${sentence.startTimeSeconds}秒 - ${sentence.endTimeSeconds}秒] ${sentence.text}`;
       })
       .join('\n');
   }
