@@ -357,6 +357,17 @@ export const apiClient = {
       throw error;
     }
   },
+
+  async deleteVideo(id: string): Promise<void> {
+    if (USE_MOCK) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return;
+    }
+
+    await fetch(`${API_BASE_URL}/api/videos/${id}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 export { ApiError };

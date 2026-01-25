@@ -8,27 +8,27 @@ import { apiClient } from '@/lib/api-client';
 import type { VideoSummary } from '@video-processor/shared';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export default function HomePage() {
   const [videos, setVideos] = useState<VideoSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchVideos() {
-      try {
-        const response = await apiClient.getVideos();
-        setVideos(response.data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : '動画の取得に失敗しました');
-      } finally {
-        setLoading(false);
-      }
+  const fetchVideos = useCallback(async () => {
+    try {
+      const response = await apiClient.getVideos();
+      setVideos(response.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '動画の取得に失敗しました');
+    } finally {
+      setLoading(false);
     }
-
-    fetchVideos();
   }, []);
+
+  useEffect(() => {
+    fetchVideos();
+  }, [fetchVideos]);
 
   return (
     <div className="space-y-6">
@@ -60,7 +60,7 @@ export default function HomePage() {
           ) : error ? (
             <div className="text-center py-12 text-destructive">{error}</div>
           ) : (
-            <VideoTable videos={videos} />
+            <VideoTable videos={videos} onVideoDeleted={fetchVideos} />
           )}
         </CardContent>
       </Card>

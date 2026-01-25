@@ -37,4 +37,9 @@ export interface VideoRepositoryGateway {
    * Find videos with pagination and optional filtering
    */
   findMany(options: FindVideosOptions): Promise<FindVideosResult>;
+
+  /**
+   * Delete a video by ID (cascades to related data)
+   */
+  delete(id: string): Promise<void>;
 }
