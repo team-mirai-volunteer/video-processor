@@ -1,1 +1,5 @@
-../../backend.tf
+terraform {
+  backend "gcs" {
+    bucket = "video-processor-tfstate"
+  }
+}
