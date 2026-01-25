@@ -33,19 +33,25 @@ const MIN_CLIP_DURATION_SECONDS = 20;
 const MAX_CLIP_DURATION_SECONDS = 60;
 
 /**
- * Parse time string (HH:MM:SS) to seconds
+ * Parse time string to seconds
+ * Supports formats: HH:MM:SS, MM:SS, MM:SS.ss, SS.ss, SS
  */
 export function parseTimeToSeconds(timeStr: string): number {
-  const parts = timeStr.split(':').map(Number);
+  const cleaned = timeStr.trim();
+  const parts = cleaned.split(':');
+
   if (parts.length === 3) {
+    // HH:MM:SS or HH:MM:SS.ss
     const [hours, minutes, seconds] = parts;
-    return (hours ?? 0) * 3600 + (minutes ?? 0) * 60 + (seconds ?? 0);
+    return (Number(hours) || 0) * 3600 + (Number(minutes) || 0) * 60 + (Number(seconds) || 0);
   }
   if (parts.length === 2) {
+    // MM:SS or MM:SS.ss
     const [minutes, seconds] = parts;
-    return (minutes ?? 0) * 60 + (seconds ?? 0);
+    return (Number(minutes) || 0) * 60 + (Number(seconds) || 0);
   }
-  return parts[0] ?? 0;
+  // SS or SS.ss
+  return Number(parts[0]) || 0;
 }
 
 /**
