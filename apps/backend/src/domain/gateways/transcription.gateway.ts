@@ -46,8 +46,15 @@ export interface TranscribeParams {
  */
 export interface TranscriptionGateway {
   /**
-   * 音声ファイルから文字起こしを実行
+   * 音声ファイルから文字起こしを実行（同期API、10MB以下）
    * @throws TranscriptionError 文字起こし失敗時
    */
   transcribe(params: TranscribeParams): Promise<TranscriptionResult>;
+
+  /**
+   * 長時間音声ファイルから文字起こしを実行（Batch API、480分まで対応）
+   * GCSにアップロードして非同期処理を行う
+   * @throws TranscriptionError 文字起こし失敗時
+   */
+  transcribeLongAudio(params: TranscribeParams): Promise<TranscriptionResult>;
 }

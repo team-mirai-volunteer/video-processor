@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "dev": "pnpm --filter @video-processor/webapp --filter backend --parallel run dev",
+    "dev": "docker compose -f apps/backend/docker-compose.yml up -d && pnpm --filter backend db:push && pnpm --filter @video-processor/webapp --filter backend --parallel run dev",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",

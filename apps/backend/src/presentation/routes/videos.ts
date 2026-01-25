@@ -3,7 +3,12 @@ import { type Router as ExpressRouter, Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { GetVideoUseCase } from '../../application/usecases/get-video.usecase.js';
 import { GetVideosUseCase } from '../../application/usecases/get-videos.usecase.js';
+import { ProcessVideoUseCase } from '../../application/usecases/process-video.usecase.js';
 import { SubmitVideoUseCase } from '../../application/usecases/submit-video.usecase.js';
+import { FFmpegClient } from '../../infrastructure/clients/ffmpeg.client.js';
+import { GoogleDriveClient } from '../../infrastructure/clients/google-drive.client.js';
+import { OpenAIClient } from '../../infrastructure/clients/openai.client.js';
+import { SpeechToTextClient } from '../../infrastructure/clients/speech-to-text.client.js';
 import { prisma } from '../../infrastructure/database/connection.js';
 import { ClipRepository } from '../../infrastructure/repositories/clip.repository.js';
 import { ProcessingJobRepository } from '../../infrastructure/repositories/processing-job.repository.js';
@@ -33,6 +38,18 @@ const getVideoUseCase = new GetVideoUseCase({
   processingJobRepository,
 });
 
+const processVideoUseCase = new ProcessVideoUseCase({
+  videoRepository,
+  clipRepository,
+  processingJobRepository,
+  storageGateway: GoogleDriveClient.fromEnv(),
+  aiGateway: new OpenAIClient(),
+  videoProcessingService: new FFmpegClient(),
+  transcriptionGateway: new SpeechToTextClient(),
+  generateId: () => uuidv4(),
+  outputFolderId: process.env.GOOGLE_DRIVE_OUTPUT_FOLDER_ID,
+});
+
 /**
  * POST /api/videos
  * Submit a video for processing
@@ -45,6 +62,11 @@ router.post('/', async (req, res, next) => {
       clipInstructions: body.clipInstructions,
     });
     res.status(202).json(result);
+
+    // Start processing in background (fire and forget)
+    processVideoUseCase.execute(result.processingJob.id).catch((error) => {
+      console.error('[ProcessVideoUseCase] Error:', error);
+    });
   } catch (error) {
     next(error);
   }

@@ -1,14 +1,8 @@
-import type { ClipExtractionResponse } from '@video-processor/shared';
-
-export interface AnalyzeVideoParams {
-  googleDriveUrl: string;
-  videoTitle: string | null;
-  clipInstructions: string;
-}
-
 export interface AiGateway {
   /**
-   * Analyze video and extract clip timestamps
+   * Generate text from prompt
+   * @param prompt The input prompt
+   * @returns Generated text response
    */
-  analyzeVideo(params: AnalyzeVideoParams): Promise<ClipExtractionResponse>;
+  generate(prompt: string): Promise<string>;
 }

@@ -2,8 +2,10 @@ import type { AiGateway } from '../../domain/gateways/ai.gateway.js';
 import type { ClipRepositoryGateway } from '../../domain/gateways/clip-repository.gateway.js';
 import type { ProcessingJobRepositoryGateway } from '../../domain/gateways/processing-job-repository.gateway.js';
 import type { StorageGateway } from '../../domain/gateways/storage.gateway.js';
+import type { TranscriptionGateway } from '../../domain/gateways/transcription.gateway.js';
 import type { VideoRepositoryGateway } from '../../domain/gateways/video-repository.gateway.js';
 import { Clip } from '../../domain/models/clip.js';
+import { ClipAnalysisPromptService } from '../../domain/services/clip-analysis-prompt.service.js';
 import { TimestampExtractorService } from '../../domain/services/timestamp-extractor.service.js';
 import { NotFoundError } from '../errors.js';
 import type { VideoProcessingService } from '../services/video-processing.service.js';
@@ -15,7 +17,10 @@ export interface ProcessVideoUseCaseDeps {
   storageGateway: StorageGateway;
   aiGateway: AiGateway;
   videoProcessingService: VideoProcessingService;
+  transcriptionGateway: TranscriptionGateway;
   generateId: () => string;
+  /** Optional: Default output folder ID for clips (shared drive folder recommended) */
+  outputFolderId?: string;
 }
 
 export class ProcessVideoUseCase {
@@ -25,8 +30,11 @@ export class ProcessVideoUseCase {
   private readonly storageGateway: StorageGateway;
   private readonly aiGateway: AiGateway;
   private readonly videoProcessingService: VideoProcessingService;
+  private readonly transcriptionGateway: TranscriptionGateway;
   private readonly timestampExtractor: TimestampExtractorService;
+  private readonly clipAnalysisPromptService: ClipAnalysisPromptService;
   private readonly generateId: () => string;
+  private readonly outputFolderId?: string;
 
   constructor(deps: ProcessVideoUseCaseDeps) {
     this.videoRepository = deps.videoRepository;
@@ -35,8 +43,11 @@ export class ProcessVideoUseCase {
     this.storageGateway = deps.storageGateway;
     this.aiGateway = deps.aiGateway;
     this.videoProcessingService = deps.videoProcessingService;
+    this.transcriptionGateway = deps.transcriptionGateway;
     this.timestampExtractor = new TimestampExtractorService();
+    this.clipAnalysisPromptService = new ClipAnalysisPromptService();
     this.generateId = deps.generateId;
+    this.outputFolderId = deps.outputFolderId;
   }
 
   async execute(processingJobId: string): Promise<void> {
@@ -71,15 +82,29 @@ export class ProcessVideoUseCase {
         await this.videoRepository.save(videoWithMetadataResult.value);
       }
 
-      // Analyze video with AI
-      const aiResponse = await this.aiGateway.analyzeVideo({
-        googleDriveUrl: video.googleDriveUrl,
+      // Download video for audio extraction
+      const videoBuffer = await this.storageGateway.downloadFile(video.googleDriveFileId);
+
+      // Extract audio from video (FLAC is smaller than WAV)
+      const audioBuffer = await this.videoProcessingService.extractAudio(videoBuffer, 'flac');
+
+      // Transcribe audio using Speech-to-Text (Batch API for long audio support)
+      const transcription = await this.transcriptionGateway.transcribeLongAudio({
+        audioBuffer,
+        mimeType: 'audio/flac',
+      });
+
+      // Build prompt and analyze with AI
+      const prompt = this.clipAnalysisPromptService.buildPrompt({
+        transcription,
         videoTitle: metadata.name,
         clipInstructions: job.clipInstructions,
       });
+      const aiResponseText = await this.aiGateway.generate(prompt);
+      const aiResponse = this.clipAnalysisPromptService.parseResponse(aiResponseText);
 
       // Save AI response
-      const jobWithResponse = analyzingJobResult.value.withAiResponse(JSON.stringify(aiResponse));
+      const jobWithResponse = analyzingJobResult.value.withAiResponse(aiResponseText);
       await this.processingJobRepository.save(jobWithResponse);
 
       // Extract timestamps
@@ -113,11 +138,9 @@ export class ProcessVideoUseCase {
       }
       await this.processingJobRepository.save(extractingJobResult.value);
 
-      // Download video
-      const videoBuffer = await this.storageGateway.downloadFile(video.googleDriveFileId);
-
       // Get or create output folder
-      const parentFolder = metadata.parents?.[0];
+      // Use configured output folder (shared drive) if available, otherwise fall back to video's parent
+      const parentFolder = this.outputFolderId ?? metadata.parents?.[0];
       const shortsFolder = await this.storageGateway.findOrCreateFolder('ショート用', parentFolder);
 
       // Update status to uploading

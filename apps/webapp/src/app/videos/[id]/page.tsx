@@ -160,9 +160,7 @@ export default function VideoDetailPage() {
                         {job.clipInstructions}
                       </div>
                     </div>
-                    <StatusBadge
-                      status={job.status as 'pending' | 'processing' | 'completed' | 'failed'}
-                    />
+                    <StatusBadge status={job.status} />
                   </div>
                   {job.completedAt && (
                     <div className="mt-2 text-xs text-muted-foreground">

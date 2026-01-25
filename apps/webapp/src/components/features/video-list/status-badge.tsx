@@ -1,23 +1,28 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import type { VideoStatus } from '@video-processor/shared';
+import type { ProcessingJobStatus, VideoStatus } from '@video-processor/shared';
+
+type Status = VideoStatus | ProcessingJobStatus;
 
 interface StatusBadgeProps {
-  status: VideoStatus;
+  status: Status;
 }
 
 const statusConfig: Record<
-  VideoStatus,
+  Status,
   { label: string; variant: 'default' | 'secondary' | 'success' | 'warning' | 'destructive' }
 > = {
   pending: { label: '待機中', variant: 'secondary' },
   processing: { label: '処理中', variant: 'warning' },
+  analyzing: { label: '分析中', variant: 'warning' },
+  extracting: { label: '抽出中', variant: 'warning' },
+  uploading: { label: 'アップロード中', variant: 'warning' },
   completed: { label: '完了', variant: 'success' },
   failed: { label: 'エラー', variant: 'destructive' },
 };
 
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const config = statusConfig[status];
+  const config = statusConfig[status] ?? { label: status, variant: 'default' as const };
   return <Badge variant={config.variant}>{config.label}</Badge>;
 }
