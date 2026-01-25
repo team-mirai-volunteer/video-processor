@@ -45,6 +45,25 @@ jobs:
       - name: Check for unused code
         run: pnpm knip
 
+  dependency-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Check backend DDD layer dependencies
+        run: pnpm --filter backend dep-cruise
+
   typecheck:
     runs-on: ubuntu-latest
     steps:

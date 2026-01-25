@@ -17,7 +17,8 @@
     "db:generate": "prisma generate --schema=src/infrastructure/database/prisma/schema.prisma",
     "db:push": "prisma db push --schema=src/infrastructure/database/prisma/schema.prisma",
     "db:migrate": "prisma migrate dev --schema=src/infrastructure/database/prisma/schema.prisma",
-    "db:studio": "prisma studio --schema=src/infrastructure/database/prisma/schema.prisma"
+    "db:studio": "prisma studio --schema=src/infrastructure/database/prisma/schema.prisma",
+    "dep-cruise": "depcruise src --config .dependency-cruiser.cjs"
   },
   "dependencies": {
     "@google-cloud/speech": "^6.7.0",
@@ -35,6 +36,7 @@
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/node": "^22.10.7",
     "@types/uuid": "^10.0.0",
+    "dependency-cruiser": "^17.3.7",
     "dotenv": "^17.2.3",
     "prisma": "^6.2.1",
     "tsx": "^4.19.2",
