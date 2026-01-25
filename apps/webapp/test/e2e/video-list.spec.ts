@@ -25,7 +25,7 @@ test.describe('Video List Page', () => {
     await page.goto('/');
 
     // Check header logo
-    await expect(page.getByRole('link', { name: /Video Processor/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /みらい動画スタジオ/ })).toBeVisible();
 
     // Check navigation links
     await expect(page.getByRole('link', { name: '動画一覧' })).toBeVisible();
