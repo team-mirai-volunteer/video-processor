@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd ../.. && pnpm install && pnpm --filter @video-processor/shared build && pnpm --filter @video-processor/webapp build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "installCommand": "echo 'Skip install - handled in buildCommand'"
+}
