@@ -9,7 +9,6 @@ import {
   type ExtractClipsUseCaseDeps,
 } from '../../../../src/application/usecases/extract-clips.usecase.js';
 import type { ClipRepositoryGateway } from '../../../../src/domain/gateways/clip-repository.gateway.js';
-import type { TempStorageGateway } from '../../../../src/domain/gateways/temp-storage.gateway.js';
 import type { TranscriptionRepositoryGateway } from '../../../../src/domain/gateways/transcription-repository.gateway.js';
 import type { VideoRepositoryGateway } from '../../../../src/domain/gateways/video-repository.gateway.js';
 import type { Clip } from '../../../../src/domain/models/clip.js';
@@ -17,6 +16,7 @@ import { Transcription } from '../../../../src/domain/models/transcription.js';
 import { Video } from '../../../../src/domain/models/video.js';
 import { FFmpegClient } from '../../../../src/infrastructure/clients/ffmpeg.client.js';
 import { LocalStorageClient } from '../../../../src/infrastructure/clients/local-storage.client.js';
+import { LocalTempStorageClient } from '../../../../src/infrastructure/clients/local-temp-storage.client.js';
 import { OpenAIClient } from '../../../../src/infrastructure/clients/openai.client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -137,42 +137,24 @@ class InMemoryClipRepository implements ClipRepositoryGateway {
   }
 }
 
-/**
- * Stub TempStorageGateway that doesn't actually upload to GCS
- * (video buffer is already local, so caching is unnecessary)
- */
-class StubTempStorageGateway implements TempStorageGateway {
-  async upload() {
-    return {
-      gcsUri: 'gs://stub-bucket/stub-file',
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    };
-  }
-
-  async download(): Promise<Buffer> {
-    throw new Error('Not implemented in stub');
-  }
-
-  async exists(): Promise<boolean> {
-    return false;
-  }
-}
-
 describe.skipIf(!runIntegrationTests)('ExtractClipsUseCase Integration', () => {
   let useCase: ExtractClipsUseCase;
   let videoRepository: InMemoryVideoRepository;
   let transcriptionRepository: InMemoryTranscriptionRepository;
   let clipRepository: InMemoryClipRepository;
   let localStorageClient: LocalStorageClient;
+  let localTempStorageClient: LocalTempStorageClient;
   let tempDir: string;
 
   beforeAll(async () => {
     // Use output directory in fixtures for LocalStorageClient
     tempDir = OUTPUT_DIR;
+    const tempCacheDir = path.join(tempDir, 'cache');
     await fs.promises.mkdir(tempDir, { recursive: true });
 
     // Initialize clients
     localStorageClient = new LocalStorageClient(tempDir);
+    localTempStorageClient = new LocalTempStorageClient(tempCacheDir);
     const ffmpegClient = new FFmpegClient();
     const openAiClient = new OpenAIClient();
 
@@ -187,7 +169,7 @@ describe.skipIf(!runIntegrationTests)('ExtractClipsUseCase Integration', () => {
       clipRepository,
       transcriptionRepository,
       storageGateway: localStorageClient,
-      tempStorageGateway: new StubTempStorageGateway(),
+      tempStorageGateway: localTempStorageClient,
       aiGateway: openAiClient,
       videoProcessingGateway: ffmpegClient,
       generateId: () => uuidv4(),

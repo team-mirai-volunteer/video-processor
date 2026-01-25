@@ -14,7 +14,6 @@ import {
   type RefineTranscriptUseCaseDeps,
 } from '../../../../src/application/usecases/refine-transcript.usecase.js';
 import type { RefinedTranscriptionRepositoryGateway } from '../../../../src/domain/gateways/refined-transcription-repository.gateway.js';
-import type { TempStorageGateway } from '../../../../src/domain/gateways/temp-storage.gateway.js';
 import type { TranscriptionRepositoryGateway } from '../../../../src/domain/gateways/transcription-repository.gateway.js';
 import type { VideoRepositoryGateway } from '../../../../src/domain/gateways/video-repository.gateway.js';
 import type { RefinedTranscription } from '../../../../src/domain/models/refined-transcription.js';
@@ -23,6 +22,7 @@ import { Video } from '../../../../src/domain/models/video.js';
 import type { ProperNounDictionary } from '../../../../src/domain/services/transcript-refinement-prompt.service.js';
 import { FFmpegClient } from '../../../../src/infrastructure/clients/ffmpeg.client.js';
 import { LocalStorageClient } from '../../../../src/infrastructure/clients/local-storage.client.js';
+import { LocalTempStorageClient } from '../../../../src/infrastructure/clients/local-temp-storage.client.js';
 import { OpenAIClient } from '../../../../src/infrastructure/clients/openai.client.js';
 import { SpeechToTextClient } from '../../../../src/infrastructure/clients/speech-to-text.client.js';
 
@@ -113,27 +113,6 @@ class InMemoryTranscriptionRepository implements TranscriptionRepositoryGateway 
 }
 
 /**
- * Stub TempStorageGateway that doesn't actually upload to GCS
- * (video buffer is already local, so caching is unnecessary)
- */
-class StubTempStorageGateway implements TempStorageGateway {
-  async upload() {
-    return {
-      gcsUri: 'gs://stub-bucket/stub-file',
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    };
-  }
-
-  async download(): Promise<Buffer> {
-    throw new Error('Not implemented in stub');
-  }
-
-  async exists(): Promise<boolean> {
-    return false;
-  }
-}
-
-/**
  * In-memory RefinedTranscriptionRepository for testing
  */
 class InMemoryRefinedTranscriptionRepository implements RefinedTranscriptionRepositoryGateway {
@@ -182,14 +161,17 @@ describe.skipIf(!runIntegrationTests)('CreateTranscriptUseCase Integration', () 
   let videoRepository: InMemoryVideoRepository;
   let transcriptionRepository: InMemoryTranscriptionRepository;
   let localStorageClient: LocalStorageClient;
+  let localTempStorageClient: LocalTempStorageClient;
   let tempDir: string;
 
   beforeAll(async () => {
     // Create temp directory for LocalStorageClient
     tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'create-transcript-test-'));
+    const tempCacheDir = path.join(tempDir, 'cache');
 
     // Initialize clients
     localStorageClient = new LocalStorageClient(tempDir);
+    localTempStorageClient = new LocalTempStorageClient(tempCacheDir);
     const ffmpegClient = new FFmpegClient();
     const speechToTextClient = new SpeechToTextClient();
 
@@ -202,7 +184,7 @@ describe.skipIf(!runIntegrationTests)('CreateTranscriptUseCase Integration', () 
       videoRepository,
       transcriptionRepository,
       storageGateway: localStorageClient,
-      tempStorageGateway: new StubTempStorageGateway(),
+      tempStorageGateway: localTempStorageClient,
       transcriptionGateway: speechToTextClient,
       videoProcessingGateway: ffmpegClient,
       generateId: () => uuidv4(),
@@ -212,10 +194,11 @@ describe.skipIf(!runIntegrationTests)('CreateTranscriptUseCase Integration', () 
   });
 
   afterAll(async () => {
-    // Cleanup temp directory
+    // Cleanup temp directories
     if (tempDir) {
       await localStorageClient.clear();
-      await fs.promises.rmdir(tempDir);
+      await localTempStorageClient.clear();
+      await fs.promises.rm(tempDir, { recursive: true, force: true });
     }
   });
 

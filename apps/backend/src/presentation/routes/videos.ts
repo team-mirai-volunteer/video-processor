@@ -20,10 +20,12 @@ import { GetVideoUseCase } from '../../application/usecases/get-video.usecase.js
 import { GetVideosUseCase } from '../../application/usecases/get-videos.usecase.js';
 import { RefineTranscriptUseCase } from '../../application/usecases/refine-transcript.usecase.js';
 import { SubmitVideoUseCase } from '../../application/usecases/submit-video.usecase.js';
+import type { TempStorageGateway } from '../../domain/gateways/temp-storage.gateway.js';
 import type { ProperNounDictionary } from '../../domain/services/transcript-refinement-prompt.service.js';
 import { FFmpegClient } from '../../infrastructure/clients/ffmpeg.client.js';
 import { GcsClient } from '../../infrastructure/clients/gcs.client.js';
 import { GoogleDriveClient } from '../../infrastructure/clients/google-drive.client.js';
+import { LocalTempStorageClient } from '../../infrastructure/clients/local-temp-storage.client.js';
 import { OpenAIClient } from '../../infrastructure/clients/openai.client.js';
 import { SpeechToTextClient } from '../../infrastructure/clients/speech-to-text.client.js';
 import { prisma } from '../../infrastructure/database/connection.js';
@@ -54,8 +56,19 @@ const processingJobRepository = new ProcessingJobRepository(prisma);
 const transcriptionRepository = new TranscriptionRepository(prisma);
 const refinedTranscriptionRepository = new RefinedTranscriptionRepository(prisma);
 
-// Initialize gateways
-const tempStorageGateway = new GcsClient();
+// Initialize gateways based on environment
+function createTempStorageGateway(): TempStorageGateway {
+  const storageType = process.env.TEMP_STORAGE_TYPE ?? 'local';
+
+  if (storageType === 'gcs') {
+    return new GcsClient();
+  }
+
+  // Default to local storage for development
+  return new LocalTempStorageClient();
+}
+
+const tempStorageGateway = createTempStorageGateway();
 
 // Initialize use cases
 const submitVideoUseCase = new SubmitVideoUseCase({
@@ -90,7 +103,7 @@ const createTranscriptUseCase = new CreateTranscriptUseCase({
   videoRepository,
   transcriptionRepository,
   storageGateway: GoogleDriveClient.fromEnv(),
-  tempStorageGateway: new GcsClient(),
+  tempStorageGateway,
   transcriptionGateway: new SpeechToTextClient(),
   videoProcessingGateway: new FFmpegClient(),
   generateId: () => uuidv4(),
