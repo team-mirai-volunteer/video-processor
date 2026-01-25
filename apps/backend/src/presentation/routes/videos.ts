@@ -57,14 +57,11 @@ const transcriptionRepository = new TranscriptionRepository(prisma);
 const refinedTranscriptionRepository = new RefinedTranscriptionRepository(prisma);
 
 // Initialize gateways based on environment
+// TEMP_STORAGE_TYPE=gcs で GCS、それ以外はローカル（デフォルト）
 function createTempStorageGateway(): TempStorageGateway {
-  const storageType = process.env.TEMP_STORAGE_TYPE ?? 'local';
-
-  if (storageType === 'gcs') {
+  if (process.env.TEMP_STORAGE_TYPE === 'gcs') {
     return new GcsClient();
   }
-
-  // Default to local storage for development
   return new LocalTempStorageClient();
 }
 
