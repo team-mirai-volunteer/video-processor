@@ -58,17 +58,20 @@ fi
 # Change to environment directory
 cd "${ENV_DIR}"
 
+# Backend config (shared backend.tf with dynamic prefix)
+BACKEND_CONFIG="-backend-config=prefix=${ENV}"
+
 # Run terraform
 case "${ACTION}" in
   init)
-    terraform init
+    terraform init ${BACKEND_CONFIG}
     ;;
   plan)
-    terraform init -upgrade
+    terraform init -upgrade ${BACKEND_CONFIG}
     terraform plan
     ;;
   apply)
-    terraform init -upgrade
+    terraform init -upgrade ${BACKEND_CONFIG}
     terraform apply
     ;;
   destroy)
