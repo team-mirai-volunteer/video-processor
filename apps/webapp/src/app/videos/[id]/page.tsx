@@ -93,10 +93,12 @@ export default function VideoDetailPage() {
   const handleTranscribe = async () => {
     setTranscribing(true);
     try {
-      await apiClient.transcribeVideo(id);
-      // Refresh video to get updated status
-      const response = await apiClient.getVideo(id);
-      setVideo(response);
+      const transcribeResponse = await apiClient.transcribeVideo(id);
+      // Immediately update video status from transcribe response
+      // to avoid race condition with background processing
+      if (video) {
+        setVideo({ ...video, status: transcribeResponse.status });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '文字起こし作成に失敗しました');
     } finally {
