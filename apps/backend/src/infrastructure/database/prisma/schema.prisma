@@ -81,7 +81,22 @@ model Transcription {
   durationSeconds Decimal  @map("duration_seconds") @db.Decimal(10, 3)
   createdAt       DateTime @default(now()) @map("created_at")
 
-  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  video                 Video                  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  refinedTranscription  RefinedTranscription?
 
   @@map("transcriptions")
+}
+
+model RefinedTranscription {
+  id                String   @id @default(uuid())
+  transcriptionId   String   @unique @map("transcription_id")
+  fullText          String   @map("full_text")
+  sentences         Json     // RefinedSentence[]
+  dictionaryVersion String   @map("dictionary_version")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  transcription Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
+
+  @@map("refined_transcriptions")
 }

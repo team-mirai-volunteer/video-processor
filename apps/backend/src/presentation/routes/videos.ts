@@ -1,7 +1,12 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type {
   ExtractClipsRequest,
+  GetRefinedTranscriptionResponse,
   GetTranscriptionResponse,
   GetVideosQuery,
+  RefineTranscriptResponse,
   SubmitVideoRequest,
   TranscribeVideoResponse,
   VideoStatus,
@@ -13,7 +18,9 @@ import { CreateTranscriptUseCase } from '../../application/usecases/create-trans
 import { ExtractClipsUseCase } from '../../application/usecases/extract-clips.usecase.js';
 import { GetVideoUseCase } from '../../application/usecases/get-video.usecase.js';
 import { GetVideosUseCase } from '../../application/usecases/get-videos.usecase.js';
+import { RefineTranscriptUseCase } from '../../application/usecases/refine-transcript.usecase.js';
 import { SubmitVideoUseCase } from '../../application/usecases/submit-video.usecase.js';
+import type { ProperNounDictionary } from '../../domain/services/transcript-refinement-prompt.service.js';
 import { FFmpegClient } from '../../infrastructure/clients/ffmpeg.client.js';
 import { GcsClient } from '../../infrastructure/clients/gcs.client.js';
 import { GoogleDriveClient } from '../../infrastructure/clients/google-drive.client.js';
@@ -22,8 +29,21 @@ import { SpeechToTextClient } from '../../infrastructure/clients/speech-to-text.
 import { prisma } from '../../infrastructure/database/connection.js';
 import { ClipRepository } from '../../infrastructure/repositories/clip.repository.js';
 import { ProcessingJobRepository } from '../../infrastructure/repositories/processing-job.repository.js';
+import { RefinedTranscriptionRepository } from '../../infrastructure/repositories/refined-transcription.repository.js';
 import { TranscriptionRepository } from '../../infrastructure/repositories/transcription.repository.js';
 import { VideoRepository } from '../../infrastructure/repositories/video.repository.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+async function loadDictionary(): Promise<ProperNounDictionary> {
+  const dictionaryPath = path.resolve(
+    __dirname,
+    '../../infrastructure/data/proper-noun-dictionary.json'
+  );
+  const content = await readFile(dictionaryPath, 'utf-8');
+  return JSON.parse(content) as ProperNounDictionary;
+}
 
 const router: ExpressRouter = Router();
 
@@ -32,6 +52,7 @@ const videoRepository = new VideoRepository(prisma);
 const clipRepository = new ClipRepository(prisma);
 const processingJobRepository = new ProcessingJobRepository(prisma);
 const transcriptionRepository = new TranscriptionRepository(prisma);
+const refinedTranscriptionRepository = new RefinedTranscriptionRepository(prisma);
 
 // Initialize gateways
 const tempStorageGateway = new GcsClient();
@@ -73,6 +94,14 @@ const createTranscriptUseCase = new CreateTranscriptUseCase({
   transcriptionGateway: new SpeechToTextClient(),
   videoProcessingGateway: new FFmpegClient(),
   generateId: () => uuidv4(),
+});
+
+const refineTranscriptUseCase = new RefineTranscriptUseCase({
+  transcriptionRepository,
+  refinedTranscriptionRepository,
+  aiGateway: new OpenAIClient(),
+  generateId: () => uuidv4(),
+  loadDictionary,
 });
 
 /**
@@ -186,6 +215,68 @@ router.get('/:videoId/transcription', async (req, res, next) => {
       languageCode: transcription.languageCode,
       durationSeconds: transcription.durationSeconds,
       createdAt: transcription.createdAt,
+    };
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/videos/:videoId/refine-transcript
+ * Start transcript refinement for a video
+ */
+router.post('/:videoId/refine-transcript', async (req, res, next) => {
+  try {
+    const { videoId } = req.params;
+
+    // Return immediately with status
+    const response: RefineTranscriptResponse = {
+      videoId: videoId ?? '',
+      status: 'refining',
+    };
+    res.status(202).json(response);
+
+    // Execute refinement in background (fire and forget)
+    refineTranscriptUseCase.execute(videoId ?? '').catch((error) => {
+      console.error('[RefineTranscriptUseCase] Error:', error);
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/videos/:videoId/transcription/refined
+ * Get refined transcription for a video
+ */
+router.get('/:videoId/transcription/refined', async (req, res, next) => {
+  try {
+    const { videoId } = req.params;
+
+    // First get raw transcription to get transcriptionId
+    const transcription = await transcriptionRepository.findByVideoId(videoId ?? '');
+    if (!transcription) {
+      throw new NotFoundError('Transcription', videoId ?? '');
+    }
+
+    // Then get refined transcription
+    const refinedTranscription = await refinedTranscriptionRepository.findByTranscriptionId(
+      transcription.id
+    );
+
+    if (!refinedTranscription) {
+      throw new NotFoundError('RefinedTranscription', videoId ?? '');
+    }
+
+    const response: GetRefinedTranscriptionResponse = {
+      id: refinedTranscription.id,
+      transcriptionId: refinedTranscription.transcriptionId,
+      fullText: refinedTranscription.fullText,
+      sentences: refinedTranscription.sentences,
+      dictionaryVersion: refinedTranscription.dictionaryVersion,
+      createdAt: refinedTranscription.createdAt,
+      updatedAt: refinedTranscription.updatedAt,
     };
     res.json(response);
   } catch (error) {
