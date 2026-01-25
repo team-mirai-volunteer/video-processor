@@ -112,8 +112,8 @@ describe('ExtractClipsUseCase', () => {
       clips: [
         {
           title: 'Introduction',
-          startTime: '00:00:00',
-          endTime: '00:00:30',
+          startTimeSeconds: 0,
+          endTimeSeconds: 30,
           transcript: 'Hello, this is a test video.',
           reason: 'Opening segment',
         },
