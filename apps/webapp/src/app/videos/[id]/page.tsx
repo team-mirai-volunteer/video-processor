@@ -310,8 +310,8 @@ export default function VideoDetailPage() {
         </CardContent>
       </Card>
 
-      {/* 切り抜き指示フォーム - transcribed状態の時のみ表示 */}
-      {video.status === 'transcribed' && (
+      {/* 切り抜き指示フォーム - transcribedまたはcompleted状態の時に表示 */}
+      {(video.status === 'transcribed' || video.status === 'completed') && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
