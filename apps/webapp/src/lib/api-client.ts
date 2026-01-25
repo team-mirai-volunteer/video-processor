@@ -253,8 +253,7 @@ export const apiClient = {
       return {
         id: 'transcription-1',
         videoId,
-        fullText:
-          'これはモックのトランスクリプトです。実際のトランスクリプトは動画の音声から生成されます。',
+        fullText: 'これはモックの文字起こしです。実際の文字起こしは動画の音声から生成されます。',
         segments: [
           {
             text: 'これは',
@@ -269,7 +268,7 @@ export const apiClient = {
             confidence: 0.92,
           },
           {
-            text: 'トランスクリプトです',
+            text: '文字起こしです',
             startTimeSeconds: 1.0,
             endTimeSeconds: 2.0,
             confidence: 0.98,

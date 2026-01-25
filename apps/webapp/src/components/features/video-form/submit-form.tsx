@@ -43,7 +43,7 @@ export function SubmitForm() {
         <CardTitle>動画登録</CardTitle>
         <CardDescription>
           切り抜きたい動画のGoogle Drive URLを入力してください。
-          登録後、トランスクリプトを作成してから切り抜き指示を入力できます。
+          登録後、文字起こしを作成してから切り抜き指示を入力できます。
         </CardDescription>
       </CardHeader>
       <CardContent>

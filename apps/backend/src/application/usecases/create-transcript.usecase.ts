@@ -6,6 +6,7 @@ import type { VideoProcessingGateway } from '../../domain/gateways/video-process
 import type { VideoRepositoryGateway } from '../../domain/gateways/video-repository.gateway.js';
 import { Transcription } from '../../domain/models/transcription.js';
 import { NotFoundError } from '../errors.js';
+import type { RefineTranscriptUseCase } from './refine-transcript.usecase.js';
 
 export interface CreateTranscriptUseCaseDeps {
   videoRepository: VideoRepositoryGateway;
@@ -15,6 +16,7 @@ export interface CreateTranscriptUseCaseDeps {
   transcriptionGateway: TranscriptionGateway;
   videoProcessingGateway: VideoProcessingGateway;
   generateId: () => string;
+  refineTranscriptUseCase?: RefineTranscriptUseCase;
 }
 
 export interface CreateTranscriptResult {
@@ -30,6 +32,7 @@ export class CreateTranscriptUseCase {
   private readonly transcriptionGateway: TranscriptionGateway;
   private readonly videoProcessingGateway: VideoProcessingGateway;
   private readonly generateId: () => string;
+  private readonly refineTranscriptUseCase?: RefineTranscriptUseCase;
 
   constructor(deps: CreateTranscriptUseCaseDeps) {
     this.videoRepository = deps.videoRepository;
@@ -39,6 +42,7 @@ export class CreateTranscriptUseCase {
     this.transcriptionGateway = deps.transcriptionGateway;
     this.videoProcessingGateway = deps.videoProcessingGateway;
     this.generateId = deps.generateId;
+    this.refineTranscriptUseCase = deps.refineTranscriptUseCase;
   }
 
   private log(message: string, data?: Record<string, unknown>): void {
@@ -126,6 +130,20 @@ export class CreateTranscriptUseCase {
         : video.withStatus('transcribed');
       await this.videoRepository.save(updatedVideo);
       this.log('Video status updated to transcribed');
+
+      // Refine transcript if refineTranscriptUseCase is provided
+      if (this.refineTranscriptUseCase) {
+        this.log('Starting transcript refinement...');
+        try {
+          await this.refineTranscriptUseCase.execute(video.id);
+          this.log('Transcript refinement completed');
+        } catch (refineError) {
+          // Log but don't fail - refinement is optional
+          this.log('Warning: Transcript refinement failed', {
+            error: refineError instanceof Error ? refineError.message : 'Unknown error',
+          });
+        }
+      }
 
       return {
         videoId: video.id,

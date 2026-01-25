@@ -73,7 +73,7 @@ export function TranscriptViewer({
         ) : (
           <div className="text-center py-12 text-muted-foreground">
             <Sparkles className="h-8 w-8 mx-auto mb-4 opacity-50" />
-            <p>校正済みのトランスクリプトはまだありません。</p>
+            <p>校正済みの文字起こしはまだありません。</p>
             <p className="text-sm mt-2">「AIで校正する」ボタンをクリックして作成できます。</p>
           </div>
         )}
