@@ -141,6 +141,23 @@ const mockVideoDetail: GetVideoResponse = {
       completedAt: new Date('2024-01-15T10:45:00Z'),
     },
   ],
+  transcription: {
+    id: 'transcription-1',
+    videoId: '1',
+    fullText:
+      'こんにちは、チームみらいです。今日は私たちの活動についてご紹介します。私たちの政策は、若者の政治参加を促進することです。',
+    segments: [
+      {
+        text: 'こんにちは',
+        startTimeSeconds: 0,
+        endTimeSeconds: 1.5,
+        confidence: 0.95,
+      },
+    ],
+    languageCode: 'ja-JP',
+    durationSeconds: 3600,
+    createdAt: new Date('2024-01-15T10:20:00Z'),
+  },
   createdAt: new Date('2024-01-15T10:00:00Z'),
   updatedAt: new Date('2024-01-15T10:45:00Z'),
 };
