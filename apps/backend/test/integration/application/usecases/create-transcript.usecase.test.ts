@@ -9,13 +9,21 @@ import {
   CreateTranscriptUseCase,
   type CreateTranscriptUseCaseDeps,
 } from '../../../../src/application/usecases/create-transcript.usecase.js';
+import {
+  RefineTranscriptUseCase,
+  type RefineTranscriptUseCaseDeps,
+} from '../../../../src/application/usecases/refine-transcript.usecase.js';
+import type { RefinedTranscriptionRepositoryGateway } from '../../../../src/domain/gateways/refined-transcription-repository.gateway.js';
 import type { TempStorageGateway } from '../../../../src/domain/gateways/temp-storage.gateway.js';
 import type { TranscriptionRepositoryGateway } from '../../../../src/domain/gateways/transcription-repository.gateway.js';
 import type { VideoRepositoryGateway } from '../../../../src/domain/gateways/video-repository.gateway.js';
+import type { RefinedTranscription } from '../../../../src/domain/models/refined-transcription.js';
 import type { Transcription } from '../../../../src/domain/models/transcription.js';
 import { Video } from '../../../../src/domain/models/video.js';
+import type { ProperNounDictionary } from '../../../../src/domain/services/transcript-refinement-prompt.service.js';
 import { FFmpegClient } from '../../../../src/infrastructure/clients/ffmpeg.client.js';
 import { LocalStorageClient } from '../../../../src/infrastructure/clients/local-storage.client.js';
+import { OpenAIClient } from '../../../../src/infrastructure/clients/openai.client.js';
 import { SpeechToTextClient } from '../../../../src/infrastructure/clients/speech-to-text.client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -125,6 +133,50 @@ class StubTempStorageGateway implements TempStorageGateway {
   }
 }
 
+/**
+ * In-memory RefinedTranscriptionRepository for testing
+ */
+class InMemoryRefinedTranscriptionRepository implements RefinedTranscriptionRepositoryGateway {
+  private refinedTranscriptions: Map<string, RefinedTranscription> = new Map();
+
+  async save(refinedTranscription: RefinedTranscription): Promise<void> {
+    this.refinedTranscriptions.set(refinedTranscription.id, refinedTranscription);
+  }
+
+  async findById(id: string): Promise<RefinedTranscription | null> {
+    return this.refinedTranscriptions.get(id) ?? null;
+  }
+
+  async findByTranscriptionId(transcriptionId: string): Promise<RefinedTranscription | null> {
+    for (const refined of this.refinedTranscriptions.values()) {
+      if (refined.transcriptionId === transcriptionId) {
+        return refined;
+      }
+    }
+    return null;
+  }
+
+  async deleteByTranscriptionId(transcriptionId: string): Promise<void> {
+    for (const [id, refined] of this.refinedTranscriptions.entries()) {
+      if (refined.transcriptionId === transcriptionId) {
+        this.refinedTranscriptions.delete(id);
+      }
+    }
+  }
+}
+
+/**
+ * Load dictionary from JSON file
+ */
+async function loadDictionary(): Promise<ProperNounDictionary> {
+  const dictionaryPath = path.resolve(
+    __dirname,
+    '../../../../src/infrastructure/data/proper-noun-dictionary.json'
+  );
+  const content = await fs.promises.readFile(dictionaryPath, 'utf-8');
+  return JSON.parse(content) as ProperNounDictionary;
+}
+
 describe.skipIf(!runIntegrationTests)('CreateTranscriptUseCase Integration', () => {
   let useCase: CreateTranscriptUseCase;
   let videoRepository: InMemoryVideoRepository;
@@ -152,7 +204,7 @@ describe.skipIf(!runIntegrationTests)('CreateTranscriptUseCase Integration', () 
       storageGateway: localStorageClient,
       tempStorageGateway: new StubTempStorageGateway(),
       transcriptionGateway: speechToTextClient,
-      videoProcessingService: ffmpegClient,
+      videoProcessingGateway: ffmpegClient,
       generateId: () => uuidv4(),
     };
 
@@ -217,5 +269,46 @@ describe.skipIf(!runIntegrationTests)('CreateTranscriptUseCase Integration', () 
     const updatedVideo = await videoRepository.findById(video.id);
     expect(updatedVideo?.status).toBe('transcribed');
     expect(updatedVideo?.title).toBe('sample.mp4');
-  }, 120000); // 2 minute timeout for long-running transcription
+
+    // ===== Refine Transcript =====
+    // Act: Execute RefineTranscriptUseCase
+    const refinedTranscriptionRepository = new InMemoryRefinedTranscriptionRepository();
+    const openaiClient = new OpenAIClient();
+
+    const refineDeps: RefineTranscriptUseCaseDeps = {
+      transcriptionRepository,
+      refinedTranscriptionRepository,
+      aiGateway: openaiClient,
+      generateId: () => uuidv4(),
+      loadDictionary,
+    };
+    const refineUseCase = new RefineTranscriptUseCase(refineDeps);
+
+    const refineResult = await refineUseCase.execute(video.id);
+
+    // Assert: Refined transcription was created
+    expect(refineResult).toHaveProperty('id');
+    expect(refineResult).toHaveProperty('transcriptionId', savedTranscription?.id);
+    expect(refineResult).toHaveProperty('fullText');
+    expect(refineResult.sentenceCount).toBeGreaterThan(0);
+    expect(refineResult.dictionaryVersion).toBe('1.0.0');
+
+    // Verify refined transcription was saved
+    const savedRefinedTranscription = await refinedTranscriptionRepository.findById(
+      refineResult.id
+    );
+    expect(savedRefinedTranscription).not.toBeNull();
+    expect(savedRefinedTranscription?.sentences.length).toBeGreaterThan(0);
+
+    // Log the refined transcription for inspection
+    console.log('Refined transcription result:', {
+      fullText: savedRefinedTranscription?.fullText,
+      sentenceCount: savedRefinedTranscription?.sentences.length,
+      dictionaryVersion: savedRefinedTranscription?.dictionaryVersion,
+    });
+
+    // Verify refined transcription contains corrected content
+    // 「安野たかひろ」が正しく校正されていることを確認
+    expect(savedRefinedTranscription?.fullText).toContain('安野たかひろ');
+  }, 180000); // 3 minute timeout for transcription + refinement
 });
