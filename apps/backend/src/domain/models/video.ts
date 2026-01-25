@@ -1,4 +1,4 @@
-import type { VideoStatus } from '@video-processor/shared';
+import type { TranscriptionPhase, VideoStatus } from '@video-processor/shared';
 import { type Result, err, ok } from '../types/result.js';
 
 export type VideoError =
@@ -15,6 +15,7 @@ export interface VideoProps {
   durationSeconds: number | null;
   fileSizeBytes: number | null;
   status: VideoStatus;
+  transcriptionPhase: TranscriptionPhase | null;
   errorMessage: string | null;
   gcsUri: string | null;
   gcsExpiresAt: Date | null;
@@ -52,6 +53,7 @@ export class Video {
   readonly durationSeconds: number | null;
   readonly fileSizeBytes: number | null;
   readonly status: VideoStatus;
+  readonly transcriptionPhase: TranscriptionPhase | null;
   readonly errorMessage: string | null;
   readonly gcsUri: string | null;
   readonly gcsExpiresAt: Date | null;
@@ -67,6 +69,7 @@ export class Video {
     this.durationSeconds = props.durationSeconds;
     this.fileSizeBytes = props.fileSizeBytes;
     this.status = props.status;
+    this.transcriptionPhase = props.transcriptionPhase;
     this.errorMessage = props.errorMessage;
     this.gcsUri = props.gcsUri;
     this.gcsExpiresAt = props.gcsExpiresAt;
@@ -104,6 +107,7 @@ export class Video {
         durationSeconds: null,
         fileSizeBytes: null,
         status: 'pending',
+        transcriptionPhase: null,
         errorMessage: null,
         gcsUri: null,
         gcsExpiresAt: null,
@@ -155,7 +159,20 @@ export class Video {
     return new Video({
       ...this.toProps(),
       status,
+      // Clear transcriptionPhase when status changes away from transcribing
+      transcriptionPhase: status === 'transcribing' ? this.transcriptionPhase : null,
       errorMessage: errorMessage ?? this.errorMessage,
+      updatedAt: new Date(),
+    });
+  }
+
+  /**
+   * Update transcription phase (detailed progress during transcribing)
+   */
+  withTranscriptionPhase(phase: TranscriptionPhase): Video {
+    return new Video({
+      ...this.toProps(),
+      transcriptionPhase: phase,
       updatedAt: new Date(),
     });
   }
@@ -173,6 +190,7 @@ export class Video {
       durationSeconds: this.durationSeconds,
       fileSizeBytes: this.fileSizeBytes,
       status: this.status,
+      transcriptionPhase: this.transcriptionPhase,
       errorMessage: this.errorMessage,
       gcsUri: this.gcsUri,
       gcsExpiresAt: this.gcsExpiresAt,

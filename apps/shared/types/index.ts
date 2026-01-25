@@ -1,6 +1,7 @@
 // Video types
 export type {
   Transcription,
+  TranscriptionPhase,
   TranscriptionSegment,
   Video,
   VideoStatus,

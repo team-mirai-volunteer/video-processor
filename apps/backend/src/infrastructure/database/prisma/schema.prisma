@@ -8,19 +8,20 @@ datasource db {
 }
 
 model Video {
-  id                String    @id @default(uuid())
-  googleDriveFileId String    @unique @map("google_drive_file_id")
-  googleDriveUrl    String    @map("google_drive_url")
-  title             String?
-  description       String?
-  durationSeconds   Int?      @map("duration_seconds")
-  fileSizeBytes     BigInt?   @map("file_size_bytes")
-  status            String    @default("pending")
-  errorMessage      String?   @map("error_message")
-  gcsUri            String?   @map("gcs_uri")
-  gcsExpiresAt      DateTime? @map("gcs_expires_at")
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
+  id                   String    @id @default(uuid())
+  googleDriveFileId    String    @unique @map("google_drive_file_id")
+  googleDriveUrl       String    @map("google_drive_url")
+  title                String?
+  description          String?
+  durationSeconds      Int?      @map("duration_seconds")
+  fileSizeBytes        BigInt?   @map("file_size_bytes")
+  status               String    @default("pending")
+  transcriptionPhase   String?   @map("transcription_phase")
+  errorMessage         String?   @map("error_message")
+  gcsUri               String?   @map("gcs_uri")
+  gcsExpiresAt         DateTime? @map("gcs_expires_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
 
   clips          Clip[]
   processingJobs ProcessingJob[]
