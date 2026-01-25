@@ -4,6 +4,9 @@ const useRealBackend = process.env.E2E_USE_REAL_BACKEND === 'true';
 
 export default defineConfig({
   testDir: './test/e2e',
+  // モックモードでは real-backend を除外、リアルバックエンドモードでは real-backend のみ実行
+  testIgnore: useRealBackend ? undefined : '**/real-backend/**',
+  testMatch: useRealBackend ? '**/real-backend/**/*.spec.ts' : undefined,
   fullyParallel: !useRealBackend,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

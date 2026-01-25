@@ -132,3 +132,59 @@ jobs:
 
       - name: Run webapp E2E tests
         run: pnpm --filter webapp exec playwright test --project=chromium
+
+  test-webapp-real-backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: video_processor_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build shared package
+        run: pnpm --filter shared build
+
+      - name: Apply database schema
+        run: pnpm --filter backend db:push
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5433/video_processor_test
+
+      - name: Seed E2E test data
+        run: pnpm --filter backend db:seed:e2e
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5433/video_processor_test
+
+      - name: Install Playwright browsers
+        run: pnpm --filter webapp exec playwright install --with-deps chromium
+
+      - name: Run webapp E2E tests with real backend
+        run: E2E_USE_REAL_BACKEND=true pnpm --filter webapp exec playwright test --project=chromium
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5433/video_processor_test
+          PORT: '8081'
+          USE_MOCK_GOOGLE_DRIVE: 'true'
+          USE_MOCK_AI: 'true'
+          TEMP_STORAGE_TYPE: local
+          CORS_ORIGIN: http://localhost:3000
