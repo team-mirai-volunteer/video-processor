@@ -1,5 +1,4 @@
 import type { ClipExtractionData } from '@video-processor/shared';
-import { parseTimeToSeconds } from '../models/clip.js';
 
 export interface ExtractedTimestamp {
   title: string;
@@ -14,13 +13,13 @@ export interface ExtractedTimestamp {
  */
 export class TimestampExtractorService {
   /**
-   * Convert AI clip data to domain format
+   * Convert AI clip data to domain format (now just a passthrough since AI returns seconds directly)
    */
   extractTimestamps(clips: ClipExtractionData[]): ExtractedTimestamp[] {
     return clips.map((clip) => ({
       title: clip.title,
-      startTimeSeconds: parseTimeToSeconds(clip.startTime),
-      endTimeSeconds: parseTimeToSeconds(clip.endTime),
+      startTimeSeconds: clip.startTimeSeconds,
+      endTimeSeconds: clip.endTimeSeconds,
       transcript: clip.transcript,
       reason: clip.reason,
     }));

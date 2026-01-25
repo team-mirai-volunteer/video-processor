@@ -42,8 +42,8 @@ export interface ClipSummary {
  */
 export interface ClipExtractionData {
   title: string;
-  startTime: string; // HH:MM:SS format
-  endTime: string; // HH:MM:SS format
+  startTimeSeconds: number;
+  endTimeSeconds: number;
   transcript: string;
   reason: string;
 }

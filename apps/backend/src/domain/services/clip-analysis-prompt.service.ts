@@ -26,7 +26,7 @@ export class ClipAnalysisPromptService {
 - タイトル: ${videoTitle ?? '不明'}
 - 総時間: ${transcription.durationSeconds}秒
 
-## 文字起こし（タイムスタンプ付き）
+## 文字起こし（タイムスタンプ付き、単位: 秒）
 ${transcriptionText}
 
 ## ユーザーの切り抜き指示
@@ -34,16 +34,15 @@ ${clipInstructions}
 
 ## 出力形式
 以下のJSON形式で、切り抜くべき箇所を出力してください。
-各クリップは20秒〜60秒程度になるようにしてください。
-startTime/endTimeは文字起こしのタイムスタンプを参照して正確に指定してください。
+startTimeSeconds/endTimeSecondsは上記の文字起こしのタイムスタンプ（秒）を参照して正確に指定してください。
 
 \`\`\`json
 {
   "clips": [
     {
       "title": "クリップの簡潔なタイトル",
-      "startTime": "HH:MM:SS",
-      "endTime": "HH:MM:SS",
+      "startTimeSeconds": 0.08,
+      "endTimeSeconds": 3.12,
       "transcript": "このクリップ内での発言内容",
       "reason": "この箇所を選んだ理由"
     }
@@ -52,7 +51,7 @@ startTime/endTimeは文字起こしのタイムスタンプを参照して正確
 \`\`\`
 
 ## 注意事項
-- 各クリップは20秒〜60秒の範囲に収めてください
+- 動画の総時間は${transcription.durationSeconds}秒です。startTimeSeconds/endTimeSecondsは必ずこの範囲内（0〜${transcription.durationSeconds}）で指定してください
 - 発言の途中で切れないよう、タイムスタンプを参照して自然な区切りを選んでください
 - transcriptは文字起こしデータからそのまま抜粋してください
 - 必ずJSON形式で出力してください`;
@@ -80,7 +79,11 @@ startTime/endTimeは文字起こしのタイムスタンプを参照して正確
 
       // Validate each clip
       for (const clip of parsed.clips) {
-        if (!clip.title || !clip.startTime || !clip.endTime) {
+        if (
+          !clip.title ||
+          typeof clip.startTimeSeconds !== 'number' ||
+          typeof clip.endTimeSeconds !== 'number'
+        ) {
           throw new Error('Invalid clip data: missing required fields');
         }
       }
@@ -100,19 +103,8 @@ startTime/endTimeは文字起こしのタイムスタンプを参照して正確
   private formatTranscriptionForPrompt(transcription: TranscriptionResult): string {
     return transcription.segments
       .map((segment) => {
-        const startTime = this.formatTimeForDisplay(segment.startTimeSeconds);
-        const endTime = this.formatTimeForDisplay(segment.endTimeSeconds);
-        return `[${startTime} - ${endTime}] ${segment.text}`;
+        return `[${segment.startTimeSeconds}秒 - ${segment.endTimeSeconds}秒] ${segment.text}`;
       })
       .join('\n');
-  }
-
-  /**
-   * Format seconds to MM:SS.ss display format
-   */
-  private formatTimeForDisplay(seconds: number): string {
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${secs.toFixed(2).padStart(5, '0')}`;
   }
 }
