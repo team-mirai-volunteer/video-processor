@@ -98,7 +98,7 @@ export default function VideoDetailPage() {
       const response = await apiClient.getVideo(id);
       setVideo(response);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'トランスクリプト作成に失敗しました');
+      setError(err instanceof Error ? err.message : '文字起こし作成に失敗しました');
     } finally {
       setTranscribing(false);
     }
@@ -134,7 +134,7 @@ export default function VideoDetailPage() {
       const refined = await apiClient.getRefinedTranscription(id);
       setRefinedTranscription(refined);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'トランスクリプト校正に失敗しました');
+      setError(err instanceof Error ? err.message : '文字起こし校正に失敗しました');
     } finally {
       setIsRefining(false);
     }
@@ -243,12 +243,12 @@ export default function VideoDetailPage() {
         </CardContent>
       </Card>
 
-      {/* トランスクリプトカード */}
+      {/* 文字起こしカード */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            トランスクリプト
+            文字起こし
           </CardTitle>
           <CardDescription>動画の文字起こし結果です</CardDescription>
         </CardHeader>
@@ -256,34 +256,47 @@ export default function VideoDetailPage() {
           {video.status === 'pending' && (
             <div className="text-center py-8">
               <p className="text-muted-foreground mb-4">
-                トランスクリプトを作成して、動画の内容を文字に起こします。
+                文字起こしを作成して、動画の内容を文字に起こします。
               </p>
               <Button onClick={handleTranscribe} disabled={transcribing}>
                 {transcribing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {transcribing ? 'トランスクリプト作成中...' : 'トランスクリプト作成'}
+                {transcribing ? '作成中...' : '文字起こし作成'}
               </Button>
             </div>
           )}
           {video.status === 'transcribing' && (
             <div className="text-center py-8">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">トランスクリプトを作成中です...</p>
+              <p className="text-muted-foreground">文字起こしを作成中です...</p>
             </div>
           )}
           {transcriptionLoading && (
             <div className="text-center py-8">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">トランスクリプトを読み込み中...</p>
+              <p className="text-muted-foreground">文字起こしを読み込み中...</p>
             </div>
           )}
           {transcription && !transcriptionLoading && (
-            <TranscriptViewer
-              rawTranscription={transcription}
-              refinedTranscription={refinedTranscription}
-              onRefine={handleRefineTranscript}
-              isRefining={isRefining}
-              isLoadingRefined={refinedTranscriptionLoading}
-            />
+            <div className="space-y-4">
+              <TranscriptViewer
+                rawTranscription={transcription}
+                refinedTranscription={refinedTranscription}
+                onRefine={handleRefineTranscript}
+                isRefining={isRefining}
+                isLoadingRefined={refinedTranscriptionLoading}
+              />
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTranscribe}
+                  disabled={transcribing}
+                >
+                  {transcribing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {transcribing ? '再作成中...' : '文字起こし再作成'}
+                </Button>
+              </div>
+            </div>
           )}
           {!transcription &&
             !transcriptionLoading &&
@@ -291,7 +304,7 @@ export default function VideoDetailPage() {
               video.status === 'extracting' ||
               video.status === 'completed') && (
               <div className="text-center py-8 text-muted-foreground">
-                トランスクリプトが見つかりません
+                文字起こしが見つかりません
               </div>
             )}
         </CardContent>
@@ -306,7 +319,7 @@ export default function VideoDetailPage() {
               切り抜き作成
             </CardTitle>
             <CardDescription>
-              トランスクリプトを元に、切り抜きたい箇所を指示してください。
+              文字起こしを元に、切り抜きたい箇所を指示してください。
               AIが指示に基づいて最適な箇所を特定し、ショート動画を作成します。
             </CardDescription>
           </CardHeader>

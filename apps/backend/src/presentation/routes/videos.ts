@@ -86,6 +86,14 @@ const extractClipsUseCase = new ExtractClipsUseCase({
   outputFolderId: process.env.GOOGLE_DRIVE_OUTPUT_FOLDER_ID,
 });
 
+const refineTranscriptUseCase = new RefineTranscriptUseCase({
+  transcriptionRepository,
+  refinedTranscriptionRepository,
+  aiGateway: new OpenAIClient(),
+  generateId: () => uuidv4(),
+  loadDictionary,
+});
+
 const createTranscriptUseCase = new CreateTranscriptUseCase({
   videoRepository,
   transcriptionRepository,
@@ -94,14 +102,7 @@ const createTranscriptUseCase = new CreateTranscriptUseCase({
   transcriptionGateway: new SpeechToTextClient(),
   videoProcessingGateway: new FFmpegClient(),
   generateId: () => uuidv4(),
-});
-
-const refineTranscriptUseCase = new RefineTranscriptUseCase({
-  transcriptionRepository,
-  refinedTranscriptionRepository,
-  aiGateway: new OpenAIClient(),
-  generateId: () => uuidv4(),
-  loadDictionary,
+  refineTranscriptUseCase,
 });
 
 /**
@@ -230,17 +231,14 @@ router.post('/:videoId/refine-transcript', async (req, res, next) => {
   try {
     const { videoId } = req.params;
 
-    // Return immediately with status
+    // Execute refinement and wait for completion
+    await refineTranscriptUseCase.execute(videoId ?? '');
+
     const response: RefineTranscriptResponse = {
       videoId: videoId ?? '',
-      status: 'refining',
+      status: 'refined',
     };
-    res.status(202).json(response);
-
-    // Execute refinement in background (fire and forget)
-    refineTranscriptUseCase.execute(videoId ?? '').catch((error) => {
-      console.error('[RefineTranscriptUseCase] Error:', error);
-    });
+    res.status(200).json(response);
   } catch (error) {
     next(error);
   }
