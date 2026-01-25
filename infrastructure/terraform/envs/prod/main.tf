@@ -105,8 +105,9 @@ module "cloud_run" {
   openai_api_key_secret_id     = module.secrets.openai_api_key_secret_id
   google_credentials_secret_id = module.secrets.google_credentials_secret_id
 
-  cors_origin                  = var.cors_origin
+  cors_origin                   = var.cors_origin
   google_drive_output_folder_id = var.google_drive_output_folder_id
+  transcript_output_folder_id   = var.transcript_output_folder_id
 
   depends_on = [module.cloud_sql, module.secrets]
 }

@@ -107,8 +107,9 @@ module "cloud_run" {
   google_credentials_secret_id = module.secrets.google_credentials_secret_id
   database_password_secret_id  = module.secrets.database_password_secret_id
 
-  cors_origin                  = var.cors_origin
+  cors_origin                   = var.cors_origin
   google_drive_output_folder_id = var.google_drive_output_folder_id
+  transcript_output_folder_id   = var.transcript_output_folder_id
 
   depends_on = [module.cloud_sql, module.secrets]
 }

@@ -1,6 +1,8 @@
 import type { AiGateway } from '../../domain/gateways/ai.gateway.js';
 import type { RefinedTranscriptionRepositoryGateway } from '../../domain/gateways/refined-transcription-repository.gateway.js';
+import type { StorageGateway } from '../../domain/gateways/storage.gateway.js';
 import type { TranscriptionRepositoryGateway } from '../../domain/gateways/transcription-repository.gateway.js';
+import type { VideoRepositoryGateway } from '../../domain/gateways/video-repository.gateway.js';
 import {
   type RefinedSentence,
   RefinedTranscription,
@@ -14,9 +16,12 @@ import { NotFoundError } from '../errors.js';
 export interface RefineTranscriptUseCaseDeps {
   transcriptionRepository: TranscriptionRepositoryGateway;
   refinedTranscriptionRepository: RefinedTranscriptionRepositoryGateway;
+  videoRepository: VideoRepositoryGateway;
+  storageGateway: StorageGateway;
   aiGateway: AiGateway;
   generateId: () => string;
   loadDictionary: () => Promise<ProperNounDictionary>;
+  transcriptOutputFolderId?: string;
 }
 
 export interface RefineTranscriptResult {
@@ -34,18 +39,24 @@ interface LlmResponse {
 export class RefineTranscriptUseCase {
   private readonly transcriptionRepository: TranscriptionRepositoryGateway;
   private readonly refinedTranscriptionRepository: RefinedTranscriptionRepositoryGateway;
+  private readonly videoRepository: VideoRepositoryGateway;
+  private readonly storageGateway: StorageGateway;
   private readonly aiGateway: AiGateway;
   private readonly generateId: () => string;
   private readonly loadDictionary: () => Promise<ProperNounDictionary>;
   private readonly promptService: TranscriptRefinementPromptService;
+  private readonly transcriptOutputFolderId?: string;
 
   constructor(deps: RefineTranscriptUseCaseDeps) {
     this.transcriptionRepository = deps.transcriptionRepository;
     this.refinedTranscriptionRepository = deps.refinedTranscriptionRepository;
+    this.videoRepository = deps.videoRepository;
+    this.storageGateway = deps.storageGateway;
     this.aiGateway = deps.aiGateway;
     this.generateId = deps.generateId;
     this.loadDictionary = deps.loadDictionary;
     this.promptService = new TranscriptRefinementPromptService();
+    this.transcriptOutputFolderId = deps.transcriptOutputFolderId;
   }
 
   private log(message: string, data?: Record<string, unknown>): void {
@@ -112,7 +123,10 @@ export class RefineTranscriptUseCase {
     await this.refinedTranscriptionRepository.save(refinedTranscription);
     this.log('Refined transcription saved', { id: refinedTranscription.id });
 
-    // 9. Return result
+    // 9. Upload refined transcript to Google Drive (best effort)
+    await this.uploadRefinedTranscriptToDrive(videoId, refinedTranscription);
+
+    // 10. Return result
     return {
       id: refinedTranscription.id,
       transcriptionId: refinedTranscription.transcriptionId,
@@ -120,6 +134,70 @@ export class RefineTranscriptUseCase {
       sentenceCount: refinedTranscription.sentences.length,
       dictionaryVersion: refinedTranscription.dictionaryVersion,
     };
+  }
+
+  private async uploadRefinedTranscriptToDrive(
+    videoId: string,
+    refinedTranscription: RefinedTranscription
+  ): Promise<void> {
+    try {
+      if (!this.transcriptOutputFolderId) {
+        this.log(
+          'Warning: TRANSCRIPT_OUTPUT_FOLDER_ID not set, skipping refined transcript upload'
+        );
+        return;
+      }
+
+      // Get video to get googleDriveFileId
+      const video = await this.videoRepository.findById(videoId);
+      if (!video) {
+        this.log('Warning: Video not found, skipping refined transcript upload');
+        return;
+      }
+
+      const videoMetadata = await this.storageGateway.getFileMetadata(video.googleDriveFileId);
+      const videoName = videoMetadata.name.replace(/\.[^/.]+$/, '');
+
+      // Create folder with video name under the output folder
+      const videoFolder = await this.storageGateway.findOrCreateFolder(
+        videoName,
+        this.transcriptOutputFolderId
+      );
+
+      // Upload PlainText version
+      await this.storageGateway.uploadFile({
+        name: `${videoName}_整形済み.txt`,
+        mimeType: 'text/plain; charset=utf-8',
+        content: Buffer.from(refinedTranscription.fullText, 'utf-8'),
+        parentFolderId: videoFolder.id,
+      });
+
+      // Upload JSON version
+      const jsonContent = JSON.stringify(
+        {
+          sentences: refinedTranscription.sentences,
+          dictionaryVersion: refinedTranscription.dictionaryVersion,
+        },
+        null,
+        2
+      );
+      await this.storageGateway.uploadFile({
+        name: `${videoName}_整形済み.json`,
+        mimeType: 'application/json',
+        content: Buffer.from(jsonContent, 'utf-8'),
+        parentFolderId: videoFolder.id,
+      });
+
+      this.log('Refined transcript files uploaded to Google Drive', {
+        folderId: videoFolder.id,
+        files: [`${videoName}_整形済み.txt`, `${videoName}_整形済み.json`],
+      });
+    } catch (uploadError) {
+      // Log but don't fail - file upload is optional
+      this.log('Warning: Failed to upload refined transcript files to Google Drive', {
+        error: uploadError instanceof Error ? uploadError.message : 'Unknown error',
+      });
+    }
   }
 
   private parseResponse(response: string): LlmResponse {

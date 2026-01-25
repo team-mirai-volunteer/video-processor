@@ -106,6 +106,11 @@ resource "google_cloud_run_v2_service" "main" {
       }
 
       env {
+        name  = "TRANSCRIPT_OUTPUT_FOLDER_ID"
+        value = var.transcript_output_folder_id
+      }
+
+      env {
         name  = "GOOGLE_SERVICE_ACCOUNT_EMAIL"
         value = var.service_account_email
       }
