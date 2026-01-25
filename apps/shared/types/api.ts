@@ -157,3 +157,38 @@ export interface GetTranscriptionResponse {
   durationSeconds: number;
   createdAt: Date;
 }
+
+// ============================================================================
+// Refined Transcription API
+// ============================================================================
+
+/**
+ * A sentence segment with timestamp (merged from word-level segments)
+ */
+export interface RefinedSentence {
+  text: string;
+  startTimeSeconds: number;
+  endTimeSeconds: number;
+  originalSegmentIndices: number[];
+}
+
+/**
+ * POST /api/videos/:videoId/refine-transcript response
+ */
+export interface RefineTranscriptResponse {
+  videoId: string;
+  status: 'refining' | 'refined' | 'failed';
+}
+
+/**
+ * GET /api/videos/:videoId/transcription/refined response
+ */
+export interface GetRefinedTranscriptionResponse {
+  id: string;
+  transcriptionId: string;
+  fullText: string;
+  sentences: RefinedSentence[];
+  dictionaryVersion: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
