@@ -1,73 +1,61 @@
 variable "project_id" {
-  description = "The GCP project ID"
+  description = "GCP project ID"
   type        = string
 }
 
 variable "project_name" {
-  description = "The project name used for resource naming"
+  description = "Project name for resource naming"
   type        = string
 }
 
 variable "region" {
-  description = "The GCP region"
+  description = "GCP region"
   type        = string
   default     = "asia-northeast1"
 }
 
-variable "network_id" {
-  description = "The VPC network ID for private IP"
+variable "vpc_id" {
+  description = "VPC network ID"
   type        = string
 }
 
 variable "private_vpc_connection" {
-  description = "The private VPC connection dependency"
+  description = "Private VPC connection dependency"
   type        = string
 }
 
 variable "tier" {
-  description = "The machine type for the Cloud SQL instance"
+  description = "Cloud SQL instance tier"
   type        = string
   default     = "db-f1-micro"
 }
 
 variable "availability_type" {
-  description = "The availability type (ZONAL or REGIONAL)"
+  description = "Availability type (ZONAL or REGIONAL)"
   type        = string
   default     = "ZONAL"
 }
 
 variable "disk_size" {
-  description = "The disk size in GB"
+  description = "Disk size in GB"
   type        = number
   default     = 10
 }
 
 variable "backup_enabled" {
-  description = "Whether to enable automated backups"
+  description = "Enable automated backups"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "deletion_protection" {
-  description = "Whether to enable deletion protection"
+  description = "Enable deletion protection"
   type        = bool
-  default     = true
-}
-
-variable "database_name" {
-  description = "The name of the database to create"
-  type        = string
-  default     = "video_processor"
-}
-
-variable "database_user" {
-  description = "The database user name"
-  type        = string
-  default     = "app"
+  default     = false
 }
 
 variable "database_password" {
-  description = "The database user password"
+  description = "Database user password"
   type        = string
   sensitive   = true
 }

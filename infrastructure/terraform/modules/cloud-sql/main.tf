@@ -1,44 +1,45 @@
-# Cloud SQL PostgreSQL Instance
+# Cloud SQL Instance
 resource "google_sql_database_instance" "main" {
   name             = "${var.project_name}-db"
-  project          = var.project_id
-  region           = var.region
   database_version = "POSTGRES_15"
+  region           = var.region
+  project          = var.project_id
 
-  depends_on = [var.private_vpc_connection]
+  deletion_protection = var.deletion_protection
 
   settings {
     tier              = var.tier
     availability_type = var.availability_type
     disk_size         = var.disk_size
     disk_type         = "PD_SSD"
-    disk_autoresize   = true
 
     ip_configuration {
       ipv4_enabled                                  = false
-      private_network                               = var.network_id
+      private_network                               = var.vpc_id
       enable_private_path_for_google_cloud_services = true
     }
 
     backup_configuration {
       enabled                        = var.backup_enabled
-      start_time                     = "03:00"
       point_in_time_recovery_enabled = var.backup_enabled
+      start_time                     = "03:00"
+      transaction_log_retention_days = var.backup_enabled ? 7 : null
+
       backup_retention_settings {
-        retained_backups = 7
+        retained_backups = var.backup_enabled ? 7 : 1
         retention_unit   = "COUNT"
       }
     }
 
     maintenance_window {
-      day          = 7
-      hour         = 3
+      day          = 7 # Sunday
+      hour         = 3 # 3:00 AM
       update_track = "stable"
     }
 
     database_flags {
-      name  = "max_connections"
-      value = "100"
+      name  = "log_checkpoints"
+      value = "on"
     }
 
     insights_config {
@@ -50,20 +51,20 @@ resource "google_sql_database_instance" "main" {
     }
   }
 
-  deletion_protection = var.deletion_protection
+  depends_on = [var.private_vpc_connection]
 }
 
 # Database
 resource "google_sql_database" "main" {
-  name     = var.database_name
-  project  = var.project_id
+  name     = "video_processor"
   instance = google_sql_database_instance.main.name
+  project  = var.project_id
 }
 
 # Database User
-resource "google_sql_user" "main" {
-  name     = var.database_user
-  project  = var.project_id
+resource "google_sql_user" "app" {
+  name     = "app"
   instance = google_sql_database_instance.main.name
   password = var.database_password
+  project  = var.project_id
 }
