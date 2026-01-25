@@ -173,9 +173,11 @@ export class ExtractClipsUseCase {
       await this.clipRepository.saveMany(clips);
 
       // 8. Get or create output folder
-      const parentFolder = this.outputFolderId ?? metadata.parents?.[0];
+      // Prefer video's parent folder, fallback to outputFolderId for integration tests
+      const parentFolder = metadata.parents?.[0] ?? this.outputFolderId;
       this.log('Determining output folder', {
-        configuredOutputFolderId: this.outputFolderId,
+        videoParentFolder: metadata.parents?.[0],
+        fallbackOutputFolderId: this.outputFolderId,
         selectedParentFolder: parentFolder,
       });
       const shortsFolder = await this.storageGateway.findOrCreateFolder('ショート用', parentFolder);
