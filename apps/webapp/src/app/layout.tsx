@@ -4,7 +4,7 @@ import Link from 'next/link';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Video Processor',
+  title: 'みらい動画スタジオ',
   description: 'Google Drive動画からショート動画を自動切り抜き',
 };
 
@@ -14,7 +14,7 @@ function Header() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2 font-bold text-xl">
           <Video className="h-6 w-6" />
-          <span>Video Processor</span>
+          <span>みらい動画スタジオ</span>
         </Link>
         <nav className="flex items-center gap-6">
           <Link href="/" className="text-sm font-medium hover:text-primary">
@@ -33,7 +33,7 @@ function Footer() {
   return (
     <footer className="border-t">
       <div className="container mx-auto flex h-14 items-center justify-center px-4">
-        <p className="text-sm text-muted-foreground">Video Processor - Team Mirai Volunteer</p>
+        <p className="text-sm text-muted-foreground">みらい動画スタジオ - Team Mirai Volunteer</p>
       </div>
     </footer>
   );
