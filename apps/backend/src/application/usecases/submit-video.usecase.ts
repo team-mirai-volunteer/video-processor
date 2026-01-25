@@ -1,29 +1,23 @@
 import type { SubmitVideoResponse } from '@video-processor/shared';
-import type { ProcessingJobRepositoryGateway } from '../../domain/gateways/processing-job-repository.gateway.js';
 import type { VideoRepositoryGateway } from '../../domain/gateways/video-repository.gateway.js';
-import { ProcessingJob } from '../../domain/models/processing-job.js';
 import { Video } from '../../domain/models/video.js';
 import { ConflictError, ValidationError } from '../errors.js';
 
 export interface SubmitVideoInput {
   googleDriveUrl: string;
-  clipInstructions: string;
 }
 
 export interface SubmitVideoUseCaseDeps {
   videoRepository: VideoRepositoryGateway;
-  processingJobRepository: ProcessingJobRepositoryGateway;
   generateId: () => string;
 }
 
 export class SubmitVideoUseCase {
   private readonly videoRepository: VideoRepositoryGateway;
-  private readonly processingJobRepository: ProcessingJobRepositoryGateway;
   private readonly generateId: () => string;
 
   constructor(deps: SubmitVideoUseCaseDeps) {
     this.videoRepository = deps.videoRepository;
-    this.processingJobRepository = deps.processingJobRepository;
     this.generateId = deps.generateId;
   }
 
@@ -48,35 +42,14 @@ export class SubmitVideoUseCase {
       );
     }
 
-    // Create processing job
-    const processingJobResult = ProcessingJob.create(
-      {
-        videoId: video.id,
-        clipInstructions: input.clipInstructions,
-      },
-      this.generateId
-    );
-
-    if (!processingJobResult.success) {
-      throw new ValidationError(processingJobResult.error.message);
-    }
-
-    const processingJob = processingJobResult.value;
-
-    // Save both
+    // Save video (processing job is no longer created here)
     await this.videoRepository.save(video);
-    await this.processingJobRepository.save(processingJob);
 
     return {
       id: video.id,
       googleDriveFileId: video.googleDriveFileId,
       googleDriveUrl: video.googleDriveUrl,
       status: video.status,
-      processingJob: {
-        id: processingJob.id,
-        status: processingJob.status,
-        clipInstructions: processingJob.clipInstructions,
-      },
       createdAt: video.createdAt,
     };
   }

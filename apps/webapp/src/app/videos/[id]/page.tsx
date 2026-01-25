@@ -4,7 +4,9 @@ import { ClipList } from '@/components/features/clip-list';
 import { StatusBadge } from '@/components/features/video-list';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
 import { ApiError, apiClient } from '@/lib/api-client';
 import { formatBytes, formatDate, formatDuration } from '@/lib/utils';
 import type { GetTranscriptionResponse, VideoWithRelations } from '@video-processor/shared';
@@ -16,13 +18,15 @@ import {
   FileText,
   HardDrive,
   Loader2,
+  Scissors,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
 
 export default function VideoDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
 
   const [video, setVideo] = useState<VideoWithRelations | null>(null);
@@ -31,42 +35,45 @@ export default function VideoDetailPage() {
   const [transcription, setTranscription] = useState<GetTranscriptionResponse | null>(null);
   const [transcriptionLoading, setTranscriptionLoading] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
+  const [clipInstructions, setClipInstructions] = useState('');
+  const [extracting, setExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
+
+  const fetchVideo = useCallback(async () => {
+    try {
+      const response = await apiClient.getVideo(id);
+      setVideo(response);
+
+      // Try to fetch transcription if video is transcribed or later
+      if (
+        response.status === 'transcribed' ||
+        response.status === 'extracting' ||
+        response.status === 'completed'
+      ) {
+        setTranscriptionLoading(true);
+        try {
+          const transcriptionResponse = await apiClient.getTranscription(id);
+          setTranscription(transcriptionResponse);
+        } catch {
+          // Transcription might not exist yet
+        } finally {
+          setTranscriptionLoading(false);
+        }
+      }
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        setError('動画が見つかりません');
+      } else {
+        setError(err instanceof Error ? err.message : '動画の取得に失敗しました');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
 
   useEffect(() => {
-    async function fetchVideo() {
-      try {
-        const response = await apiClient.getVideo(id);
-        setVideo(response);
-
-        // Try to fetch transcription if video is transcribed or later
-        if (
-          response.status === 'transcribed' ||
-          response.status === 'extracting' ||
-          response.status === 'completed'
-        ) {
-          setTranscriptionLoading(true);
-          try {
-            const transcriptionResponse = await apiClient.getTranscription(id);
-            setTranscription(transcriptionResponse);
-          } catch {
-            // Transcription might not exist yet
-          } finally {
-            setTranscriptionLoading(false);
-          }
-        }
-      } catch (err) {
-        if (err instanceof ApiError && err.status === 404) {
-          setError('動画が見つかりません');
-        } else {
-          setError(err instanceof Error ? err.message : '動画の取得に失敗しました');
-        }
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchVideo();
-  }, [id]);
+  }, [fetchVideo]);
 
   const handleTranscribe = async () => {
     setTranscribing(true);
@@ -79,6 +86,28 @@ export default function VideoDetailPage() {
       setError(err instanceof Error ? err.message : 'トランスクリプト作成に失敗しました');
     } finally {
       setTranscribing(false);
+    }
+  };
+
+  const handleExtractClips = async () => {
+    if (!clipInstructions.trim()) return;
+
+    setExtracting(true);
+    setExtractError(null);
+
+    try {
+      await apiClient.extractClips(id, { clipInstructions });
+      // Refresh the video data to show updated status
+      await fetchVideo();
+      setClipInstructions('');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setExtractError(err.message);
+      } else {
+        setExtractError('切り抜き処理の開始に失敗しました');
+      }
+    } finally {
+      setExtracting(false);
     }
   };
 
@@ -185,6 +214,7 @@ export default function VideoDetailPage() {
         </CardContent>
       </Card>
 
+      {/* トランスクリプトカード */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -239,6 +269,85 @@ export default function VideoDetailPage() {
             )}
         </CardContent>
       </Card>
+
+      {/* 切り抜き指示フォーム - transcribed状態の時のみ表示 */}
+      {video.status === 'transcribed' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Scissors className="h-5 w-5" />
+              切り抜き作成
+            </CardTitle>
+            <CardDescription>
+              トランスクリプトを元に、切り抜きたい箇所を指示してください。
+              AIが指示に基づいて最適な箇所を特定し、ショート動画を作成します。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="clipInstructions">切り抜き指示</Label>
+                <Textarea
+                  id="clipInstructions"
+                  placeholder="以下の箇所を切り抜いてください：&#10;1. 冒頭の自己紹介部分&#10;2. 政策について語っている部分&#10;3. 質疑応答のハイライト"
+                  value={clipInstructions}
+                  onChange={(e) => setClipInstructions(e.target.value)}
+                  rows={6}
+                  disabled={extracting}
+                />
+                <p className="text-sm text-muted-foreground">
+                  どの箇所を切り抜きたいか、具体的に指示してください。
+                </p>
+              </div>
+
+              {extractError && (
+                <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+                  {extractError}
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleExtractClips}
+                  disabled={extracting || !clipInstructions.trim()}
+                >
+                  {extracting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      処理中...
+                    </>
+                  ) : (
+                    <>
+                      <Scissors className="mr-2 h-4 w-4" />
+                      切り抜きを作成
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 処理中ステータス表示 - extracting状態の時のみ */}
+      {video.status === 'extracting' && (
+        <Card>
+          <CardContent className="py-8">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <div className="text-center">
+                <p className="font-medium">切り抜き動画を作成中...</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  この処理には数分かかる場合があります。ページを更新して進捗を確認できます。
+                </p>
+              </div>
+              <Button variant="outline" onClick={() => router.refresh()}>
+                更新
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {video.processingJobs.length > 0 && (
         <Card>

@@ -1,4 +1,6 @@
 import type {
+  ExtractClipsRequest,
+  ExtractClipsResponse,
   GetClipsResponse,
   GetTranscriptionResponse,
   GetVideoResponse,
@@ -55,7 +57,7 @@ const mockVideos: GetVideosResponse = {
       id: '2',
       googleDriveUrl: 'https://drive.google.com/file/d/def456/view',
       title: '政策説明ライブ配信',
-      status: 'processing',
+      status: 'transcribing',
       clipCount: 0,
       createdAt: new Date('2024-01-16T14:30:00Z'),
     },
@@ -219,11 +221,6 @@ export const apiClient = {
         googleDriveFileId: 'new-file-id',
         googleDriveUrl: request.googleDriveUrl,
         status: 'pending',
-        processingJob: {
-          id: 'new-job-id',
-          status: 'pending',
-          clipInstructions: request.clipInstructions,
-        },
         createdAt: new Date(),
       };
     }
@@ -283,6 +280,21 @@ export const apiClient = {
     }
 
     return fetchApi<GetTranscriptionResponse>(`/api/videos/${videoId}/transcription`);
+  },
+
+  async extractClips(videoId: string, request: ExtractClipsRequest): Promise<ExtractClipsResponse> {
+    if (USE_MOCK) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return {
+        videoId,
+        status: 'extracting',
+      };
+    }
+
+    return fetchApi<ExtractClipsResponse>(`/api/videos/${videoId}/extract-clips`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
   },
 };
 

@@ -1,14 +1,42 @@
 /**
  * Video status enum
+ * - pending: 動画登録済み、処理待ち
+ * - transcribing: トランスクリプト作成中
+ * - transcribed: トランスクリプト完了、切り抜き待ち
+ * - extracting: 切り抜き動画作成中
+ * - completed: 全処理完了
+ * - failed: エラー発生
  */
 export type VideoStatus =
   | 'pending'
   | 'transcribing'
   | 'transcribed'
   | 'extracting'
-  | 'processing'
   | 'completed'
   | 'failed';
+
+/**
+ * Transcription segment with timestamp
+ */
+export interface TranscriptionSegment {
+  text: string;
+  startTimeSeconds: number;
+  endTimeSeconds: number;
+  confidence: number;
+}
+
+/**
+ * Transcription entity
+ */
+export interface Transcription {
+  id: string;
+  videoId: string;
+  fullText: string;
+  segments: TranscriptionSegment[];
+  languageCode: string;
+  durationSeconds: number;
+  createdAt: Date;
+}
 
 /**
  * Video entity type
@@ -58,27 +86,4 @@ export interface VideoWithRelations {
   transcription: Transcription | null;
   createdAt: Date;
   updatedAt: Date;
-}
-
-/**
- * Transcription segment with timestamp
- */
-export interface TranscriptionSegment {
-  text: string;
-  startTimeSeconds: number;
-  endTimeSeconds: number;
-  confidence: number;
-}
-
-/**
- * Transcription entity
- */
-export interface Transcription {
-  id: string;
-  videoId: string;
-  fullText: string;
-  segments: TranscriptionSegment[];
-  languageCode: string;
-  durationSeconds: number;
-  createdAt: Date;
 }
