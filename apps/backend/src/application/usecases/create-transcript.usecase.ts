@@ -61,19 +61,33 @@ export class CreateTranscriptUseCase {
     }
     this.log('Found video', { videoId: video.id, googleDriveFileId: video.googleDriveFileId });
 
+    // Keep track of the latest video state for phase updates
+    let currentVideo = video;
+
     try {
-      // Update status to transcribing
-      await this.videoRepository.save(video.withStatus('transcribing'));
-      this.log('Status updated to transcribing');
+      // Update status to transcribing with downloading phase
+      currentVideo = currentVideo.withStatus('transcribing').withTranscriptionPhase('downloading');
+      await this.videoRepository.save(currentVideo);
+      this.log('Status updated to transcribing, phase: downloading');
 
       // Get video buffer (from GCS if available, otherwise download from Google Drive)
-      const videoBuffer = await this.getVideoBuffer(video);
+      const videoBuffer = await this.getVideoBuffer(currentVideo);
       this.log('Video buffer ready', { sizeBytes: videoBuffer.length });
+
+      // Update phase to extracting_audio
+      currentVideo = currentVideo.withTranscriptionPhase('extracting_audio');
+      await this.videoRepository.save(currentVideo);
+      this.log('Phase updated to extracting_audio');
 
       // Extract audio from video (FLAC is smaller than WAV)
       this.log('Extracting audio from video...');
       const audioBuffer = await this.videoProcessingGateway.extractAudio(videoBuffer, 'flac');
       this.log('Audio extracted', { sizeBytes: audioBuffer.length });
+
+      // Update phase to transcribing
+      currentVideo = currentVideo.withTranscriptionPhase('transcribing');
+      await this.videoRepository.save(currentVideo);
+      this.log('Phase updated to transcribing');
 
       // Transcribe audio using Speech-to-Text (Batch API for long audio support)
       this.log('Starting transcription (Batch API)...');
@@ -87,10 +101,15 @@ export class CreateTranscriptUseCase {
         durationSeconds: transcriptionResult.durationSeconds,
       });
 
+      // Update phase to saving
+      currentVideo = currentVideo.withTranscriptionPhase('saving');
+      await this.videoRepository.save(currentVideo);
+      this.log('Phase updated to saving');
+
       // Create Transcription domain object
       const transcriptionDomain = Transcription.create(
         {
-          videoId: video.id,
+          videoId: currentVideo.id,
           fullText: transcriptionResult.fullText,
           segments: transcriptionResult.segments,
           languageCode: transcriptionResult.languageCode,
@@ -107,16 +126,17 @@ export class CreateTranscriptUseCase {
       await this.transcriptionRepository.save(transcriptionDomain.value);
       this.log('Transcription saved', { transcriptionId: transcriptionDomain.value.id });
 
-      // Update video status to transcribed
-      await this.videoRepository.save(video.withStatus('transcribed'));
-      this.log('Video status updated to transcribed');
-
       // Refine transcript if refineTranscriptUseCase is provided
       // Note: refined transcript will be uploaded to Google Drive by RefineTranscriptUseCase
       if (this.refineTranscriptUseCase) {
+        // Update phase to refining
+        currentVideo = currentVideo.withTranscriptionPhase('refining');
+        await this.videoRepository.save(currentVideo);
+        this.log('Phase updated to refining');
+
         this.log('Starting transcript refinement...');
         try {
-          await this.refineTranscriptUseCase.execute(video.id);
+          await this.refineTranscriptUseCase.execute(currentVideo.id);
           this.log('Transcript refinement completed');
         } catch (refineError) {
           // Log but don't fail - refinement is optional
@@ -126,8 +146,13 @@ export class CreateTranscriptUseCase {
         }
       }
 
+      // Update video status to transcribed (phase will be cleared)
+      currentVideo = currentVideo.withStatus('transcribed');
+      await this.videoRepository.save(currentVideo);
+      this.log('Video status updated to transcribed');
+
       return {
-        videoId: video.id,
+        videoId: currentVideo.id,
         transcriptionId: transcriptionDomain.value.id,
       };
     } catch (error) {
@@ -135,7 +160,7 @@ export class CreateTranscriptUseCase {
       this.log('Processing failed', { error: errorMessage });
 
       // Update video to failed
-      await this.videoRepository.save(video.withStatus('failed', errorMessage));
+      await this.videoRepository.save(currentVideo.withStatus('failed', errorMessage));
 
       throw error;
     }
