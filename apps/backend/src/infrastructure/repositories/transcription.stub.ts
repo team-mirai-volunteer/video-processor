@@ -1,7 +1,5 @@
-import type {
-  TranscriptionEntity,
-  TranscriptionRepositoryGateway,
-} from '../../domain/gateways/transcription-repository.gateway.js';
+import type { TranscriptionRepositoryGateway } from '../../domain/gateways/transcription-repository.gateway.js';
+import type { Transcription } from '../../domain/models/transcription.js';
 
 /**
  * Stub implementation of TranscriptionRepositoryGateway
@@ -9,23 +7,26 @@ import type {
  */
 export class TranscriptionRepositoryStub implements TranscriptionRepositoryGateway {
   // In-memory storage for development/testing
-  private transcriptions: Map<string, TranscriptionEntity> = new Map();
+  private transcriptions: Map<string, Transcription> = new Map();
 
-  async save(transcription: TranscriptionEntity): Promise<void> {
+  async save(transcription: Transcription): Promise<void> {
     this.transcriptions.set(transcription.videoId, transcription);
   }
 
-  async findByVideoId(videoId: string): Promise<TranscriptionEntity | null> {
+  async findById(id: string): Promise<Transcription | null> {
+    for (const transcription of this.transcriptions.values()) {
+      if (transcription.id === id) {
+        return transcription;
+      }
+    }
+    return null;
+  }
+
+  async findByVideoId(videoId: string): Promise<Transcription | null> {
     return this.transcriptions.get(videoId) ?? null;
   }
 
-  async delete(id: string): Promise<void> {
-    // Find and delete by id
-    for (const [videoId, transcription] of this.transcriptions.entries()) {
-      if (transcription.id === id) {
-        this.transcriptions.delete(videoId);
-        break;
-      }
-    }
+  async deleteByVideoId(videoId: string): Promise<void> {
+    this.transcriptions.delete(videoId);
   }
 }
