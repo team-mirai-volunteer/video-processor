@@ -6,6 +6,7 @@
   "scripts": {
     "postinstall": "prisma generate --schema=src/infrastructure/database/prisma/schema.prisma",
     "dev": "tsx watch src/index.ts",
+    "dev:test": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "biome check .",
@@ -18,6 +19,7 @@
     "db:push": "prisma db push --schema=src/infrastructure/database/prisma/schema.prisma",
     "db:migrate": "prisma migrate dev --schema=src/infrastructure/database/prisma/schema.prisma",
     "db:studio": "prisma studio --schema=src/infrastructure/database/prisma/schema.prisma",
+    "db:seed:e2e": "tsx prisma/seed-e2e.ts",
     "dep-cruise": "depcruise src --config .dependency-cruiser.cjs"
   },
   "dependencies": {

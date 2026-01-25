@@ -9,7 +9,9 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:real": "E2E_USE_REAL_BACKEND=true playwright test test/e2e/real-backend",
+    "test:e2e:real:ui": "E2E_USE_REAL_BACKEND=true playwright test test/e2e/real-backend --ui"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
