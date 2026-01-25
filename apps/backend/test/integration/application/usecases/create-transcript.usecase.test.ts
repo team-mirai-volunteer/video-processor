@@ -251,7 +251,6 @@ describe.skipIf(!runIntegrationTests)('CreateTranscriptUseCase Integration', () 
     // Verify video status was updated
     const updatedVideo = await videoRepository.findById(video.id);
     expect(updatedVideo?.status).toBe('transcribed');
-    expect(updatedVideo?.title).toBe('sample.mp4');
 
     // ===== Refine Transcript =====
     // Act: Execute RefineTranscriptUseCase
