@@ -24,6 +24,7 @@ import { SubmitVideoUseCase } from '../../application/usecases/submit-video.usec
 import type { AiGateway } from '../../domain/gateways/ai.gateway.js';
 import type { StorageGateway } from '../../domain/gateways/storage.gateway.js';
 import type { TempStorageGateway } from '../../domain/gateways/temp-storage.gateway.js';
+import type { TranscriptionGateway } from '../../domain/gateways/transcription.gateway.js';
 import type { ProperNounDictionary } from '../../domain/services/transcript-refinement-prompt.service.js';
 import { FFmpegClient } from '../../infrastructure/clients/ffmpeg.client.js';
 import { GcsClient } from '../../infrastructure/clients/gcs.client.js';
@@ -33,6 +34,7 @@ import { LocalTempStorageClient } from '../../infrastructure/clients/local-temp-
 import { OpenAIClient } from '../../infrastructure/clients/openai.client.js';
 import { MockAiClient } from '../../infrastructure/clients/openai.client.mock.js';
 import { SpeechToTextClient } from '../../infrastructure/clients/speech-to-text.client.js';
+import { MockSpeechToTextClient } from '../../infrastructure/clients/speech-to-text.client.mock.js';
 import { prisma } from '../../infrastructure/database/connection.js';
 import { ClipRepository } from '../../infrastructure/repositories/clip.repository.js';
 import { ProcessingJobRepository } from '../../infrastructure/repositories/processing-job.repository.js';
@@ -86,9 +88,18 @@ function createAiGateway(): AiGateway {
   return new OpenAIClient();
 }
 
+// USE_MOCK_AI=true でモック、それ以外は実際のSpeech-to-Textクライアント
+function createTranscriptionGateway(): TranscriptionGateway {
+  if (process.env.USE_MOCK_AI === 'true') {
+    return new MockSpeechToTextClient();
+  }
+  return new SpeechToTextClient();
+}
+
 const tempStorageGateway = createTempStorageGateway();
 const storageGateway = createStorageGateway();
 const aiGateway = createAiGateway();
+const transcriptionGateway = createTranscriptionGateway();
 
 // Initialize use cases
 const submitVideoUseCase = new SubmitVideoUseCase({
@@ -134,7 +145,7 @@ const createTranscriptUseCase = new CreateTranscriptUseCase({
   transcriptionRepository,
   storageGateway,
   tempStorageGateway,
-  transcriptionGateway: new SpeechToTextClient(),
+  transcriptionGateway,
   videoProcessingGateway: new FFmpegClient(),
   generateId: () => uuidv4(),
   refineTranscriptUseCase,
