@@ -41,7 +41,7 @@ export default defineConfig({
             DATABASE_URL: 'postgresql://postgres:postgres@localhost:5433/video_processor_test',
             PORT: '8081',
             USE_MOCK_GOOGLE_DRIVE: 'true',
-            USE_MOCK_GEMINI: 'true',
+            USE_MOCK_AI: 'true',
             TEMP_STORAGE_TYPE: 'local',
           },
         },

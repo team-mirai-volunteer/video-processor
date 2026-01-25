@@ -21,6 +21,7 @@ import { GetVideoUseCase } from '../../application/usecases/get-video.usecase.js
 import { GetVideosUseCase } from '../../application/usecases/get-videos.usecase.js';
 import { RefineTranscriptUseCase } from '../../application/usecases/refine-transcript.usecase.js';
 import { SubmitVideoUseCase } from '../../application/usecases/submit-video.usecase.js';
+import type { AiGateway } from '../../domain/gateways/ai.gateway.js';
 import type { StorageGateway } from '../../domain/gateways/storage.gateway.js';
 import type { TempStorageGateway } from '../../domain/gateways/temp-storage.gateway.js';
 import type { ProperNounDictionary } from '../../domain/services/transcript-refinement-prompt.service.js';
@@ -30,6 +31,7 @@ import { GoogleDriveClient } from '../../infrastructure/clients/google-drive.cli
 import { MockGoogleDriveClient } from '../../infrastructure/clients/google-drive.client.mock.js';
 import { LocalTempStorageClient } from '../../infrastructure/clients/local-temp-storage.client.js';
 import { OpenAIClient } from '../../infrastructure/clients/openai.client.js';
+import { MockAiClient } from '../../infrastructure/clients/openai.client.mock.js';
 import { SpeechToTextClient } from '../../infrastructure/clients/speech-to-text.client.js';
 import { prisma } from '../../infrastructure/database/connection.js';
 import { ClipRepository } from '../../infrastructure/repositories/clip.repository.js';
@@ -76,8 +78,17 @@ function createStorageGateway(): StorageGateway {
   return GoogleDriveClient.fromEnv();
 }
 
+// USE_MOCK_AI=true でモック、それ以外は実際のOpenAIクライアント
+function createAiGateway(): AiGateway {
+  if (process.env.USE_MOCK_AI === 'true') {
+    return new MockAiClient();
+  }
+  return new OpenAIClient();
+}
+
 const tempStorageGateway = createTempStorageGateway();
 const storageGateway = createStorageGateway();
+const aiGateway = createAiGateway();
 
 // Initialize use cases
 const submitVideoUseCase = new SubmitVideoUseCase({
@@ -104,7 +115,7 @@ const extractClipsUseCase = new ExtractClipsUseCase({
   refinedTranscriptionRepository,
   storageGateway,
   tempStorageGateway,
-  aiGateway: new OpenAIClient(),
+  aiGateway,
   videoProcessingGateway: new FFmpegClient(),
   generateId: () => uuidv4(),
   outputFolderId: process.env.GOOGLE_DRIVE_OUTPUT_FOLDER_ID,
@@ -113,7 +124,7 @@ const extractClipsUseCase = new ExtractClipsUseCase({
 const refineTranscriptUseCase = new RefineTranscriptUseCase({
   transcriptionRepository,
   refinedTranscriptionRepository,
-  aiGateway: new OpenAIClient(),
+  aiGateway,
   generateId: () => uuidv4(),
   loadDictionary,
 });
