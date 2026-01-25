@@ -60,6 +60,7 @@ const tempStorageGateway = new GcsClient();
 // Initialize use cases
 const submitVideoUseCase = new SubmitVideoUseCase({
   videoRepository,
+  storageGateway: GoogleDriveClient.fromEnv(),
   generateId: () => uuidv4(),
 });
 
