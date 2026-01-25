@@ -13,13 +13,7 @@
         "src/domain/services/timestamp-extractor.service.ts",
         "src/infrastructure/clients/*.ts"
       ],
-      "ignoreDependencies": [
-        "@types/*",
-        "@google-cloud/speech",
-        "fluent-ffmpeg",
-        "googleapis",
-        "dotenv"
-      ],
+      "ignoreDependencies": ["dotenv"],
       "vitest": false
     },
     "apps/webapp": {
