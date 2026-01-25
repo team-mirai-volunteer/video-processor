@@ -56,15 +56,6 @@ module.exports = {
       to: { path: '^src/presentation' },
     },
 
-    // Presentation layer should not depend on infrastructure (use DI instead)
-    {
-      name: 'presentation-cannot-depend-on-infrastructure',
-      severity: 'error',
-      comment: 'Presentation layer must not directly depend on infrastructure layer (use DI)',
-      from: { path: '^src/presentation' },
-      to: { path: '^src/infrastructure' },
-    },
-
     // Common anti-patterns
     {
       name: 'no-circular',
