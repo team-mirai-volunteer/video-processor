@@ -24,14 +24,36 @@ export class SpeechToTextClient implements TranscriptionGateway {
     this.projectId = process.env.GOOGLE_CLOUD_PROJECT ?? '';
     this.location = process.env.SPEECH_TO_TEXT_LOCATION ?? 'us-central1';
     this.bucketName = process.env.SPEECH_TO_TEXT_BUCKET ?? `${this.projectId}-speech-to-text`;
-    this.client = new v2.SpeechClient({
-      apiEndpoint: `${this.location}-speech.googleapis.com`,
-    });
-    this.storage = new Storage();
 
     if (!this.projectId) {
       throw new Error('GOOGLE_CLOUD_PROJECT environment variable is required');
     }
+
+    const credentials = this.getCredentials();
+
+    this.client = new v2.SpeechClient({
+      apiEndpoint: `${this.location}-speech.googleapis.com`,
+      projectId: this.projectId,
+      credentials,
+    });
+    this.storage = new Storage({
+      projectId: this.projectId,
+      credentials,
+    });
+  }
+
+  private getCredentials(): { client_email: string; private_key: string } | undefined {
+    const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    const privateKey = process.env.GOOGLE_PRIVATE_KEY;
+
+    if (clientEmail && privateKey) {
+      return {
+        client_email: clientEmail,
+        private_key: privateKey,
+      };
+    }
+
+    return undefined;
   }
 
   /**
