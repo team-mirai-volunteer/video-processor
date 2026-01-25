@@ -272,6 +272,18 @@ export default function VideoDetailPage() {
               <p className="text-muted-foreground">文字起こしを作成中です...</p>
             </div>
           )}
+          {video.status === 'failed' && (
+            <div className="text-center py-8">
+              <div className="text-destructive mb-4">
+                <p className="font-medium">文字起こしの作成に失敗しました</p>
+                {video.errorMessage && <p className="text-sm mt-2">{video.errorMessage}</p>}
+              </div>
+              <Button onClick={handleTranscribe} disabled={transcribing}>
+                {transcribing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {transcribing ? '再試行中...' : '再試行する'}
+              </Button>
+            </div>
+          )}
           {transcriptionLoading && (
             <div className="text-center py-8">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
