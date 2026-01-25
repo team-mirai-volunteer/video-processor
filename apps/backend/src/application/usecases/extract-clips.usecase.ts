@@ -4,6 +4,7 @@ import type { ClipRepositoryGateway } from '../../domain/gateways/clip-repositor
 import type { StorageGateway } from '../../domain/gateways/storage.gateway.js';
 import type { TempStorageGateway } from '../../domain/gateways/temp-storage.gateway.js';
 import type { TranscriptionRepositoryGateway } from '../../domain/gateways/transcription-repository.gateway.js';
+import type { VideoProcessingGateway } from '../../domain/gateways/video-processing.gateway.js';
 import type { VideoRepositoryGateway } from '../../domain/gateways/video-repository.gateway.js';
 import { Clip } from '../../domain/models/clip.js';
 import type { Video } from '../../domain/models/video.js';
@@ -11,7 +12,6 @@ import { ClipAnalysisPromptService } from '../../domain/services/clip-analysis-p
 import { TimestampExtractorService } from '../../domain/services/timestamp-extractor.service.js';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { CLIP_ERROR_CODES, createClipError } from '../errors/clip.errors.js';
-import type { VideoProcessingService } from '../services/video-processing.service.js';
 
 export interface ExtractClipsInput {
   videoId: string;
@@ -25,7 +25,7 @@ export interface ExtractClipsUseCaseDeps {
   storageGateway: StorageGateway;
   tempStorageGateway: TempStorageGateway;
   aiGateway: AiGateway;
-  videoProcessingService: VideoProcessingService;
+  videoProcessingGateway: VideoProcessingGateway;
   generateId: () => string;
   /** Optional: Default output folder ID for clips (shared drive folder recommended) */
   outputFolderId?: string;
@@ -38,7 +38,7 @@ export class ExtractClipsUseCase {
   private readonly storageGateway: StorageGateway;
   private readonly tempStorageGateway: TempStorageGateway;
   private readonly aiGateway: AiGateway;
-  private readonly videoProcessingService: VideoProcessingService;
+  private readonly videoProcessingGateway: VideoProcessingGateway;
   private readonly timestampExtractor: TimestampExtractorService;
   private readonly clipAnalysisPromptService: ClipAnalysisPromptService;
   private readonly generateId: () => string;
@@ -51,7 +51,7 @@ export class ExtractClipsUseCase {
     this.storageGateway = deps.storageGateway;
     this.tempStorageGateway = deps.tempStorageGateway;
     this.aiGateway = deps.aiGateway;
-    this.videoProcessingService = deps.videoProcessingService;
+    this.videoProcessingGateway = deps.videoProcessingGateway;
     this.timestampExtractor = new TimestampExtractorService();
     this.clipAnalysisPromptService = new ClipAnalysisPromptService();
     this.generateId = deps.generateId;
@@ -176,7 +176,7 @@ export class ExtractClipsUseCase {
 
           // Extract clip using FFmpeg
           this.log(`Extracting clip ${i + 1}...`);
-          const clipBuffer = await this.videoProcessingService.extractClip(
+          const clipBuffer = await this.videoProcessingGateway.extractClip(
             videoBuffer,
             clip.startTimeSeconds,
             clip.endTimeSeconds
