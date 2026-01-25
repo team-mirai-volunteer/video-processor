@@ -54,3 +54,6 @@ temp/
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+# Test fixture outputs
+apps/backend/test/fixtures/output/

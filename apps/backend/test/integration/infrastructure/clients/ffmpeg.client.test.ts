@@ -1,8 +1,7 @@
 import { execSync } from 'node:child_process';
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { FFmpegClient } from '../../../../src/infrastructure/clients/ffmpeg.client.js';
 
 /**
@@ -20,55 +19,26 @@ function isFFmpegAvailable(): boolean {
 // Skip integration tests if INTEGRATION_TEST is not set or ffmpeg is not available
 const runIntegrationTests = process.env.INTEGRATION_TEST === 'true' && isFFmpegAvailable();
 
-/**
- * Generate a test video using ffmpeg
- * Creates a 5-second video with color bars and silent audio
- */
-async function generateTestVideo(outputPath: string, durationSeconds: number): Promise<void> {
-  const command = [
-    'ffmpeg',
-    '-f lavfi',
-    `-i color=c=blue:size=320x240:duration=${durationSeconds}`,
-    '-f lavfi',
-    `-i anullsrc=r=44100:cl=stereo:d=${durationSeconds}`,
-    '-c:v libx264',
-    '-preset ultrafast',
-    '-c:a aac',
-    '-shortest',
-    '-y',
-    `"${outputPath}"`,
-  ].join(' ');
+// Path to the test fixture video
+const SAMPLE_VIDEO_PATH = path.join(__dirname, '../../../fixtures/sample.mp4');
+const SAMPLE_VIDEO_DURATION = 12.8; // approximate duration in seconds
+const OUTPUT_DIR = path.join(__dirname, '../../../fixtures/output');
 
-  execSync(command, { stdio: 'ignore' });
+/**
+ * Save buffer to output directory for inspection
+ */
+async function saveOutput(filename: string, buffer: Buffer): Promise<void> {
+  await fs.promises.mkdir(OUTPUT_DIR, { recursive: true });
+  await fs.promises.writeFile(path.join(OUTPUT_DIR, filename), buffer);
 }
 
 describe.skipIf(!runIntegrationTests)('FFmpegClient Integration', () => {
   let client: FFmpegClient;
   let testVideoBuffer: Buffer;
-  let tempDir: string;
-  const testVideoDuration = 5; // seconds
 
   beforeAll(async () => {
     client = new FFmpegClient();
-    tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'ffmpeg-test-'));
-    const testVideoPath = path.join(tempDir, 'test.mp4');
-
-    // Generate test video
-    await generateTestVideo(testVideoPath, testVideoDuration);
-    testVideoBuffer = await fs.promises.readFile(testVideoPath);
-  });
-
-  afterAll(async () => {
-    // Cleanup temp directory
-    if (tempDir) {
-      try {
-        const files = await fs.promises.readdir(tempDir);
-        await Promise.all(files.map((file) => fs.promises.unlink(path.join(tempDir, file))));
-        await fs.promises.rmdir(tempDir);
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
+    testVideoBuffer = await fs.promises.readFile(SAMPLE_VIDEO_PATH);
   });
 
   describe('getVideoDuration', () => {
@@ -76,8 +46,8 @@ describe.skipIf(!runIntegrationTests)('FFmpegClient Integration', () => {
       const duration = await client.getVideoDuration(testVideoBuffer);
 
       // Allow some tolerance for encoding differences
-      expect(duration).toBeGreaterThanOrEqual(testVideoDuration - 0.5);
-      expect(duration).toBeLessThanOrEqual(testVideoDuration + 0.5);
+      expect(duration).toBeGreaterThanOrEqual(SAMPLE_VIDEO_DURATION - 0.5);
+      expect(duration).toBeLessThanOrEqual(SAMPLE_VIDEO_DURATION + 0.5);
     });
 
     it('should throw an error for invalid video data', async () => {
@@ -97,6 +67,9 @@ describe.skipIf(!runIntegrationTests)('FFmpegClient Integration', () => {
       // Verify the clip was created
       expect(clipBuffer).toBeInstanceOf(Buffer);
       expect(clipBuffer.length).toBeGreaterThan(0);
+
+      // Save output for inspection
+      await saveOutput('clip_1s_3s.mp4', clipBuffer);
 
       // Verify the clip duration
       const clipDuration = await client.getVideoDuration(clipBuffer);
@@ -129,8 +102,8 @@ describe.skipIf(!runIntegrationTests)('FFmpegClient Integration', () => {
     });
 
     it('should handle time range beyond video duration', async () => {
-      const startTime = 10; // Beyond video duration
-      const endTime = 15;
+      const startTime = 15; // Beyond video duration (~12.8s)
+      const endTime = 20;
 
       // FFmpeg with stream copy may produce a small/empty output
       // or throw an error depending on the input format
@@ -153,6 +126,9 @@ describe.skipIf(!runIntegrationTests)('FFmpegClient Integration', () => {
       expect(audioBuffer).toBeInstanceOf(Buffer);
       expect(audioBuffer.length).toBeGreaterThan(0);
 
+      // Save output for inspection
+      await saveOutput('audio.wav', audioBuffer);
+
       // WAV files start with 'RIFF' magic bytes
       const magic = audioBuffer.slice(0, 4).toString('ascii');
       expect(magic).toBe('RIFF');
@@ -163,6 +139,9 @@ describe.skipIf(!runIntegrationTests)('FFmpegClient Integration', () => {
 
       expect(audioBuffer).toBeInstanceOf(Buffer);
       expect(audioBuffer.length).toBeGreaterThan(0);
+
+      // Save output for inspection
+      await saveOutput('audio.flac', audioBuffer);
 
       // FLAC files start with 'fLaC' magic bytes
       const magic = audioBuffer.slice(0, 4).toString('ascii');
