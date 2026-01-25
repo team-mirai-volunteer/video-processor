@@ -16,7 +16,6 @@ const statusConfig: Record<
   pending: { label: '待機中', variant: 'secondary' },
   transcribing: { label: '文字起こし中', variant: 'warning' },
   transcribed: { label: '文字起こし完了', variant: 'default' },
-  processing: { label: '処理中', variant: 'warning' },
   analyzing: { label: '分析中', variant: 'warning' },
   extracting: { label: '抽出中', variant: 'warning' },
   uploading: { label: 'アップロード中', variant: 'warning' },
