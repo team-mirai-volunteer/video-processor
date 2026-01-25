@@ -1,5 +1,16 @@
 'use client';
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -9,16 +20,32 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { apiClient } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
 import type { VideoSummary } from '@video-processor/shared';
+import { Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
 import { StatusBadge } from './status-badge';
 
 interface VideoTableProps {
   videos: VideoSummary[];
+  onVideoDeleted?: () => void;
 }
 
-export function VideoTable({ videos }: VideoTableProps) {
+export function VideoTable({ videos, onVideoDeleted }: VideoTableProps) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (videoId: string) => {
+    setDeletingId(videoId);
+    try {
+      await apiClient.deleteVideo(videoId);
+      onVideoDeleted?.();
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   if (videos.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">動画がまだ登録されていません。</div>
@@ -50,9 +77,37 @@ export function VideoTable({ videos }: VideoTableProps) {
             <TableCell className="text-center">{video.clipCount}</TableCell>
             <TableCell>{formatDate(video.createdAt)}</TableCell>
             <TableCell className="text-right">
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/videos/${video.id}`}>詳細</Link>
-              </Button>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/videos/${video.id}`}>詳細</Link>
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" disabled={deletingId === video.id}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>動画を削除しますか？</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        「{video.title || 'タイトルなし'}」を削除します。
+                        関連するクリップ、文字起こし、処理ジョブも削除されます。
+                        この操作は取り消せません。
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleDelete(video.id)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        削除
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </TableCell>
           </TableRow>
         ))}

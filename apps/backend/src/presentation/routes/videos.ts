@@ -15,6 +15,7 @@ import { type Router as ExpressRouter, Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { NotFoundError } from '../../application/errors.js';
 import { CreateTranscriptUseCase } from '../../application/usecases/create-transcript.usecase.js';
+import { DeleteVideoUseCase } from '../../application/usecases/delete-video.usecase.js';
 import { ExtractClipsUseCase } from '../../application/usecases/extract-clips.usecase.js';
 import { GetVideoUseCase } from '../../application/usecases/get-video.usecase.js';
 import { GetVideosUseCase } from '../../application/usecases/get-videos.usecase.js';
@@ -116,6 +117,10 @@ const createTranscriptUseCase = new CreateTranscriptUseCase({
   refineTranscriptUseCase,
 });
 
+const deleteVideoUseCase = new DeleteVideoUseCase({
+  videoRepository,
+});
+
 /**
  * POST /api/videos
  * Register a video (does not start processing)
@@ -201,6 +206,21 @@ router.get('/:id', async (req, res, next) => {
     const { id } = req.params;
     const result = await getVideoUseCase.execute(id ?? '');
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * DELETE /api/videos/:id
+ * Delete a video and all related data (clips, transcriptions, jobs)
+ * Note: Does not delete the file from Google Drive
+ */
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await deleteVideoUseCase.execute(id ?? '');
+    res.status(204).send();
   } catch (error) {
     next(error);
   }

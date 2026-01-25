@@ -97,6 +97,12 @@ export class VideoRepository implements VideoRepositoryGateway {
     return { videos, total };
   }
 
+  async delete(id: string): Promise<void> {
+    await this.prisma.video.delete({
+      where: { id },
+    });
+  }
+
   private toDomain(record: {
     id: string;
     googleDriveFileId: string;
