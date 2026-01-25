@@ -17,15 +17,13 @@ export function RefinedTranscriptView({ refinedTranscription }: RefinedTranscrip
         {refinedTranscription.sentences.map((sentence) => (
           <div
             key={`${sentence.startTimeSeconds}-${sentence.endTimeSeconds}`}
-            className="p-4 hover:bg-muted/50"
+            className="px-3 py-2 hover:bg-muted/50 flex items-center gap-3"
           >
-            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-              <span className="font-mono bg-muted px-2 py-0.5 rounded">
-                {formatTimestamp(sentence.startTimeSeconds)} -{' '}
-                {formatTimestamp(sentence.endTimeSeconds)}
-              </span>
-            </div>
-            <p className="text-sm leading-relaxed">{sentence.text}</p>
+            <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded whitespace-nowrap">
+              {formatTimestamp(sentence.startTimeSeconds)} -{' '}
+              {formatTimestamp(sentence.endTimeSeconds)}
+            </span>
+            <p className="text-sm leading-normal flex-1">{sentence.text}</p>
           </div>
         ))}
       </div>
