@@ -97,16 +97,16 @@ TempStorageGateway
 
 **新規環境変数**:
 ```
-TEMP_STORAGE_TYPE=local|gcs  # デフォルト: local
+TEMP_STORAGE_TYPE=local|gcs  # デフォルト: gcs
 LOCAL_TEMP_STORAGE_DIR=/tmp/video-processor-cache  # localの場合のみ使用
 ```
 
 **切り替えロジック**:
 ```
-if TEMP_STORAGE_TYPE === 'gcs'
-  → GcsClient を使用
+if TEMP_STORAGE_TYPE === 'local'
+  → LocalTempStorageClient を使用
 else
-  → LocalTempStorageClient を使用（デフォルト）
+  → GcsClient を使用（デフォルト）
 ```
 
 ### 3. テストの簡素化
@@ -168,14 +168,14 @@ apps/backend/src/
 
 ## 環境ごとの設定
 
-**ローカル開発**（デフォルト）:
+**本番/ステージング環境**（デフォルト）:
 ```
-# 設定不要（デフォルトでlocal）
-```
-
-**本番/ステージング環境**:
-```
-TEMP_STORAGE_TYPE=gcs
+# 設定不要（デフォルトでGCS）
 ```
 
-これにより、設定なしでローカル開発が可能になる。
+**ローカル開発**:
+```
+TEMP_STORAGE_TYPE=local
+```
+
+ローカル開発時は `.env` に `TEMP_STORAGE_TYPE=local` を設定する。
