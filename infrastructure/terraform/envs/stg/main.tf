@@ -32,6 +32,15 @@ resource "google_project_service" "apis" {
   disable_on_destroy = false
 }
 
+# Service Account for Cloud Run (created early for Secrets IAM binding)
+resource "google_service_account" "cloud_run" {
+  account_id   = "${var.project_name}-run-sa"
+  display_name = "Cloud Run Service Account for ${var.project_name}"
+  project      = var.project_id
+
+  depends_on = [google_project_service.apis]
+}
+
 # Networking
 module "networking" {
   source = "../../modules/networking"
@@ -39,6 +48,7 @@ module "networking" {
   project_id   = var.project_id
   project_name = var.project_name
   region       = var.region
+  env          = var.env
 
   depends_on = [google_project_service.apis]
 }
@@ -65,7 +75,7 @@ module "cloud_sql" {
   depends_on = [module.networking]
 }
 
-# Cloud Run (create service account first for secrets IAM)
+# Cloud Run
 module "cloud_run" {
   source = "../../modules/cloud-run"
 
@@ -73,13 +83,16 @@ module "cloud_run" {
   project_name = var.project_name
   region       = var.region
 
-  container_image = var.container_image
+  container_image       = var.container_image
+  migration_image       = var.migration_image
+  service_account_email = google_service_account.cloud_run.email
 
-  # stg environment settings
-  cpu             = "1"
-  memory          = "1Gi"
+  # stg environment settings (optimized for cost)
+  cpu             = "0.5"
+  memory          = "512Mi"
   min_instances   = 0
-  max_instances   = 2
+  max_instances   = 1
+  concurrency     = 1  # Required when cpu < 1
   request_timeout = 300
 
   allow_unauthenticated = true
@@ -89,10 +102,10 @@ module "cloud_run" {
   cloud_sql_connection_name = module.cloud_sql.connection_name
   database_name             = module.cloud_sql.database_name
   database_user             = module.cloud_sql.database_user
-  database_password         = var.database_password
 
   openai_api_key_secret_id     = module.secrets.openai_api_key_secret_id
   google_credentials_secret_id = module.secrets.google_credentials_secret_id
+  database_password_secret_id  = module.secrets.database_password_secret_id
 
   cors_origin                  = var.cors_origin
   google_drive_output_folder_id = var.google_drive_output_folder_id
@@ -109,10 +122,10 @@ module "secrets" {
 
   openai_api_key          = var.openai_api_key
   google_credentials_json = var.google_credentials_json
+  database_password       = var.database_password
 
-  # Use the Cloud Run service account email
-  # Note: This creates a dependency cycle, so we construct the email manually
-  cloud_run_service_account_email = "${var.project_name}-run-sa@${var.project_id}.iam.gserviceaccount.com"
+  # Use the Cloud Run service account email from the resource we created above
+  cloud_run_service_account_email = google_service_account.cloud_run.email
 
-  depends_on = [google_project_service.apis]
+  depends_on = [google_project_service.apis, google_service_account.cloud_run]
 }

@@ -9,6 +9,12 @@ variable "project_name" {
   default     = "video-processor-stg"
 }
 
+variable "env" {
+  description = "Environment name (stg, prod)"
+  type        = string
+  default     = "stg"
+}
+
 variable "region" {
   description = "GCP region"
   type        = string
@@ -38,6 +44,11 @@ variable "google_credentials_json" {
 # Application
 variable "container_image" {
   description = "Container image URL"
+  type        = string
+}
+
+variable "migration_image" {
+  description = "Migration container image URL"
   type        = string
 }
 

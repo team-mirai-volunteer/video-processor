@@ -24,3 +24,9 @@ variable "cloud_run_service_account_email" {
   description = "Cloud Run service account email for IAM binding"
   type        = string
 }
+
+variable "database_password" {
+  description = "Database password"
+  type        = string
+  sensitive   = true
+}

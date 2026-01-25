@@ -56,8 +56,9 @@ resource "google_service_networking_connection" "private_vpc_connection" {
 }
 
 # VPC Connector (for Cloud Run to access VPC)
+# Note: Connector name must be <= 25 characters
 resource "google_vpc_access_connector" "main" {
-  name          = "${var.project_name}-connector"
+  name          = "${var.env}-vpc-connector"
   region        = var.region
   project       = var.project_id
   ip_cidr_range = "10.8.0.0/28"

@@ -13,3 +13,8 @@ variable "region" {
   type        = string
   default     = "asia-northeast1"
 }
+
+variable "env" {
+  description = "Environment name (stg, prod)"
+  type        = string
+}
