@@ -62,23 +62,6 @@ export class CreateTranscriptUseCase {
       await this.videoRepository.save(video.withStatus('transcribing'));
       this.log('Status updated to transcribing');
 
-      // Get video metadata from Google Drive
-      this.log('Fetching video metadata from Google Drive...');
-      const metadata = await this.storageGateway.getFileMetadata(video.googleDriveFileId);
-      this.log('Got video metadata', {
-        name: metadata.name,
-        size: metadata.size,
-        parents: metadata.parents,
-      });
-
-      const videoWithMetadataResult = video.withMetadata({
-        title: metadata.name,
-        fileSizeBytes: metadata.size,
-      });
-      if (videoWithMetadataResult.success) {
-        await this.videoRepository.save(videoWithMetadataResult.value.withStatus('transcribing'));
-      }
-
       // Get video buffer (from GCS if available, otherwise download from Google Drive)
       const videoBuffer = await this.getVideoBuffer(video);
       this.log('Video buffer ready', { sizeBytes: videoBuffer.length });
@@ -121,10 +104,7 @@ export class CreateTranscriptUseCase {
       this.log('Transcription saved', { transcriptionId: transcriptionDomain.value.id });
 
       // Update video status to transcribed
-      const updatedVideo = videoWithMetadataResult.success
-        ? videoWithMetadataResult.value.withStatus('transcribed')
-        : video.withStatus('transcribed');
-      await this.videoRepository.save(updatedVideo);
+      await this.videoRepository.save(video.withStatus('transcribed'));
       this.log('Video status updated to transcribed');
 
       return {

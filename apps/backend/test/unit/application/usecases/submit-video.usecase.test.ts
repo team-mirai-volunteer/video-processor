@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConflictError, ValidationError } from '../../../../src/application/errors.js';
 import { SubmitVideoUseCase } from '../../../../src/application/usecases/submit-video.usecase.js';
+import type { StorageGateway } from '../../../../src/domain/gateways/storage.gateway.js';
 import type { VideoRepositoryGateway } from '../../../../src/domain/gateways/video-repository.gateway.js';
 import { Video } from '../../../../src/domain/models/video.js';
 
 describe('SubmitVideoUseCase', () => {
   let useCase: SubmitVideoUseCase;
   let videoRepository: VideoRepositoryGateway;
+  let storageGateway: StorageGateway;
   let idCounter: number;
 
   beforeEach(() => {
@@ -19,8 +21,23 @@ describe('SubmitVideoUseCase', () => {
       findMany: vi.fn().mockResolvedValue({ videos: [], total: 0 }),
     };
 
+    storageGateway = {
+      getFileMetadata: vi.fn().mockResolvedValue({
+        id: 'abc123',
+        name: 'Test Video.mp4',
+        mimeType: 'video/mp4',
+        size: 1000000,
+        webViewLink: 'https://drive.google.com/file/d/abc123/view',
+      }),
+      downloadFile: vi.fn().mockResolvedValue(Buffer.from('video content')),
+      uploadFile: vi.fn().mockResolvedValue({ id: 'uploaded-id', webViewLink: 'http://link' }),
+      createFolder: vi.fn().mockResolvedValue({ id: 'folder-id', name: 'folder' }),
+      findOrCreateFolder: vi.fn().mockResolvedValue({ id: 'folder-id', name: 'folder' }),
+    };
+
     useCase = new SubmitVideoUseCase({
       videoRepository,
+      storageGateway,
       generateId: () => `id-${++idCounter}`,
     });
   });

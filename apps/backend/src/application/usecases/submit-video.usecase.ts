@@ -1,4 +1,5 @@
 import type { SubmitVideoResponse } from '@video-processor/shared';
+import type { StorageGateway } from '../../domain/gateways/storage.gateway.js';
 import type { VideoRepositoryGateway } from '../../domain/gateways/video-repository.gateway.js';
 import { Video } from '../../domain/models/video.js';
 import { ConflictError, ValidationError } from '../errors.js';
@@ -9,15 +10,18 @@ export interface SubmitVideoInput {
 
 export interface SubmitVideoUseCaseDeps {
   videoRepository: VideoRepositoryGateway;
+  storageGateway: StorageGateway;
   generateId: () => string;
 }
 
 export class SubmitVideoUseCase {
   private readonly videoRepository: VideoRepositoryGateway;
+  private readonly storageGateway: StorageGateway;
   private readonly generateId: () => string;
 
   constructor(deps: SubmitVideoUseCaseDeps) {
     this.videoRepository = deps.videoRepository;
+    this.storageGateway = deps.storageGateway;
     this.generateId = deps.generateId;
   }
 
@@ -42,15 +46,26 @@ export class SubmitVideoUseCase {
       );
     }
 
-    // Save video (processing job is no longer created here)
-    await this.videoRepository.save(video);
+    // Get video metadata from Google Drive
+    const metadata = await this.storageGateway.getFileMetadata(video.googleDriveFileId);
+
+    // Apply metadata to video
+    const videoWithMetadataResult = video.withMetadata({
+      title: metadata.name,
+      fileSizeBytes: metadata.size,
+    });
+
+    const videoToSave = videoWithMetadataResult.success ? videoWithMetadataResult.value : video;
+
+    // Save video
+    await this.videoRepository.save(videoToSave);
 
     return {
-      id: video.id,
-      googleDriveFileId: video.googleDriveFileId,
-      googleDriveUrl: video.googleDriveUrl,
-      status: video.status,
-      createdAt: video.createdAt,
+      id: videoToSave.id,
+      googleDriveFileId: videoToSave.googleDriveFileId,
+      googleDriveUrl: videoToSave.googleDriveUrl,
+      status: videoToSave.status,
+      createdAt: videoToSave.createdAt,
     };
   }
 }
