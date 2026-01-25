@@ -2,13 +2,13 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import ffmpeg from 'fluent-ffmpeg';
-import type { VideoProcessingService } from '../../application/services/video-processing.service.js';
+import type { VideoProcessingGateway } from '../../domain/gateways/video-processing.gateway.js';
 
 /**
  * FFmpeg client implementation using fluent-ffmpeg
  * Requires ffmpeg to be installed on the system
  */
-export class FFmpegClient implements VideoProcessingService {
+export class FFmpegClient implements VideoProcessingGateway {
   /**
    * Extract a clip from video
    * @param videoBuffer The full video content

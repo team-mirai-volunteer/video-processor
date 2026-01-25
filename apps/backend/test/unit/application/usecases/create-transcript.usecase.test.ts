@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotFoundError } from '../../../../src/application/errors.js';
-import type { VideoProcessingService } from '../../../../src/application/services/video-processing.service.js';
 import { CreateTranscriptUseCase } from '../../../../src/application/usecases/create-transcript.usecase.js';
 import type { StorageGateway } from '../../../../src/domain/gateways/storage.gateway.js';
 import type { TempStorageGateway } from '../../../../src/domain/gateways/temp-storage.gateway.js';
@@ -9,6 +8,7 @@ import type {
   TranscriptionGateway,
   TranscriptionResult,
 } from '../../../../src/domain/gateways/transcription.gateway.js';
+import type { VideoProcessingGateway } from '../../../../src/domain/gateways/video-processing.gateway.js';
 import type { VideoRepositoryGateway } from '../../../../src/domain/gateways/video-repository.gateway.js';
 import { Video } from '../../../../src/domain/models/video.js';
 
@@ -19,7 +19,7 @@ describe('CreateTranscriptUseCase', () => {
   let storageGateway: StorageGateway;
   let tempStorageGateway: TempStorageGateway;
   let transcriptionGateway: TranscriptionGateway;
-  let videoProcessingService: VideoProcessingService;
+  let videoProcessingGateway: VideoProcessingGateway;
   let idCounter: number;
 
   const mockVideo = Video.fromProps({
@@ -89,7 +89,7 @@ describe('CreateTranscriptUseCase', () => {
       transcribeLongAudio: vi.fn().mockResolvedValue(mockTranscriptionResult),
     };
 
-    videoProcessingService = {
+    videoProcessingGateway = {
       extractAudio: vi.fn().mockResolvedValue(Buffer.from('audio content')),
       extractClip: vi.fn().mockResolvedValue(Buffer.from('clip content')),
     };
@@ -100,7 +100,7 @@ describe('CreateTranscriptUseCase', () => {
       storageGateway,
       tempStorageGateway,
       transcriptionGateway,
-      videoProcessingService,
+      videoProcessingGateway,
       generateId: () => `id-${++idCounter}`,
     });
   });
@@ -113,7 +113,7 @@ describe('CreateTranscriptUseCase', () => {
 
     expect(videoRepository.findById).toHaveBeenCalledWith('video-1');
     expect(storageGateway.downloadFile).toHaveBeenCalledWith('abc123');
-    expect(videoProcessingService.extractAudio).toHaveBeenCalled();
+    expect(videoProcessingGateway.extractAudio).toHaveBeenCalled();
     expect(transcriptionGateway.transcribeLongAudio).toHaveBeenCalled();
     expect(transcriptionRepository.save).toHaveBeenCalled();
 

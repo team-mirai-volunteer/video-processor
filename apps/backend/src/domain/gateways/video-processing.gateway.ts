@@ -1,7 +1,7 @@
 /**
- * Service interface for video processing operations
+ * Gateway interface for video processing operations
  */
-export interface VideoProcessingService {
+export interface VideoProcessingGateway {
   /**
    * Extract a clip from video
    * @param videoBuffer The full video content

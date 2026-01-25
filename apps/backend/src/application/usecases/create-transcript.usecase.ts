@@ -2,10 +2,10 @@ import type { StorageGateway } from '../../domain/gateways/storage.gateway.js';
 import type { TempStorageGateway } from '../../domain/gateways/temp-storage.gateway.js';
 import type { TranscriptionRepositoryGateway } from '../../domain/gateways/transcription-repository.gateway.js';
 import type { TranscriptionGateway } from '../../domain/gateways/transcription.gateway.js';
+import type { VideoProcessingGateway } from '../../domain/gateways/video-processing.gateway.js';
 import type { VideoRepositoryGateway } from '../../domain/gateways/video-repository.gateway.js';
 import { Transcription } from '../../domain/models/transcription.js';
 import { NotFoundError } from '../errors.js';
-import type { VideoProcessingService } from '../services/video-processing.service.js';
 
 export interface CreateTranscriptUseCaseDeps {
   videoRepository: VideoRepositoryGateway;
@@ -13,7 +13,7 @@ export interface CreateTranscriptUseCaseDeps {
   storageGateway: StorageGateway;
   tempStorageGateway: TempStorageGateway;
   transcriptionGateway: TranscriptionGateway;
-  videoProcessingService: VideoProcessingService;
+  videoProcessingGateway: VideoProcessingGateway;
   generateId: () => string;
 }
 
@@ -28,7 +28,7 @@ export class CreateTranscriptUseCase {
   private readonly storageGateway: StorageGateway;
   private readonly tempStorageGateway: TempStorageGateway;
   private readonly transcriptionGateway: TranscriptionGateway;
-  private readonly videoProcessingService: VideoProcessingService;
+  private readonly videoProcessingGateway: VideoProcessingGateway;
   private readonly generateId: () => string;
 
   constructor(deps: CreateTranscriptUseCaseDeps) {
@@ -37,7 +37,7 @@ export class CreateTranscriptUseCase {
     this.storageGateway = deps.storageGateway;
     this.tempStorageGateway = deps.tempStorageGateway;
     this.transcriptionGateway = deps.transcriptionGateway;
-    this.videoProcessingService = deps.videoProcessingService;
+    this.videoProcessingGateway = deps.videoProcessingGateway;
     this.generateId = deps.generateId;
   }
 
@@ -85,7 +85,7 @@ export class CreateTranscriptUseCase {
 
       // Extract audio from video (FLAC is smaller than WAV)
       this.log('Extracting audio from video...');
-      const audioBuffer = await this.videoProcessingService.extractAudio(videoBuffer, 'flac');
+      const audioBuffer = await this.videoProcessingGateway.extractAudio(videoBuffer, 'flac');
       this.log('Audio extracted', { sizeBytes: audioBuffer.length });
 
       // Transcribe audio using Speech-to-Text (Batch API for long audio support)
