@@ -126,47 +126,8 @@ export class CreateTranscriptUseCase {
       await this.transcriptionRepository.save(transcriptionDomain.value);
       this.log('Transcription saved', { transcriptionId: transcriptionDomain.value.id });
 
-      // Update phase to uploading
-      currentVideo = currentVideo.withTranscriptionPhase('uploading');
-      await this.videoRepository.save(currentVideo);
-      this.log('Phase updated to uploading');
-
-      // Upload transcript file to Google Drive "ショート用" folder (best effort)
-      try {
-        const videoMetadata = await this.storageGateway.getFileMetadata(
-          currentVideo.googleDriveFileId
-        );
-        const parentFolderId = videoMetadata.parents?.[0];
-
-        if (parentFolderId) {
-          const shortsFolder = await this.storageGateway.findOrCreateFolder(
-            'ショート用',
-            parentFolderId
-          );
-
-          const videoName = videoMetadata.name.replace(/\.[^/.]+$/, '');
-          await this.storageGateway.uploadFile({
-            name: `${videoName}_文字起こし.txt`,
-            mimeType: 'text/plain; charset=utf-8',
-            content: Buffer.from(transcriptionDomain.value.fullText, 'utf-8'),
-            parentFolderId: shortsFolder.id,
-          });
-
-          this.log('Transcript file uploaded to Google Drive', {
-            folderId: shortsFolder.id,
-            fileName: `${videoName}_文字起こし.txt`,
-          });
-        } else {
-          this.log('Warning: Could not find parent folder for video, skipping transcript upload');
-        }
-      } catch (uploadError) {
-        // Log but don't fail - file upload is optional
-        this.log('Warning: Failed to upload transcript file to Google Drive', {
-          error: uploadError instanceof Error ? uploadError.message : 'Unknown error',
-        });
-      }
-
       // Refine transcript if refineTranscriptUseCase is provided
+      // Note: refined transcript will be uploaded to Google Drive by RefineTranscriptUseCase
       if (this.refineTranscriptUseCase) {
         // Update phase to refining
         currentVideo = currentVideo.withTranscriptionPhase('refining');

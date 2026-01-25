@@ -111,7 +111,12 @@ variable "cors_origin" {
 }
 
 variable "google_drive_output_folder_id" {
-  description = "Google Drive output folder ID"
+  description = "Google Drive output folder ID for clips"
+  type        = string
+}
+
+variable "transcript_output_folder_id" {
+  description = "Google Drive output folder ID for transcripts"
   type        = string
 }
 

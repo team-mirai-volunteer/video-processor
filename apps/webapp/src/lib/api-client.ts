@@ -89,6 +89,7 @@ const mockVideoDetail: GetVideoResponse = {
   durationSeconds: 3600,
   fileSizeBytes: 1500000000,
   status: 'completed',
+  transcriptionPhase: null,
   errorMessage: null,
   clips: [
     {

@@ -102,9 +102,12 @@ const extractClipsUseCase = new ExtractClipsUseCase({
 const refineTranscriptUseCase = new RefineTranscriptUseCase({
   transcriptionRepository,
   refinedTranscriptionRepository,
+  videoRepository,
+  storageGateway: GoogleDriveClient.fromEnv(),
   aiGateway: new OpenAIClient(),
   generateId: () => uuidv4(),
   loadDictionary,
+  transcriptOutputFolderId: process.env.TRANSCRIPT_OUTPUT_FOLDER_ID,
 });
 
 const createTranscriptUseCase = new CreateTranscriptUseCase({

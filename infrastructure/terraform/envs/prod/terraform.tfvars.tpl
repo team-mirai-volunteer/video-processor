@@ -16,3 +16,4 @@ EOF
 container_image               = "${CONTAINER_IMAGE}"
 cors_origin                   = "${CORS_ORIGIN}"
 google_drive_output_folder_id = "${GOOGLE_DRIVE_OUTPUT_FOLDER_ID}"
+transcript_output_folder_id   = "${TRANSCRIPT_OUTPUT_FOLDER_ID}"
