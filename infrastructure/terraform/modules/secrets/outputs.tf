@@ -1,0 +1,19 @@
+output "openai_api_key_secret_id" {
+  description = "Secret Manager secret ID for OpenAI API key"
+  value       = google_secret_manager_secret.openai_api_key.secret_id
+}
+
+output "openai_api_key_secret_version" {
+  description = "Secret Manager secret version for OpenAI API key"
+  value       = google_secret_manager_secret_version.openai_api_key.name
+}
+
+output "google_credentials_secret_id" {
+  description = "Secret Manager secret ID for Google credentials"
+  value       = google_secret_manager_secret.google_credentials.secret_id
+}
+
+output "google_credentials_secret_version" {
+  description = "Secret Manager secret version for Google credentials"
+  value       = google_secret_manager_secret_version.google_credentials.name
+}

@@ -1,92 +1,106 @@
 variable "project_id" {
-  description = "The GCP project ID"
+  description = "GCP project ID"
   type        = string
 }
 
 variable "project_name" {
-  description = "The project name used for resource naming"
+  description = "Project name for resource naming"
   type        = string
 }
 
 variable "region" {
-  description = "The GCP region"
+  description = "GCP region"
   type        = string
   default     = "asia-northeast1"
 }
 
 variable "container_image" {
-  description = "The container image to deploy"
-  type        = string
-}
-
-variable "container_port" {
-  description = "The port the container listens on"
-  type        = number
-  default     = 8080
-}
-
-variable "service_account_email" {
-  description = "The service account email for Cloud Run"
-  type        = string
-}
-
-variable "vpc_connector_id" {
-  description = "The VPC Access Connector ID"
-  type        = string
-}
-
-variable "cloud_sql_connection_name" {
-  description = "The Cloud SQL instance connection name"
+  description = "Container image URL"
   type        = string
 }
 
 variable "cpu" {
-  description = "The CPU limit for the container"
+  description = "CPU limit"
   type        = string
-  default     = "2"
+  default     = "1"
 }
 
 variable "memory" {
-  description = "The memory limit for the container"
+  description = "Memory limit"
   type        = string
-  default     = "2Gi"
-}
-
-variable "timeout_seconds" {
-  description = "The request timeout in seconds"
-  type        = number
-  default     = 3600
+  default     = "1Gi"
 }
 
 variable "min_instances" {
-  description = "The minimum number of instances"
+  description = "Minimum number of instances"
   type        = number
   default     = 0
 }
 
 variable "max_instances" {
-  description = "The maximum number of instances"
+  description = "Maximum number of instances"
   type        = number
-  default     = 10
+  default     = 2
 }
 
-variable "environment_variables" {
-  description = "Environment variables for the container"
-  type        = map(string)
-  default     = {}
-}
-
-variable "secret_environment_variables" {
-  description = "Secret environment variables for the container"
-  type = map(object({
-    secret_id = string
-    version   = string
-  }))
-  default = {}
+variable "request_timeout" {
+  description = "Request timeout in seconds"
+  type        = number
+  default     = 300
 }
 
 variable "allow_unauthenticated" {
-  description = "Whether to allow unauthenticated access"
+  description = "Allow unauthenticated access"
   type        = bool
-  default     = false
+  default     = true
+}
+
+# VPC
+variable "vpc_connector_id" {
+  description = "VPC Access Connector ID"
+  type        = string
+}
+
+# Database
+variable "cloud_sql_connection_name" {
+  description = "Cloud SQL connection name"
+  type        = string
+}
+
+variable "database_name" {
+  description = "Database name"
+  type        = string
+}
+
+variable "database_user" {
+  description = "Database user"
+  type        = string
+}
+
+variable "database_password" {
+  description = "Database password"
+  type        = string
+  sensitive   = true
+}
+
+# Secrets
+variable "openai_api_key_secret_id" {
+  description = "Secret Manager secret ID for OpenAI API key"
+  type        = string
+}
+
+variable "google_credentials_secret_id" {
+  description = "Secret Manager secret ID for Google credentials"
+  type        = string
+}
+
+# Application config
+variable "cors_origin" {
+  description = "Allowed CORS origin"
+  type        = string
+}
+
+variable "google_drive_output_folder_id" {
+  description = "Google Drive output folder ID"
+  type        = string
 }

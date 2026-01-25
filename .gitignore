@@ -38,9 +38,9 @@ pnpm-debug.log*
 *.tfstate
 *.tfstate.*
 *.tfvars
-!*.tfvars.example
-!infrastructure/terraform/**/terraform.tfvars
+!*.tfvars.tpl
 .terraform.lock.hcl
+infrastructure/terraform/envs/**/.env
 
 # Prisma
 prisma/*.db
