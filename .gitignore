@@ -51,9 +51,9 @@ temp/
 *.tmp
 
 # Playwright
-/test-results/
-/playwright-report/
-/playwright/.cache/
+test-results/
+playwright-report/
+playwright/.cache/
 
 # Test fixture outputs
 apps/backend/test/fixtures/output/
