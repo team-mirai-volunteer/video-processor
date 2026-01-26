@@ -112,6 +112,10 @@ module "cloud_run" {
   google_drive_output_folder_id = var.google_drive_output_folder_id
   transcript_output_folder_id   = var.transcript_output_folder_id
 
+  # GCS Temp Storage
+  temp_storage_type  = var.temp_storage_type
+  video_temp_bucket  = var.video_temp_bucket
+
   depends_on = [module.cloud_sql, module.secrets]
 }
 

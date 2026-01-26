@@ -12,6 +12,7 @@ ENV=${1:-stg}
 ACTION=${2:-plan}
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 ENV_DIR="${SCRIPT_DIR}/envs/${ENV}"
 
 # Validate environment
@@ -23,16 +24,72 @@ fi
 
 # Validate action
 case "${ACTION}" in
-  init|plan|apply|destroy|output|fmt|validate)
+  init|plan|apply|destroy|output|fmt|validate|build|full)
     ;;
   *)
     echo "Error: Invalid action '${ACTION}'"
-    echo "Valid actions: init, plan, apply, destroy, output, fmt, validate"
+    echo "Valid actions: init, plan, apply, destroy, output, fmt, validate, build, full"
     exit 1
     ;;
 esac
 
 echo "=== Terraform ${ACTION} for ${ENV} environment ==="
+
+# Set GCP variables based on environment
+case "${ENV}" in
+  stg)
+    PROJECT_ID="mirai-video-processor"
+    PROJECT_NAME="video-processor-stg"
+    ;;
+  prod)
+    PROJECT_ID="mirai-video-processor"
+    PROJECT_NAME="video-processor"
+    ;;
+esac
+REGION="asia-northeast1"
+REGISTRY="${REGION}-docker.pkg.dev/${PROJECT_ID}/${PROJECT_NAME}"
+
+# Function to build and push Docker images
+build_images() {
+  echo "=== Building Docker images ==="
+
+  # Authenticate Docker to Artifact Registry
+  echo "Authenticating Docker to Artifact Registry..."
+  gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+  # Build and push API image
+  echo "Building API image..."
+  docker build \
+    --platform linux/amd64 \
+    -f "${ROOT_DIR}/apps/backend/Dockerfile" \
+    -t "${REGISTRY}/api:latest" \
+    --target runner \
+    "${ROOT_DIR}"
+
+  echo "Pushing API image..."
+  docker push "${REGISTRY}/api:latest"
+
+  # Build and push migration image
+  echo "Building migration image..."
+  docker build \
+    --platform linux/amd64 \
+    -f "${ROOT_DIR}/apps/backend/Dockerfile" \
+    -t "${REGISTRY}/migration:latest" \
+    --target migrator \
+    "${ROOT_DIR}"
+
+  echo "Pushing migration image..."
+  docker push "${REGISTRY}/migration:latest"
+
+  echo "=== Docker images built and pushed ==="
+}
+
+# Handle build action early (doesn't need terraform)
+if [[ "${ACTION}" == "build" ]]; then
+  build_images
+  echo "=== Done ==="
+  exit 0
+fi
 
 # Load .env file if it exists
 if [[ -f "${ENV_DIR}/.env" ]]; then
@@ -97,6 +154,25 @@ case "${ACTION}" in
   validate)
     terraform init -backend=false
     terraform validate
+    ;;
+  full)
+    # Build images first
+    build_images
+
+    # Then apply terraform
+    terraform init -upgrade ${BACKEND_CONFIG}
+    if [[ "${ENV}" == "prod" ]]; then
+      terraform apply
+    else
+      terraform apply -auto-approve
+    fi
+
+    # Force Cloud Run to pull new image
+    echo "=== Updating Cloud Run service to use new image ==="
+    gcloud run services update "${PROJECT_NAME}-api" \
+      --region="${REGION}" \
+      --project="${PROJECT_ID}" \
+      --image="${REGION}-docker.pkg.dev/${PROJECT_ID}/${PROJECT_NAME}/api:latest"
     ;;
 esac
 

@@ -73,3 +73,16 @@ variable "transcript_output_folder_id" {
   description = "Google Drive output folder ID for transcripts"
   type        = string
 }
+
+# GCS Temp Storage
+variable "temp_storage_type" {
+  description = "Temporary storage type (local or gcs)"
+  type        = string
+  default     = "gcs"
+}
+
+variable "video_temp_bucket" {
+  description = "GCS bucket name for temporary video storage"
+  type        = string
+  default     = ""
+}

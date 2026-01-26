@@ -129,3 +129,16 @@ variable "service_account_email" {
   description = "Service account email for Cloud Run"
   type        = string
 }
+
+# GCS Temp Storage
+variable "temp_storage_type" {
+  description = "Temporary storage type (local or gcs)"
+  type        = string
+  default     = "gcs"
+}
+
+variable "video_temp_bucket" {
+  description = "GCS bucket name for temporary video storage (optional, defaults to {project_id}-video-processor-temp)"
+  type        = string
+  default     = ""
+}

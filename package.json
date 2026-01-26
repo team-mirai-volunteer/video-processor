@@ -10,8 +10,12 @@
     "typecheck": "pnpm -r run typecheck",
     "knip": "knip",
     "postinstall": "simple-git-hooks",
+    "build:stg": "cd infrastructure/terraform && ./deploy.sh stg build",
+    "build:prod": "cd infrastructure/terraform && ./deploy.sh prod build",
     "deploy:stg": "cd infrastructure/terraform && ./deploy.sh stg apply",
-    "deploy:prod": "cd infrastructure/terraform && ./deploy.sh prod apply"
+    "deploy:prod": "cd infrastructure/terraform && ./deploy.sh prod apply",
+    "deploy:stg:full": "cd infrastructure/terraform && ./deploy.sh stg full",
+    "deploy:prod:full": "cd infrastructure/terraform && ./deploy.sh prod full"
   },
   "simple-git-hooks": {
     "pre-commit": "pnpm lint-staged"
