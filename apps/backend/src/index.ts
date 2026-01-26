@@ -1,5 +1,6 @@
 import express, { type Express } from 'express';
 import { disconnectDatabase } from './infrastructure/database/connection.js';
+import { apiKeyAuth } from './presentation/middleware/api-key-auth.js';
 import { errorHandler } from './presentation/middleware/error-handler.js';
 import { requestLogger } from './presentation/middleware/logger.js';
 import routes from './presentation/routes/index.js';
@@ -16,10 +17,16 @@ app.use(requestLogger);
 const corsOrigin = process.env.CORS_ORIGIN ?? '*';
 app.use((_req, res, next) => {
   res.header('Access-Control-Allow-Origin', corsOrigin);
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header(
+    'Access-Control-Allow-Headers',
+    'Origin, X-Requested-With, Content-Type, Accept, X-API-Key'
+  );
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   next();
 });
+
+// API Key authentication
+app.use(apiKeyAuth);
 
 // Routes
 app.use(routes);

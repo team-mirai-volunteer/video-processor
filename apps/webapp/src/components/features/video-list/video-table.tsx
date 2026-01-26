@@ -20,8 +20,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { apiClient } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
+import { deleteVideo } from '@/server/presentation/actions/deleteVideo';
 import type { VideoSummary } from '@video-processor/shared';
 import { Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -30,17 +30,15 @@ import { StatusBadge } from './status-badge';
 
 interface VideoTableProps {
   videos: VideoSummary[];
-  onVideoDeleted?: () => void;
 }
 
-export function VideoTable({ videos, onVideoDeleted }: VideoTableProps) {
+export function VideoTable({ videos }: VideoTableProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleDelete = async (videoId: string) => {
     setDeletingId(videoId);
     try {
-      await apiClient.deleteVideo(videoId);
-      onVideoDeleted?.();
+      await deleteVideo(videoId);
     } finally {
       setDeletingId(null);
     }

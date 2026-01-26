@@ -1,34 +1,12 @@
-'use client';
-
 import { VideoTable } from '@/components/features/video-list';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { apiClient } from '@/lib/api-client';
-import type { VideoSummary } from '@video-processor/shared';
+import { loadVideos } from '@/server/presentation/loaders/loadVideos';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
 
-export default function HomePage() {
-  const [videos, setVideos] = useState<VideoSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchVideos = useCallback(async () => {
-    try {
-      const response = await apiClient.getVideos();
-      setVideos(response.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '動画の取得に失敗しました');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchVideos();
-  }, [fetchVideos]);
+export default async function HomePage() {
+  const response = await loadVideos();
 
   return (
     <div className="space-y-6">
@@ -51,17 +29,7 @@ export default function HomePage() {
           <CardDescription>Google Driveから登録された動画の一覧です</CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="space-y-4">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-            </div>
-          ) : error ? (
-            <div className="text-center py-12 text-destructive">{error}</div>
-          ) : (
-            <VideoTable videos={videos} onVideoDeleted={fetchVideos} />
-          )}
+          <VideoTable videos={response.data} />
         </CardContent>
       </Card>
     </div>
