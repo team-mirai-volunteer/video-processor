@@ -17,6 +17,7 @@ export interface PipelineStepProps {
   canExecute: boolean;
   children?: React.ReactNode;
   error?: string;
+  progressMessage?: string | null;
 }
 
 function StatusIcon({ status }: { status: StepStatus }) {
@@ -34,7 +35,10 @@ function StatusIcon({ status }: { status: StepStatus }) {
   }
 }
 
-function StatusBadge({ status }: { status: StepStatus }) {
+function StatusBadge({
+  status,
+  progressMessage,
+}: { status: StepStatus; progressMessage?: string | null }) {
   const statusText = {
     pending: '待機中',
     ready: '実行可能',
@@ -51,9 +55,11 @@ function StatusBadge({ status }: { status: StepStatus }) {
     error: 'text-destructive',
   };
 
-  return (
-    <span className={cn('text-sm font-medium', statusClass[status])}>{statusText[status]}</span>
-  );
+  // Show progress message if available during running status
+  const displayText =
+    status === 'running' && progressMessage ? progressMessage : statusText[status];
+
+  return <span className={cn('text-sm font-medium', statusClass[status])}>{displayText}</span>;
 }
 
 export function PipelineStep({
@@ -67,6 +73,7 @@ export function PipelineStep({
   canExecute,
   children,
   error,
+  progressMessage,
 }: PipelineStepProps) {
   const isRunning = status === 'running';
 
@@ -88,7 +95,7 @@ export function PipelineStep({
         </div>
         <div className="flex items-center gap-3">
           <StatusIcon status={status} />
-          <StatusBadge status={status} />
+          <StatusBadge status={status} progressMessage={progressMessage} />
         </div>
       </button>
 

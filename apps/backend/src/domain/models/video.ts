@@ -17,6 +17,7 @@ export interface VideoProps {
   status: VideoStatus;
   transcriptionPhase: TranscriptionPhase | null;
   errorMessage: string | null;
+  progressMessage: string | null;
   gcsUri: string | null;
   gcsExpiresAt: Date | null;
   createdAt: Date;
@@ -49,6 +50,7 @@ export class Video {
   readonly status: VideoStatus;
   readonly transcriptionPhase: TranscriptionPhase | null;
   readonly errorMessage: string | null;
+  readonly progressMessage: string | null;
   readonly gcsUri: string | null;
   readonly gcsExpiresAt: Date | null;
   readonly createdAt: Date;
@@ -65,6 +67,7 @@ export class Video {
     this.status = props.status;
     this.transcriptionPhase = props.transcriptionPhase;
     this.errorMessage = props.errorMessage;
+    this.progressMessage = props.progressMessage;
     this.gcsUri = props.gcsUri;
     this.gcsExpiresAt = props.gcsExpiresAt;
     this.createdAt = props.createdAt;
@@ -103,6 +106,7 @@ export class Video {
         status: 'pending',
         transcriptionPhase: null,
         errorMessage: null,
+        progressMessage: null,
         gcsUri: null,
         gcsExpiresAt: null,
         createdAt: now,
@@ -186,11 +190,23 @@ export class Video {
       status: this.status,
       transcriptionPhase: this.transcriptionPhase,
       errorMessage: this.errorMessage,
+      progressMessage: this.progressMessage,
       gcsUri: this.gcsUri,
       gcsExpiresAt: this.gcsExpiresAt,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };
+  }
+
+  /**
+   * Update progress message for displaying current processing status
+   */
+  withProgressMessage(message: string | null): Video {
+    return new Video({
+      ...this.toProps(),
+      progressMessage: message,
+      updatedAt: new Date(),
+    });
   }
 
   /**

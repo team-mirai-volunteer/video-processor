@@ -1,6 +1,7 @@
 import type { StorageGateway } from '../../domain/gateways/storage.gateway.js';
 import type { TempStorageGateway } from '../../domain/gateways/temp-storage.gateway.js';
 import type { VideoRepositoryGateway } from '../../domain/gateways/video-repository.gateway.js';
+import type { Video } from '../../domain/models/video.js';
 import { NotFoundError } from '../errors.js';
 
 export interface CacheVideoUseCaseDeps {
@@ -14,6 +15,40 @@ export interface CacheVideoResult {
   gcsUri: string;
   expiresAt: Date;
   cached: boolean; // true if already cached, false if newly cached
+}
+
+/**
+ * Format bytes to human readable string (e.g., "256MB", "1.2GB")
+ */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(0)}MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)}GB`;
+}
+
+/**
+ * Throttler for progress updates to avoid excessive DB writes.
+ * Updates when:
+ * - 5 seconds have passed since last update
+ * - Progress has changed by 10% or more
+ */
+class ProgressThrottler {
+  private lastUpdate = 0;
+  private lastPercent = 0;
+
+  shouldUpdate(percent: number): boolean {
+    const now = Date.now();
+    const timeDiff = now - this.lastUpdate >= 5000;
+    const percentDiff = percent - this.lastPercent >= 10;
+
+    if (timeDiff || percentDiff) {
+      this.lastUpdate = now;
+      this.lastPercent = percent;
+      return true;
+    }
+    return false;
+  }
 }
 
 /**
@@ -41,15 +76,27 @@ export class CacheVideoUseCase {
     console.log(`[CacheVideoUseCase] [${timestamp}] ${message}${logData}`);
   }
 
+  /**
+   * Update progress message in DB (non-blocking)
+   */
+  private async updateProgress(video: Video, message: string | null): Promise<Video> {
+    const updatedVideo = video.withProgressMessage(message);
+    await this.videoRepository.save(updatedVideo);
+    return updatedVideo;
+  }
+
   async execute(videoId: string): Promise<CacheVideoResult> {
     this.log('Starting execution', { videoId });
 
     // Get video
-    const video = await this.videoRepository.findById(videoId);
+    let video = await this.videoRepository.findById(videoId);
     if (!video) {
       throw new NotFoundError('Video', videoId);
     }
     this.log('Found video', { videoId: video.id, googleDriveFileId: video.googleDriveFileId });
+
+    // Update progress: checking cache
+    video = await this.updateProgress(video, 'キャッシュ確認中...');
 
     // Check if already cached and not expired
     if (video.gcsUri && video.gcsExpiresAt && video.gcsExpiresAt > new Date()) {
@@ -57,6 +104,8 @@ export class CacheVideoUseCase {
       const exists = await this.tempStorageGateway.exists(video.gcsUri);
       if (exists) {
         this.log('Video already cached in GCS');
+        // Clear progress message
+        await this.updateProgress(video, null);
         return {
           videoId: video.id,
           gcsUri: video.gcsUri,
@@ -66,18 +115,42 @@ export class CacheVideoUseCase {
       }
     }
 
-    // Stream from Google Drive to GCS
-    this.log('Starting stream transfer from Google Drive to GCS...');
-    const stream = await this.storageGateway.downloadFileAsStream(video.googleDriveFileId);
+    // Update progress: starting download
+    video = await this.updateProgress(video, 'ダウンロード中...');
 
-    const { gcsUri, expiresAt } = await this.tempStorageGateway.uploadFromStream(
+    // Get file size for progress calculation
+    const totalBytes = video.fileSizeBytes ?? 0;
+    this.log('Starting stream transfer from Google Drive to GCS...', { totalBytes });
+
+    // Stream from Google Drive to GCS with progress tracking
+    const stream = await this.storageGateway.downloadFileAsStream(video.googleDriveFileId);
+    const throttler = new ProgressThrottler();
+
+    const { gcsUri, expiresAt } = await this.tempStorageGateway.uploadFromStreamWithProgress(
       { videoId: video.id },
-      stream
+      stream,
+      (bytesTransferred: number) => {
+        // Calculate progress percentage
+        const percent = totalBytes > 0 ? Math.floor((bytesTransferred / totalBytes) * 100) : 0;
+
+        // Only update if throttler allows
+        if (throttler.shouldUpdate(percent)) {
+          const message =
+            totalBytes > 0
+              ? `ダウンロード中... ${formatBytes(bytesTransferred)} / ${formatBytes(totalBytes)} (${percent}%)`
+              : `ダウンロード中... ${formatBytes(bytesTransferred)}`;
+
+          // Update progress asynchronously (don't await to avoid blocking stream)
+          this.updateProgress(video, message).catch((err) => {
+            this.log('Failed to update progress', { error: String(err) });
+          });
+        }
+      }
     );
     this.log('Stream transfer completed', { gcsUri, expiresAt });
 
-    // Update video with GCS info
-    const updatedVideo = video.withGcsInfo(gcsUri, expiresAt);
+    // Update video with GCS info and clear progress message
+    const updatedVideo = video.withGcsInfo(gcsUri, expiresAt).withProgressMessage(null);
     await this.videoRepository.save(updatedVideo);
     this.log('Video record updated with GCS info');
 

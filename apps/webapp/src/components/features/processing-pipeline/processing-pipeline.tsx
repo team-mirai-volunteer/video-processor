@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { formatDate, formatDuration } from '@/lib/utils';
 import { cacheVideo } from '@/server/presentation/actions/cacheVideo';
 import { extractAudio } from '@/server/presentation/actions/extractAudio';
+import { getVideoStatus } from '@/server/presentation/actions/getVideoStatus';
 import { refineTranscript } from '@/server/presentation/actions/refineTranscript';
 import { transcribeAudio } from '@/server/presentation/actions/transcribeAudio';
 import { transcribeVideo } from '@/server/presentation/actions/transcribeVideo';
@@ -21,7 +22,7 @@ import type {
   VideoWithRelations,
 } from '@video-processor/shared';
 import { Loader2, PlayCircle } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface ProcessingPipelineProps {
   video: VideoWithRelations;
@@ -96,6 +97,36 @@ export function ProcessingPipeline({
   }, [video, transcription, refinedTranscription]);
 
   const [steps, setSteps] = useState<StepsState>(initialSteps);
+  const [progressMessage, setProgressMessage] = useState<string | null>(video.progressMessage);
+
+  // Polling for progress updates during cache step
+  useEffect(() => {
+    if (steps.cache.status !== 'running') {
+      return;
+    }
+
+    const pollProgress = async () => {
+      try {
+        const status = await getVideoStatus(video.id);
+        setProgressMessage(status.video.progressMessage);
+
+        // Check if cache completed
+        if (status.video.gcsUri) {
+          setProgressMessage(null);
+        }
+      } catch (err) {
+        console.error('Failed to poll progress:', err);
+      }
+    };
+
+    // Initial poll
+    pollProgress();
+
+    // Poll every 5 seconds
+    const interval = setInterval(pollProgress, 5000);
+
+    return () => clearInterval(interval);
+  }, [steps.cache.status, video.id]);
 
   const updateStepState = useCallback((stepKey: keyof StepsState, update: Partial<StepState>) => {
     setSteps((prev) => ({
@@ -355,6 +386,7 @@ export function ProcessingPipeline({
           onExecute={handleCacheVideo}
           canExecute={!isAnyStepRunning}
           error={steps.cache.error}
+          progressMessage={progressMessage}
         >
           {renderCacheDetails()}
         </PipelineStep>

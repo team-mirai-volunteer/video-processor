@@ -70,6 +70,7 @@ export interface Video {
   status: VideoStatus;
   transcriptionPhase: TranscriptionPhase | null;
   errorMessage: string | null;
+  progressMessage: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -100,6 +101,7 @@ export interface VideoWithRelations {
   status: VideoStatus;
   transcriptionPhase: TranscriptionPhase | null;
   errorMessage: string | null;
+  progressMessage: string | null;
   gcsUri: string | null;
   gcsExpiresAt: Date | null;
   clips: import('./clip.js').Clip[];

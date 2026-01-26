@@ -46,6 +46,18 @@ export interface TempStorageGateway {
   ): Promise<TempStorageUploadResult>;
 
   /**
+   * Upload video to temporary storage from a stream with progress tracking
+   * Use this for large files when progress reporting is needed
+   * @param onProgress Callback that receives bytes transferred so far
+   * @returns GCS URI and expiration date
+   */
+  uploadFromStreamWithProgress(
+    params: TempStorageStreamUploadParams,
+    source: NodeJS.ReadableStream,
+    onProgress?: (bytesTransferred: number) => void
+  ): Promise<TempStorageUploadResult>;
+
+  /**
    * Download video from temporary storage
    * @param gcsUri GCS URI of the video
    * @returns Video buffer
