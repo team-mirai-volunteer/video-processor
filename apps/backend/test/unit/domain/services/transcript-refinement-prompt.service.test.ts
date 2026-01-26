@@ -118,4 +118,154 @@ describe('TranscriptRefinementPromptService', () => {
       expect(prompt).toContain('てすと → テスト（テスト用）');
     });
   });
+
+  describe('splitIntoChunks', () => {
+    it('should return empty array for empty segments', () => {
+      const chunks = service.splitIntoChunks([]);
+
+      expect(chunks).toHaveLength(0);
+    });
+
+    it('should return single chunk when segments fit within chunk size', () => {
+      const chunks = service.splitIntoChunks(mockSegments, 100);
+
+      expect(chunks).toHaveLength(1);
+      expect(chunks[0].segments).toEqual(mockSegments);
+      expect(chunks[0].startIndex).toBe(0);
+      expect(chunks[0].endIndex).toBe(6);
+      expect(chunks[0].chunkIndex).toBe(0);
+      expect(chunks[0].totalChunks).toBe(1);
+    });
+
+    it('should split segments into multiple chunks with overlap', () => {
+      // Create 100 segments
+      const manySegments: TranscriptionSegment[] = [];
+      for (let i = 0; i < 100; i++) {
+        manySegments.push({
+          text: `word${i}`,
+          startTimeSeconds: i * 0.1,
+          endTimeSeconds: (i + 1) * 0.1,
+          confidence: 0.9,
+        });
+      }
+
+      // Use chunk size of 30
+      const chunks = service.splitIntoChunks(manySegments, 30);
+
+      // Should have multiple chunks
+      expect(chunks.length).toBeGreaterThan(1);
+
+      // First chunk should start at 0
+      expect(chunks[0].startIndex).toBe(0);
+      expect(chunks[0].endIndex).toBe(29);
+
+      // Second chunk should overlap with first (by 10 segments by default)
+      expect(chunks[1].startIndex).toBe(20); // 30 - 10 overlap
+
+      // All chunks should have correct totalChunks
+      for (const chunk of chunks) {
+        expect(chunk.totalChunks).toBe(chunks.length);
+      }
+    });
+
+    it('should have correct segment counts in each chunk', () => {
+      const manySegments: TranscriptionSegment[] = [];
+      for (let i = 0; i < 50; i++) {
+        manySegments.push({
+          text: `word${i}`,
+          startTimeSeconds: i * 0.1,
+          endTimeSeconds: (i + 1) * 0.1,
+          confidence: 0.9,
+        });
+      }
+
+      const chunks = service.splitIntoChunks(manySegments, 20);
+
+      // Each chunk (except possibly last) should have chunk size segments
+      expect(chunks[0].segments).toHaveLength(20);
+    });
+  });
+
+  describe('buildChunkPrompt', () => {
+    it('should include chunk information in prompt', () => {
+      const chunk = {
+        segments: mockSegments,
+        startIndex: 100,
+        endIndex: 106,
+        chunkIndex: 1,
+        totalChunks: 5,
+      };
+
+      const prompt = service.buildChunkPrompt(chunk, mockDictionary);
+
+      expect(prompt).toContain('2 番目'); // chunkIndex + 1
+      expect(prompt).toContain('5 個のチャンク');
+      expect(prompt).toContain('セグメントindex 100 から 106');
+    });
+
+    it('should use absolute indices in input section', () => {
+      const chunk = {
+        segments: mockSegments.slice(0, 3),
+        startIndex: 50,
+        endIndex: 52,
+        chunkIndex: 2,
+        totalChunks: 10,
+      };
+
+      const prompt = service.buildChunkPrompt(chunk, mockDictionary);
+
+      // Should use absolute indices starting from 50
+      expect(prompt).toContain('[50]');
+      expect(prompt).toContain('[51]');
+      expect(prompt).toContain('[52]');
+      // Should not contain relative indices
+      expect(prompt).not.toMatch(/\[0\] \[\d/);
+    });
+
+    it('should include previous context when provided', () => {
+      const chunk = {
+        segments: mockSegments,
+        startIndex: 100,
+        endIndex: 106,
+        chunkIndex: 1,
+        totalChunks: 5,
+      };
+
+      const previousContext = '前の文章です。これも前の文章です。';
+      const prompt = service.buildChunkPrompt(chunk, mockDictionary, previousContext);
+
+      expect(prompt).toContain('## 前のチャンクの末尾');
+      expect(prompt).toContain(previousContext);
+      expect(prompt).toContain('出力には含めないでください');
+    });
+
+    it('should not include chunk info section for single chunk', () => {
+      const chunk = {
+        segments: mockSegments,
+        startIndex: 0,
+        endIndex: 6,
+        chunkIndex: 0,
+        totalChunks: 1,
+      };
+
+      const prompt = service.buildChunkPrompt(chunk, mockDictionary);
+
+      // Should not include chunk info for single chunk
+      expect(prompt).not.toContain('## チャンク情報');
+    });
+
+    it('should include instruction to process all segments', () => {
+      const chunk = {
+        segments: mockSegments,
+        startIndex: 0,
+        endIndex: 6,
+        chunkIndex: 0,
+        totalChunks: 3,
+      };
+
+      const prompt = service.buildChunkPrompt(chunk, mockDictionary);
+
+      expect(prompt).toContain('すべてのセグメントを処理し、最後まで出力してください');
+    });
+  });
 });
