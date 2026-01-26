@@ -14,13 +14,16 @@ import type {
 import { type Router as ExpressRouter, Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { NotFoundError } from '../../application/errors.js';
+import { CacheVideoUseCase } from '../../application/usecases/cache-video.usecase.js';
 import { CreateTranscriptUseCase } from '../../application/usecases/create-transcript.usecase.js';
 import { DeleteVideoUseCase } from '../../application/usecases/delete-video.usecase.js';
+import { ExtractAudioUseCase } from '../../application/usecases/extract-audio.usecase.js';
 import { ExtractClipsUseCase } from '../../application/usecases/extract-clips.usecase.js';
 import { GetVideoUseCase } from '../../application/usecases/get-video.usecase.js';
 import { GetVideosUseCase } from '../../application/usecases/get-videos.usecase.js';
 import { RefineTranscriptUseCase } from '../../application/usecases/refine-transcript.usecase.js';
 import { SubmitVideoUseCase } from '../../application/usecases/submit-video.usecase.js';
+import { TranscribeAudioUseCase } from '../../application/usecases/transcribe-audio.usecase.js';
 import type { TempStorageGateway } from '../../domain/gateways/temp-storage.gateway.js';
 import type { ProperNounDictionary } from '../../domain/services/transcript-refinement-prompt.service.js';
 import { FFmpegClient } from '../../infrastructure/clients/ffmpeg.client.js';
@@ -68,10 +71,13 @@ function createTempStorageGateway(): TempStorageGateway {
 
 const tempStorageGateway = createTempStorageGateway();
 
+// Initialize shared gateway
+const storageGateway = GoogleDriveClient.fromEnv();
+
 // Initialize use cases
 const submitVideoUseCase = new SubmitVideoUseCase({
   videoRepository,
-  storageGateway: GoogleDriveClient.fromEnv(),
+  storageGateway,
   generateId: () => uuidv4(),
 });
 
@@ -91,7 +97,7 @@ const extractClipsUseCase = new ExtractClipsUseCase({
   clipRepository,
   transcriptionRepository,
   refinedTranscriptionRepository,
-  storageGateway: GoogleDriveClient.fromEnv(),
+  storageGateway,
   tempStorageGateway,
   aiGateway: new OpenAIClient(),
   videoProcessingGateway: new FFmpegClient(),
@@ -103,21 +109,39 @@ const refineTranscriptUseCase = new RefineTranscriptUseCase({
   transcriptionRepository,
   refinedTranscriptionRepository,
   videoRepository,
-  storageGateway: GoogleDriveClient.fromEnv(),
+  storageGateway,
   aiGateway: new OpenAIClient(),
   generateId: () => uuidv4(),
   loadDictionary,
   transcriptOutputFolderId: process.env.TRANSCRIPT_OUTPUT_FOLDER_ID,
 });
 
-const createTranscriptUseCase = new CreateTranscriptUseCase({
+// Initialize sub-usecases for CreateTranscriptUseCase
+
+const cacheVideoUseCase = new CacheVideoUseCase({
+  videoRepository,
+  storageGateway,
+  tempStorageGateway,
+});
+
+const extractAudioUseCase = new ExtractAudioUseCase({
+  videoRepository,
+  tempStorageGateway,
+  videoProcessingGateway: new FFmpegClient(),
+});
+
+const transcribeAudioUseCase = new TranscribeAudioUseCase({
   videoRepository,
   transcriptionRepository,
-  storageGateway: GoogleDriveClient.fromEnv(),
-  tempStorageGateway,
   transcriptionGateway: new SpeechToTextClient(),
-  videoProcessingGateway: new FFmpegClient(),
   generateId: () => uuidv4(),
+});
+
+const createTranscriptUseCase = new CreateTranscriptUseCase({
+  videoRepository,
+  cacheVideoUseCase,
+  extractAudioUseCase,
+  transcribeAudioUseCase,
   refineTranscriptUseCase,
 });
 

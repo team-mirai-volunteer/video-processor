@@ -26,6 +26,12 @@ export interface StorageGateway {
   downloadFile(fileId: string): Promise<Buffer>;
 
   /**
+   * Download file content as a stream from Google Drive
+   * Use this for large files to avoid memory issues
+   */
+  downloadFileAsStream(fileId: string): Promise<NodeJS.ReadableStream>;
+
+  /**
    * Upload file to Google Drive
    */
   uploadFile(params: UploadFileParams): Promise<FileMetadata>;

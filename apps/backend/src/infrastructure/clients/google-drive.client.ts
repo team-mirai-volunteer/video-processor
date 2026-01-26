@@ -112,39 +112,56 @@ export class GoogleDriveClient implements StorageGateway {
 
       return Buffer.from(response.data as ArrayBuffer);
     } catch (error) {
-      // Parse error response for specific error types
-      const gaxiosError = error as {
-        response?: { status?: number; data?: { error?: { message?: string } } };
-        code?: string;
-      };
-
-      if (gaxiosError.response) {
-        const { status, data } = gaxiosError.response;
-        const errorMessage = data?.error?.message ?? '';
-
-        console.error(`[GoogleDriveClient] Download failed for ${fileId}:`, {
-          status,
-          message: errorMessage,
-        });
-
-        // Handle specific error cases
-        if (status === 403) {
-          if (errorMessage.includes('cannot be downloaded')) {
-            throw new DownloadForbiddenError(fileId);
-          }
-          throw new AccessDeniedError(fileId);
-        }
-
-        if (status === 404) {
-          throw new FileNotFoundError(fileId);
-        }
-      }
-
-      if (error instanceof Error) {
-        throw new Error(`Failed to download file ${fileId}: ${error.message}`);
-      }
-      throw error;
+      return this.handleDownloadError(fileId, error);
     }
+  }
+
+  async downloadFileAsStream(fileId: string): Promise<NodeJS.ReadableStream> {
+    try {
+      const response = await this.drive.files.get(
+        { fileId, alt: 'media', supportsAllDrives: true },
+        { responseType: 'stream' }
+      );
+
+      return response.data as NodeJS.ReadableStream;
+    } catch (error) {
+      return this.handleDownloadError(fileId, error);
+    }
+  }
+
+  private handleDownloadError(fileId: string, error: unknown): never {
+    // Parse error response for specific error types
+    const gaxiosError = error as {
+      response?: { status?: number; data?: { error?: { message?: string } } };
+      code?: string;
+    };
+
+    if (gaxiosError.response) {
+      const { status, data } = gaxiosError.response;
+      const errorMessage = data?.error?.message ?? '';
+
+      console.error(`[GoogleDriveClient] Download failed for ${fileId}:`, {
+        status,
+        message: errorMessage,
+      });
+
+      // Handle specific error cases
+      if (status === 403) {
+        if (errorMessage.includes('cannot be downloaded')) {
+          throw new DownloadForbiddenError(fileId);
+        }
+        throw new AccessDeniedError(fileId);
+      }
+
+      if (status === 404) {
+        throw new FileNotFoundError(fileId);
+      }
+    }
+
+    if (error instanceof Error) {
+      throw new Error(`Failed to download file ${fileId}: ${error.message}`);
+    }
+    throw error;
   }
 
   async uploadFile(params: UploadFileParams): Promise<FileMetadata> {

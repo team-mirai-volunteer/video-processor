@@ -1,7 +1,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { pipeline } from 'node:stream/promises';
 import type {
   TempStorageGateway,
+  TempStorageStreamUploadParams,
   TempStorageUploadParams,
   TempStorageUploadResult,
 } from '../../domain/gateways/temp-storage.gateway.js';
@@ -46,6 +48,32 @@ export class LocalTempStorageClient implements TempStorageGateway {
   }
 
   /**
+   * Upload video to local temporary storage from a stream
+   */
+  async uploadFromStream(
+    params: TempStorageStreamUploadParams,
+    source: NodeJS.ReadableStream
+  ): Promise<TempStorageUploadResult> {
+    const videoDir = path.join(this.baseDir, 'videos', params.videoId);
+    const filePath = path.join(videoDir, 'original.mp4');
+
+    // Create directory structure
+    await fs.promises.mkdir(videoDir, { recursive: true });
+
+    // Write file from stream
+    const writeStream = fs.createWriteStream(filePath);
+    await pipeline(source, writeStream);
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + this.expirationDays);
+
+    return {
+      gcsUri: `local://${filePath}`,
+      expiresAt,
+    };
+  }
+
+  /**
    * Download video from local temporary storage
    */
   async download(gcsUri: string): Promise<Buffer> {
@@ -56,6 +84,19 @@ export class LocalTempStorageClient implements TempStorageGateway {
     }
 
     return fs.promises.readFile(filePath);
+  }
+
+  /**
+   * Download video as a stream from local temporary storage
+   */
+  downloadAsStream(gcsUri: string): NodeJS.ReadableStream {
+    const filePath = this.parseUri(gcsUri);
+
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`File not found: ${gcsUri}`);
+    }
+
+    return fs.createReadStream(filePath);
   }
 
   /**

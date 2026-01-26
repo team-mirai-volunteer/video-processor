@@ -15,6 +15,14 @@ export interface TempStorageUploadParams {
 }
 
 /**
+ * Parameters for stream uploading to temporary storage
+ */
+export interface TempStorageStreamUploadParams {
+  videoId: string;
+  contentType?: string;
+}
+
+/**
  * Gateway for temporary video storage (GCS)
  * Videos are stored temporarily for reuse during processing
  */
@@ -26,11 +34,29 @@ export interface TempStorageGateway {
   upload(params: TempStorageUploadParams): Promise<TempStorageUploadResult>;
 
   /**
+   * Upload video to temporary storage from a stream
+   * Use this for large files to avoid memory issues
+   * @returns GCS URI and expiration date
+   */
+  uploadFromStream(
+    params: TempStorageStreamUploadParams,
+    source: NodeJS.ReadableStream
+  ): Promise<TempStorageUploadResult>;
+
+  /**
    * Download video from temporary storage
    * @param gcsUri GCS URI of the video
    * @returns Video buffer
    */
   download(gcsUri: string): Promise<Buffer>;
+
+  /**
+   * Download video as a stream from temporary storage
+   * Use this for large files to avoid memory issues
+   * @param gcsUri GCS URI of the video
+   * @returns Readable stream
+   */
+  downloadAsStream(gcsUri: string): NodeJS.ReadableStream;
 
   /**
    * Check if video exists in temporary storage

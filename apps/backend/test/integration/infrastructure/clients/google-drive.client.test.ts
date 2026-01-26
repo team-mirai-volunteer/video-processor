@@ -13,11 +13,15 @@ describe.skipIf(!runIntegrationTests)('GoogleDriveClient Integration', () => {
 
   beforeAll(() => {
     // Verify required environment variables
-    if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
-      throw new Error('GOOGLE_SERVICE_ACCOUNT_EMAIL is required for integration tests');
-    }
-    if (!process.env.GOOGLE_PRIVATE_KEY) {
-      throw new Error('GOOGLE_PRIVATE_KEY is required for integration tests');
+    // Either GOOGLE_APPLICATION_CREDENTIALS_JSON or (GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_PRIVATE_KEY)
+    const hasCredentialsJson = !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+    const hasIndividualCredentials =
+      !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && !!process.env.GOOGLE_PRIVATE_KEY;
+
+    if (!hasCredentialsJson && !hasIndividualCredentials) {
+      throw new Error(
+        'Either GOOGLE_APPLICATION_CREDENTIALS_JSON or (GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_PRIVATE_KEY) is required for integration tests'
+      );
     }
     if (!TEST_ROOT_FOLDER_ID) {
       throw new Error('GOOGLE_DRIVE_TEST_FOLDER_ID is required for integration tests');
@@ -158,6 +162,59 @@ describe.skipIf(!runIntegrationTests)('GoogleDriveClient Integration', () => {
     });
   });
 
+  describe('downloadFileAsStream', () => {
+    it('should download file as stream', async () => {
+      const originalContent = 'Stream download test - ストリームテスト';
+      const content = Buffer.from(originalContent);
+      const fileName = `stream-download-test-${Date.now()}.txt`;
+
+      const uploaded = await client.uploadFile({
+        name: fileName,
+        mimeType: 'text/plain',
+        content,
+        parentFolderId: TEST_ROOT_FOLDER_ID,
+      });
+      createdFileIds.push(uploaded.id);
+
+      const stream = await client.downloadFileAsStream(uploaded.id);
+
+      // Collect stream data
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream) {
+        chunks.push(Buffer.from(chunk));
+      }
+      const downloaded = Buffer.concat(chunks);
+
+      expect(downloaded.toString()).toBe(originalContent);
+    });
+
+    it('should download larger file as stream', async () => {
+      // Create larger content (100KB)
+      const size = 100 * 1024;
+      const content = Buffer.alloc(size, 'z');
+      const fileName = `large-stream-test-${Date.now()}.bin`;
+
+      const uploaded = await client.uploadFile({
+        name: fileName,
+        mimeType: 'application/octet-stream',
+        content,
+        parentFolderId: TEST_ROOT_FOLDER_ID,
+      });
+      createdFileIds.push(uploaded.id);
+
+      const stream = await client.downloadFileAsStream(uploaded.id);
+
+      // Collect stream data
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream) {
+        chunks.push(Buffer.from(chunk));
+      }
+      const downloaded = Buffer.concat(chunks);
+
+      expect(downloaded.length).toBe(size);
+    });
+  });
+
   describe('findOrCreateFolder', () => {
     it('should create folder if not exists', async () => {
       const folderName = `find-or-create-${Date.now()}`;
@@ -284,14 +341,18 @@ describe.skipIf(!runIntegrationTests)('GoogleDriveClient.fromEnv', () => {
     vi.unstubAllEnvs();
   });
 
-  it('should throw error when GOOGLE_SERVICE_ACCOUNT_EMAIL is not set', () => {
+  it('should throw error when no credentials are available', () => {
+    // Clear all possible credential sources
+    vi.stubEnv('GOOGLE_APPLICATION_CREDENTIALS_JSON', '');
     vi.stubEnv('GOOGLE_SERVICE_ACCOUNT_EMAIL', '');
-    vi.stubEnv('GOOGLE_PRIVATE_KEY', 'test-key');
+    vi.stubEnv('GOOGLE_PRIVATE_KEY', '');
 
     expect(() => GoogleDriveClient.fromEnv()).toThrow('GOOGLE_SERVICE_ACCOUNT_EMAIL');
   });
 
-  it('should throw error when GOOGLE_PRIVATE_KEY is not set', () => {
+  it('should throw error when only GOOGLE_SERVICE_ACCOUNT_EMAIL is set without GOOGLE_PRIVATE_KEY', () => {
+    // Clear GOOGLE_APPLICATION_CREDENTIALS_JSON to test individual env vars
+    vi.stubEnv('GOOGLE_APPLICATION_CREDENTIALS_JSON', '');
     vi.stubEnv('GOOGLE_SERVICE_ACCOUNT_EMAIL', 'test@example.com');
     vi.stubEnv('GOOGLE_PRIVATE_KEY', '');
 
