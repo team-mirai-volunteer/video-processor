@@ -2,12 +2,15 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type {
+  CacheVideoResponse,
+  ExtractAudioResponse,
   ExtractClipsRequest,
   GetRefinedTranscriptionResponse,
   GetTranscriptionResponse,
   GetVideosQuery,
   RefineTranscriptResponse,
   SubmitVideoRequest,
+  TranscribeAudioResponse,
   TranscribeVideoResponse,
   VideoStatus,
 } from '@video-processor/shared';
@@ -184,6 +187,80 @@ router.post('/:videoId/transcribe', async (req, res, next) => {
     createTranscriptUseCase.execute(videoId ?? '').catch((error) => {
       console.error('[CreateTranscriptUseCase] Error:', error);
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/videos/:videoId/cache
+ * Cache video from Google Drive to GCS
+ */
+router.post('/:videoId/cache', async (req, res, next) => {
+  try {
+    const { videoId } = req.params;
+    const result = await cacheVideoUseCase.execute(videoId ?? '');
+
+    const response: CacheVideoResponse = {
+      videoId: result.videoId,
+      gcsUri: result.gcsUri,
+      expiresAt: result.expiresAt.toISOString(),
+      cached: result.cached,
+    };
+    res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/videos/:videoId/extract-audio
+ * Extract audio from cached video
+ */
+router.post('/:videoId/extract-audio', async (req, res, next) => {
+  try {
+    const { videoId } = req.params;
+    const result = await extractAudioUseCase.execute(videoId ?? '', 'flac');
+
+    const response: ExtractAudioResponse = {
+      videoId: result.videoId,
+      format: 'flac',
+      sizeBytes: result.audioBuffer.length,
+    };
+    res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/videos/:videoId/transcribe-audio
+ * Transcribe audio from video. Auto-executes cache and extract-audio if needed.
+ */
+router.post('/:videoId/transcribe-audio', async (req, res, next) => {
+  try {
+    const { videoId } = req.params;
+
+    // Step 1: Cache video (auto-skips if already cached)
+    await cacheVideoUseCase.execute(videoId ?? '');
+
+    // Step 2: Extract audio
+    const audioResult = await extractAudioUseCase.execute(videoId ?? '', 'flac');
+
+    // Step 3: Transcribe audio
+    const transcribeResult = await transcribeAudioUseCase.execute({
+      videoId: videoId ?? '',
+      audioBuffer: audioResult.audioBuffer,
+      mimeType: 'audio/flac',
+    });
+
+    const response: TranscribeAudioResponse = {
+      videoId: transcribeResult.videoId,
+      transcriptionId: transcribeResult.transcriptionId,
+      segmentsCount: transcribeResult.segmentsCount,
+      durationSeconds: transcribeResult.durationSeconds,
+    };
+    res.status(200).json(response);
   } catch (error) {
     next(error);
   }
