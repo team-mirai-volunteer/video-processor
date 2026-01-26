@@ -106,6 +106,34 @@ export class FFmpegClient implements VideoProcessingGateway {
   }
 
   /**
+   * Extract a clip from a video file to a file
+   * Memory efficient: no buffer loading required
+   * @param inputPath Path to input video file
+   * @param outputPath Path to output video file
+   * @param startTimeSeconds Start time in seconds
+   * @param endTimeSeconds End time in seconds
+   */
+  async extractClipFromFile(
+    inputPath: string,
+    outputPath: string,
+    startTimeSeconds: number,
+    endTimeSeconds: number
+  ): Promise<void> {
+    const duration = endTimeSeconds - startTimeSeconds;
+
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(inputPath)
+        .setStartTime(startTimeSeconds)
+        .setDuration(duration)
+        .outputOptions(['-c:v copy', '-c:a copy', '-avoid_negative_ts make_zero'])
+        .output(outputPath)
+        .on('end', () => resolve())
+        .on('error', (err: Error) => reject(err))
+        .run();
+    });
+  }
+
+  /**
    * Cleanup temporary directory and its contents
    */
   private async cleanup(tempDir: string): Promise<void> {

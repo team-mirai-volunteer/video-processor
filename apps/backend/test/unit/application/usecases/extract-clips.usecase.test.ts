@@ -1,5 +1,9 @@
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { Readable } from 'node:stream';
 import type { ClipExtractionResponse } from '@video-processor/shared';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ExtractClipsUseCase } from '../../../../src/application/usecases/extract-clips.usecase.js';
 import type { AiGateway } from '../../../../src/domain/gateways/ai.gateway.js';
 import type { ClipRepositoryGateway } from '../../../../src/domain/gateways/clip-repository.gateway.js';
@@ -40,6 +44,7 @@ describe('ExtractClipsUseCase', () => {
   const mockStorageGateway: StorageGateway = {
     getFileMetadata: vi.fn(),
     downloadFile: vi.fn(),
+    downloadFileAsStream: vi.fn(),
     uploadFile: vi.fn(),
     createFolder: vi.fn(),
     findOrCreateFolder: vi.fn(),
@@ -47,7 +52,9 @@ describe('ExtractClipsUseCase', () => {
 
   const mockTempStorageGateway: TempStorageGateway = {
     upload: vi.fn(),
+    uploadFromStream: vi.fn(),
     download: vi.fn(),
+    downloadAsStream: vi.fn(),
     exists: vi.fn(),
   };
 
@@ -57,8 +64,9 @@ describe('ExtractClipsUseCase', () => {
 
   const mockVideoProcessingGateway: VideoProcessingGateway = {
     extractClip: vi.fn(),
+    extractClipFromFile: vi.fn(),
     getVideoDuration: vi.fn(),
-    extractAudio: vi.fn(),
+    extractAudioFromFile: vi.fn(),
   };
 
   const mockRefinedTranscriptionRepository: RefinedTranscriptionRepositoryGateway = {
@@ -69,9 +77,11 @@ describe('ExtractClipsUseCase', () => {
   };
 
   let useCase: ExtractClipsUseCase;
+  let tempTestDir: string;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    tempTestDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'extract-clips-test-'));
 
     useCase = new ExtractClipsUseCase({
       videoRepository: mockVideoRepository,
@@ -86,6 +96,17 @@ describe('ExtractClipsUseCase', () => {
     });
   });
 
+  afterEach(async () => {
+    // Clean up temp directory
+    try {
+      const files = await fs.promises.readdir(tempTestDir);
+      await Promise.all(files.map((file) => fs.promises.unlink(path.join(tempTestDir, file))));
+      await fs.promises.rmdir(tempTestDir);
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
   describe('execute', () => {
     const mockVideo = Video.fromProps({
       id: 'video-1',
@@ -96,7 +117,10 @@ describe('ExtractClipsUseCase', () => {
       durationSeconds: 600,
       fileSizeBytes: 1000000,
       status: 'transcribed',
+      transcriptionPhase: null,
       errorMessage: null,
+      gcsUri: null,
+      gcsExpiresAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -193,6 +217,14 @@ describe('ExtractClipsUseCase', () => {
     });
 
     it('should successfully extract clips when all dependencies are available', async () => {
+      // Create a mock stream that provides video data
+      const createMockStream = () => {
+        const stream = new Readable();
+        stream.push(Buffer.from('mock-video-data'));
+        stream.push(null);
+        return stream;
+      };
+
       // Setup mocks
       vi.mocked(mockVideoRepository.findById).mockResolvedValue(mockVideo);
       vi.mocked(mockTranscriptionRepository.findByVideoId).mockResolvedValue(mockTranscription);
@@ -208,11 +240,18 @@ describe('ExtractClipsUseCase', () => {
         parents: ['parent-folder'],
       });
       vi.mocked(mockAiGateway.generate).mockResolvedValue(JSON.stringify(mockAiResponse));
-      vi.mocked(mockStorageGateway.downloadFile).mockResolvedValue(Buffer.from('video-data'));
-      vi.mocked(mockTempStorageGateway.upload).mockResolvedValue({
-        gcsUri: 'gs://bucket/video.mp4',
-        expiresAt: new Date(),
+
+      // GCS cache is not valid, so download from Google Drive and cache
+      vi.mocked(mockTempStorageGateway.exists).mockResolvedValue(false);
+      vi.mocked(mockStorageGateway.downloadFileAsStream).mockResolvedValue(createMockStream());
+      vi.mocked(mockTempStorageGateway.uploadFromStream).mockResolvedValue({
+        gcsUri: 'gs://bucket/videos/video-1/original.mp4',
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       });
+
+      // Download from GCS to local file
+      vi.mocked(mockTempStorageGateway.downloadAsStream).mockReturnValue(createMockStream());
+
       vi.mocked(mockStorageGateway.findOrCreateFolder).mockResolvedValue({
         id: 'shorts-folder',
         name: 'ショート用',
@@ -220,7 +259,14 @@ describe('ExtractClipsUseCase', () => {
         size: 0,
         webViewLink: 'https://drive.google.com/drive/folders/shorts-folder',
       });
-      vi.mocked(mockVideoProcessingGateway.extractClip).mockResolvedValue(Buffer.from('clip-data'));
+
+      // Mock extractClipFromFile to create the output file
+      vi.mocked(mockVideoProcessingGateway.extractClipFromFile).mockImplementation(
+        async (_inputPath, outputPath) => {
+          await fs.promises.writeFile(outputPath, Buffer.from('extracted-clip-data'));
+        }
+      );
+
       vi.mocked(mockStorageGateway.uploadFile).mockResolvedValue({
         id: 'clip-file-1',
         name: 'Introduction.mp4',
@@ -242,6 +288,11 @@ describe('ExtractClipsUseCase', () => {
       // Verify the video status was updated
       expect(mockVideoRepository.save).toHaveBeenCalled();
       expect(mockClipRepository.saveMany).toHaveBeenCalled();
+
+      // Verify file-based processing was used
+      expect(mockVideoProcessingGateway.extractClipFromFile).toHaveBeenCalled();
+      expect(mockStorageGateway.downloadFileAsStream).toHaveBeenCalled();
+      expect(mockTempStorageGateway.uploadFromStream).toHaveBeenCalled();
     });
 
     it('should update video status to failed on error', async () => {
