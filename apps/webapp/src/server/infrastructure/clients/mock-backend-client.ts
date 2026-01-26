@@ -139,7 +139,7 @@ export const mockBackendClient = {
     return {
       videoId,
       format: 'flac',
-      sizeBytes: 1024 * 1024 * 50, // 50MB
+      audioGcsUri: `gs://mock-bucket/videos/${videoId}/audio.flac`,
     };
   },
 

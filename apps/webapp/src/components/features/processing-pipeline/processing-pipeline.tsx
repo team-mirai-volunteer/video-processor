@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatBytes, formatDate, formatDuration } from '@/lib/utils';
+import { formatDate, formatDuration } from '@/lib/utils';
 import { cacheVideo } from '@/server/presentation/actions/cacheVideo';
 import { extractAudio } from '@/server/presentation/actions/extractAudio';
 import { refineTranscript } from '@/server/presentation/actions/refineTranscript';
@@ -140,7 +140,7 @@ export function ProcessingPipeline({
         status: 'completed',
         result: {
           format: result.format,
-          sizeBytes: result.sizeBytes,
+          audioGcsUri: result.audioGcsUri,
         },
       });
       onStepComplete();
@@ -272,8 +272,8 @@ export function ProcessingPipeline({
           {result.format?.toUpperCase()}
         </div>
         <div>
-          <span className="font-medium text-foreground">サイズ:</span>{' '}
-          {formatBytes(result.sizeBytes)}
+          <span className="font-medium text-foreground">GCS URI:</span>{' '}
+          <span className="text-xs break-all">{result.audioGcsUri}</span>
         </div>
       </div>
     );
