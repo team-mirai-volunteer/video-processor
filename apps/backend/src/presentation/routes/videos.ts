@@ -36,6 +36,7 @@ import { LocalTempStorageClient } from '../../infrastructure/clients/local-temp-
 import { OpenAIClient } from '../../infrastructure/clients/openai.client.js';
 import { SpeechToTextClient } from '../../infrastructure/clients/speech-to-text.client.js';
 import { prisma } from '../../infrastructure/database/connection.js';
+import { logger } from '../../infrastructure/logging/logger.js';
 import { ClipRepository } from '../../infrastructure/repositories/clip.repository.js';
 import { ProcessingJobRepository } from '../../infrastructure/repositories/processing-job.repository.js';
 import { RefinedTranscriptionRepository } from '../../infrastructure/repositories/refined-transcription.repository.js';
@@ -185,7 +186,7 @@ router.post('/:videoId/transcribe', async (req, res, next) => {
 
     // Execute transcription in background (fire and forget)
     createTranscriptUseCase.execute(videoId ?? '').catch((error) => {
-      console.error('[CreateTranscriptUseCase] Error:', error);
+      logger.error('[VideosRoute] Background transcription failed', error as Error, { videoId });
     });
   } catch (error) {
     next(error);
