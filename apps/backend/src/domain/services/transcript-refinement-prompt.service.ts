@@ -34,7 +34,7 @@ export interface SegmentChunk {
  * Default number of segments per chunk
  * This value is chosen to stay well within LLM output token limits
  */
-export const DEFAULT_CHUNK_SIZE = 500;
+const DEFAULT_CHUNK_SIZE = 500;
 
 /**
  * Number of segments to overlap between chunks for context continuity
