@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { v2 } from '@google-cloud/speech';
 import type { google } from '@google-cloud/speech/build/protos/protos.js';
 import { Storage } from '@google-cloud/storage';
@@ -10,8 +13,28 @@ import type {
   TranscriptionSegment,
 } from '../../domain/gateways/transcription.gateway.js';
 
+interface DictionaryEntry {
+  correct: string;
+  category: 'person' | 'organization' | 'service' | 'political_term';
+  description: string;
+  wrongPatterns: string[];
+}
+
+interface ProperNounDictionary {
+  version: string;
+  description: string;
+  entries: DictionaryEntry[];
+}
+
+const BOOST_BY_CATEGORY: Record<DictionaryEntry['category'], number> = {
+  person: 15,
+  organization: 15,
+  service: 10,
+  political_term: 5,
+};
+
 /**
- * Google Cloud Speech-to-Text API v2 client implementation using Chirp model
+ * Google Cloud Speech-to-Text API v2 client implementation using Chirp 2 model
  * Implements TranscriptionGateway interface
  */
 export class SpeechToTextClient implements TranscriptionGateway {
@@ -20,6 +43,7 @@ export class SpeechToTextClient implements TranscriptionGateway {
   private readonly projectId: string;
   private readonly location: string;
   private readonly bucketName: string;
+  private readonly adaptation: google.cloud.speech.v2.ISpeechAdaptation;
 
   constructor() {
     this.projectId = process.env.GOOGLE_CLOUD_PROJECT ?? '';
@@ -41,6 +65,7 @@ export class SpeechToTextClient implements TranscriptionGateway {
       projectId: this.projectId,
       credentials,
     });
+    this.adaptation = this.loadDictionary();
   }
 
   private getCredentials(): { client_email: string; private_key: string } | undefined {
@@ -73,7 +98,7 @@ export class SpeechToTextClient implements TranscriptionGateway {
   }
 
   /**
-   * Transcribe audio using Google Cloud Speech-to-Text API v2 with Chirp model
+   * Transcribe audio using Google Cloud Speech-to-Text API v2 with Chirp 2 model
    * @param params Transcription parameters
    * @returns Transcription result with segments and timestamps
    */
@@ -83,10 +108,12 @@ export class SpeechToTextClient implements TranscriptionGateway {
     const config: google.cloud.speech.v2.IRecognitionConfig = {
       autoDecodingConfig: {},
       languageCodes: languageCode ? [languageCode] : ['ja-JP'],
-      model: 'chirp',
+      model: 'chirp_2',
       features: {
         enableWordTimeOffsets: true,
+        enableAutomaticPunctuation: true,
       },
+      adaptation: this.adaptation,
     };
 
     const recognizer = `projects/${this.projectId}/locations/${this.location}/recognizers/_`;
@@ -168,14 +195,16 @@ export class SpeechToTextClient implements TranscriptionGateway {
         contentType: mimeType,
       });
 
-      // Configure Batch Recognize request
+      // Configure Batch Recognize request with Chirp 2 model
       const config: google.cloud.speech.v2.IRecognitionConfig = {
         autoDecodingConfig: {},
         languageCodes: languageCode ? [languageCode] : ['ja-JP'],
-        model: 'chirp',
+        model: 'chirp_2',
         features: {
           enableWordTimeOffsets: true,
+          enableAutomaticPunctuation: true,
         },
+        adaptation: this.adaptation,
       };
 
       const recognizer = `projects/${this.projectId}/locations/${this.location}/recognizers/_`;
@@ -219,14 +248,16 @@ export class SpeechToTextClient implements TranscriptionGateway {
   ): Promise<TranscriptionResult> {
     const { gcsUri, languageCode } = params;
 
-    // Configure Batch Recognize request
+    // Configure Batch Recognize request with Chirp 2 model
     const config: google.cloud.speech.v2.IRecognitionConfig = {
       autoDecodingConfig: {},
       languageCodes: languageCode ? [languageCode] : ['ja-JP'],
-      model: 'chirp',
+      model: 'chirp_2',
       features: {
         enableWordTimeOffsets: true,
+        enableAutomaticPunctuation: true,
       },
+      adaptation: this.adaptation,
     };
 
     const recognizer = `projects/${this.projectId}/locations/${this.location}/recognizers/_`;
@@ -311,5 +342,39 @@ export class SpeechToTextClient implements TranscriptionGateway {
     const seconds = Number(duration.seconds ?? 0);
     const nanos = (duration.nanos ?? 0) / 1_000_000_000;
     return seconds + nanos;
+  }
+
+  /**
+   * Load proper noun dictionary for Speech Adaptation
+   */
+  private loadDictionary(): google.cloud.speech.v2.ISpeechAdaptation {
+    try {
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = dirname(__filename);
+      const dictionaryPath = join(__dirname, '../data/proper-noun-dictionary.json');
+      const dictionaryJson = readFileSync(dictionaryPath, 'utf-8');
+      const dictionary: ProperNounDictionary = JSON.parse(dictionaryJson);
+
+      const phrases = dictionary.entries.map((entry) => ({
+        value: entry.correct,
+        boost: BOOST_BY_CATEGORY[entry.category],
+      }));
+
+      return {
+        phraseSets: [
+          {
+            inlinePhraseSet: {
+              phrases,
+            },
+          },
+        ],
+      };
+    } catch (error) {
+      console.warn(
+        '[SpeechToTextClient] Failed to load dictionary, continuing without adaptation:',
+        error
+      );
+      return {};
+    }
   }
 }
