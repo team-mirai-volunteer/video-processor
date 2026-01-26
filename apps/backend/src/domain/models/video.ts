@@ -29,18 +29,12 @@ export interface CreateVideoParams {
 
 const GOOGLE_DRIVE_URL_PATTERN = /^https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
 
-/**
- * Extract file ID from Google Drive URL
- */
-export function extractGoogleDriveFileId(url: string): string | null {
+function extractGoogleDriveFileId(url: string): string | null {
   const match = url.match(GOOGLE_DRIVE_URL_PATTERN);
   return match?.[1] ?? null;
 }
 
-/**
- * Validate Google Drive URL format
- */
-export function isValidGoogleDriveUrl(url: string): boolean {
+function isValidGoogleDriveUrl(url: string): boolean {
   return GOOGLE_DRIVE_URL_PATTERN.test(url);
 }
 

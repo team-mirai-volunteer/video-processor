@@ -35,10 +35,3 @@ export class NotFoundError extends ApplicationError {
 export class ConflictError extends ApplicationError {
   readonly statusCode = 409;
 }
-
-/**
- * Internal error (500 Internal Server Error)
- */
-export class InternalError extends ApplicationError {
-  readonly statusCode = 500;
-}

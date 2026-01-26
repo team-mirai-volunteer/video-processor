@@ -1,44 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import {
-  Video,
-  extractGoogleDriveFileId,
-  isValidGoogleDriveUrl,
-} from '../../../../src/domain/models/video.js';
+import { Video } from '../../../../src/domain/models/video.js';
 
 describe('Video', () => {
   const generateId = () => 'test-id-123';
-
-  describe('extractGoogleDriveFileId', () => {
-    it('should extract file ID from valid Google Drive URL', () => {
-      const url = 'https://drive.google.com/file/d/1a2b3c4d5e6f/view';
-      expect(extractGoogleDriveFileId(url)).toBe('1a2b3c4d5e6f');
-    });
-
-    it('should extract file ID with various characters', () => {
-      const url = 'https://drive.google.com/file/d/1a-2b_3c4d5e6f/view?usp=sharing';
-      expect(extractGoogleDriveFileId(url)).toBe('1a-2b_3c4d5e6f');
-    });
-
-    it('should return null for invalid URL', () => {
-      expect(extractGoogleDriveFileId('https://example.com/file')).toBe(null);
-      expect(extractGoogleDriveFileId('')).toBe(null);
-    });
-  });
-
-  describe('isValidGoogleDriveUrl', () => {
-    it('should return true for valid Google Drive URLs', () => {
-      expect(isValidGoogleDriveUrl('https://drive.google.com/file/d/1a2b3c4d5e6f/view')).toBe(true);
-      expect(
-        isValidGoogleDriveUrl('https://drive.google.com/file/d/1a2b3c4d5e6f/view?usp=sharing')
-      ).toBe(true);
-    });
-
-    it('should return false for invalid URLs', () => {
-      expect(isValidGoogleDriveUrl('https://example.com/file')).toBe(false);
-      expect(isValidGoogleDriveUrl('')).toBe(false);
-      expect(isValidGoogleDriveUrl('not-a-url')).toBe(false);
-    });
-  });
 
   describe('create', () => {
     it('should create a Video with valid Google Drive URL', () => {

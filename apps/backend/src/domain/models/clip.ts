@@ -32,38 +32,6 @@ export interface CreateClipParams {
 const MIN_CLIP_DURATION_SECONDS = 20;
 const MAX_CLIP_DURATION_SECONDS = 60;
 
-/**
- * Parse time string to seconds
- * Supports formats: HH:MM:SS, MM:SS, MM:SS.ss, SS.ss, SS
- */
-export function parseTimeToSeconds(timeStr: string): number {
-  const cleaned = timeStr.trim();
-  const parts = cleaned.split(':');
-
-  if (parts.length === 3) {
-    // HH:MM:SS or HH:MM:SS.ss
-    const [hours, minutes, seconds] = parts;
-    return (Number(hours) || 0) * 3600 + (Number(minutes) || 0) * 60 + (Number(seconds) || 0);
-  }
-  if (parts.length === 2) {
-    // MM:SS or MM:SS.ss
-    const [minutes, seconds] = parts;
-    return (Number(minutes) || 0) * 60 + (Number(seconds) || 0);
-  }
-  // SS or SS.ss
-  return Number(parts[0]) || 0;
-}
-
-/**
- * Format seconds to time string (HH:MM:SS)
- */
-export function formatSecondsToTime(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-}
-
 export class Clip {
   readonly id: string;
   readonly videoId: string;
