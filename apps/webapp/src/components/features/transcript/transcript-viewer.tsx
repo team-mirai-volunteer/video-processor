@@ -103,12 +103,7 @@ export function TranscriptViewer({
         </TabsList>
 
         <div className="flex items-center gap-2">
-          <Button
-            onClick={handleDownloadSrt}
-            variant="outline"
-            size="sm"
-            disabled={isDownloading}
-          >
+          <Button onClick={handleDownloadSrt} variant="outline" size="sm" disabled={isDownloading}>
             {isDownloading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (

@@ -28,6 +28,10 @@ import { RefineTranscriptUseCase } from '../../application/usecases/refine-trans
 import { SubmitVideoUseCase } from '../../application/usecases/submit-video.usecase.js';
 import { TranscribeAudioUseCase } from '../../application/usecases/transcribe-audio.usecase.js';
 import type { TempStorageGateway } from '../../domain/gateways/temp-storage.gateway.js';
+import {
+  refinedTranscriptionToSrt,
+  transcriptionToSrt,
+} from '../../domain/services/srt-converter.service.js';
 import type { ProperNounDictionary } from '../../domain/services/transcript-refinement-prompt.service.js';
 import { FFmpegClient } from '../../infrastructure/clients/ffmpeg.client.js';
 import { GcsClient } from '../../infrastructure/clients/gcs.client.js';
@@ -41,10 +45,6 @@ import { ProcessingJobRepository } from '../../infrastructure/repositories/proce
 import { RefinedTranscriptionRepository } from '../../infrastructure/repositories/refined-transcription.repository.js';
 import { TranscriptionRepository } from '../../infrastructure/repositories/transcription.repository.js';
 import { VideoRepository } from '../../infrastructure/repositories/video.repository.js';
-import {
-  refinedTranscriptionToSrt,
-  transcriptionToSrt,
-} from '../../domain/services/srt-converter.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

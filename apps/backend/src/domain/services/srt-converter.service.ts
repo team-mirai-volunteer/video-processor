@@ -105,8 +105,3 @@ export function refinedTranscriptionToSrt(sentences: RefinedSentence[]): string 
 
   return entriesToSrt(entries);
 }
-
-/**
- * Format SRT time string (for testing/export)
- */
-export { formatSrtTime };

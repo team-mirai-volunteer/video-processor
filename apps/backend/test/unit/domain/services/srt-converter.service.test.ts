@@ -1,33 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  formatSrtTime,
   refinedTranscriptionToSrt,
   transcriptionToSrt,
 } from '../../../../src/domain/services/srt-converter.service.js';
 
 describe('SrtConverterService', () => {
-  describe('formatSrtTime', () => {
-    it('should format 0 seconds correctly', () => {
-      expect(formatSrtTime(0)).toBe('00:00:00,000');
-    });
-
-    it('should format seconds with milliseconds', () => {
-      expect(formatSrtTime(5.5)).toBe('00:00:05,500');
-    });
-
-    it('should format minutes correctly', () => {
-      expect(formatSrtTime(65.123)).toBe('00:01:05,123');
-    });
-
-    it('should format hours correctly', () => {
-      expect(formatSrtTime(3661.999)).toBe('01:01:01,999');
-    });
-
-    it('should handle large durations', () => {
-      expect(formatSrtTime(86400)).toBe('24:00:00,000');
-    });
-  });
-
   describe('transcriptionToSrt', () => {
     it('should return empty string for empty segments', () => {
       expect(transcriptionToSrt([])).toBe('');
