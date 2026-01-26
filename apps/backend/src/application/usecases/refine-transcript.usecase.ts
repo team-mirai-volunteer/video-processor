@@ -137,57 +137,53 @@ export class RefineTranscriptUseCase {
   }
 
   /**
-   * Process all chunks and merge results
+   * Process all chunks in parallel and merge results
    * Handles overlap between chunks to avoid duplicate or incomplete sentences
    */
   private async processChunks(
     chunks: SegmentChunk[],
     dictionary: ProperNounDictionary
   ): Promise<RefinedSentence[]> {
+    this.log('Processing chunks in parallel', { chunkCount: chunks.length });
+
+    // Process all chunks in parallel
+    const chunkResults = await Promise.all(
+      chunks.map(async (chunk) => {
+        this.log('Processing chunk', {
+          chunkIndex: chunk.chunkIndex,
+          totalChunks: chunk.totalChunks,
+          startIndex: chunk.startIndex,
+          endIndex: chunk.endIndex,
+        });
+
+        const prompt = this.promptService.buildChunkPrompt(chunk, dictionary);
+        const aiResponse = await this.aiGateway.generate(prompt);
+        const parsedResponse = this.parseResponse(aiResponse);
+
+        this.log('Chunk processed', {
+          chunkIndex: chunk.chunkIndex,
+          sentenceCount: parsedResponse.sentences.length,
+        });
+
+        return { chunk, sentences: parsedResponse.sentences };
+      })
+    );
+
+    // Sort by chunk index and merge results
+    chunkResults.sort((a, b) => a.chunk.chunkIndex - b.chunk.chunkIndex);
+
     const allSentences: RefinedSentence[] = [];
-    let previousContext: string | undefined;
     let lastProcessedSegmentIndex = -1;
 
-    for (const chunk of chunks) {
-      this.log('Processing chunk', {
-        chunkIndex: chunk.chunkIndex,
-        totalChunks: chunk.totalChunks,
-        startIndex: chunk.startIndex,
-        endIndex: chunk.endIndex,
-        segmentCount: chunk.segments.length,
-      });
-
-      // Build prompt for this chunk
-      const prompt = this.promptService.buildChunkPrompt(chunk, dictionary, previousContext);
-      this.log('Chunk prompt built', {
-        chunkIndex: chunk.chunkIndex,
-        promptLength: prompt.length,
-      });
-
-      // Call LLM
-      const aiResponse = await this.aiGateway.generate(prompt);
-      this.log('Chunk AI response received', {
-        chunkIndex: chunk.chunkIndex,
-        responseLength: aiResponse.length,
-      });
-
-      // Parse response
-      const parsedResponse = this.parseResponse(aiResponse);
-      this.log('Chunk response parsed', {
-        chunkIndex: chunk.chunkIndex,
-        sentenceCount: parsedResponse.sentences.length,
-      });
-
+    for (const { chunk, sentences } of chunkResults) {
       // Determine cutoff index for this chunk
-      // For non-last chunks, only accept sentences that end before the overlap region
-      // This ensures sentences spanning the overlap are handled by the next chunk
       const isLastChunk = chunk.chunkIndex === chunk.totalChunks - 1;
       const cutoffIndex = isLastChunk ? chunk.endIndex : chunk.endIndex - CHUNK_OVERLAP;
 
       // Filter sentences:
       // 1. Sentence must start after the last processed segment (avoid duplicates)
       // 2. Sentence must end before the cutoff (avoid incomplete sentences at boundary)
-      const newSentences = parsedResponse.sentences.filter((sentence) => {
+      const newSentences = sentences.filter((sentence) => {
         const minSegmentIndex = Math.min(...sentence.originalSegmentIndices);
         const maxSegmentIndex = Math.max(...sentence.originalSegmentIndices);
         return minSegmentIndex > lastProcessedSegmentIndex && maxSegmentIndex <= cutoffIndex;
@@ -195,25 +191,17 @@ export class RefineTranscriptUseCase {
 
       this.log('Filtered sentences for overlap', {
         chunkIndex: chunk.chunkIndex,
-        originalCount: parsedResponse.sentences.length,
+        originalCount: sentences.length,
         filteredCount: newSentences.length,
         cutoffIndex,
         lastProcessedSegmentIndex,
       });
 
-      // Add new sentences
       allSentences.push(...newSentences);
 
-      // Update last processed segment index
       if (newSentences.length > 0) {
         const lastSentence = newSentences[newSentences.length - 1];
         lastProcessedSegmentIndex = Math.max(...lastSentence.originalSegmentIndices);
-      }
-
-      // Set context for next chunk (last 2 sentences)
-      if (allSentences.length > 0) {
-        const contextSentences = allSentences.slice(-2);
-        previousContext = contextSentences.map((s) => s.text).join('');
       }
     }
 
