@@ -9,6 +9,7 @@ import {
 } from '../../domain/models/refined-transcription.js';
 import {
   type ProperNounDictionary,
+  type SegmentChunk,
   TranscriptRefinementPromptService,
 } from '../../domain/services/transcript-refinement-prompt.service.js';
 import { NotFoundError } from '../errors.js';
@@ -86,28 +87,26 @@ export class RefineTranscriptUseCase {
       entryCount: dictionary.entries.length,
     });
 
-    // 3. Build prompt
-    const prompt = this.promptService.buildPrompt(transcription.segments, dictionary);
-    this.log('Prompt built', { promptLength: prompt.length });
+    // 3. Split segments into chunks
+    const chunks = this.promptService.splitIntoChunks(transcription.segments);
+    this.log('Segments split into chunks', {
+      chunkCount: chunks.length,
+      segmentCount: transcription.segments.length,
+    });
 
-    // 4. Call LLM
-    this.log('Calling AI gateway...');
-    const aiResponse = await this.aiGateway.generate(prompt);
-    this.log('AI response received', { responseLength: aiResponse.length });
+    // 4. Process each chunk
+    const allSentences = await this.processChunks(chunks, dictionary);
+    this.log('All chunks processed', { totalSentences: allSentences.length });
 
-    // 5. Parse response
-    const parsedResponse = this.parseResponse(aiResponse);
-    this.log('Response parsed', { sentenceCount: parsedResponse.sentences.length });
+    // 5. Generate fullText from sentences
+    const fullText = allSentences.map((s) => s.text).join('');
 
-    // 6. Generate fullText from sentences
-    const fullText = parsedResponse.sentences.map((s) => s.text).join('');
-
-    // 7. Create RefinedTranscription entity
+    // 6. Create RefinedTranscription entity
     const refinedTranscriptionResult = RefinedTranscription.create(
       {
         transcriptionId: transcription.id,
         fullText,
-        sentences: parsedResponse.sentences,
+        sentences: allSentences,
         dictionaryVersion: dictionary.version,
       },
       this.generateId
@@ -119,14 +118,14 @@ export class RefineTranscriptUseCase {
 
     const refinedTranscription = refinedTranscriptionResult.value;
 
-    // 8. Save to repository
+    // 7. Save to repository
     await this.refinedTranscriptionRepository.save(refinedTranscription);
     this.log('Refined transcription saved', { id: refinedTranscription.id });
 
-    // 9. Upload refined transcript to Google Drive (best effort)
+    // 8. Upload refined transcript to Google Drive (best effort)
     await this.uploadRefinedTranscriptToDrive(videoId, refinedTranscription);
 
-    // 10. Return result
+    // 9. Return result
     return {
       id: refinedTranscription.id,
       transcriptionId: refinedTranscription.transcriptionId,
@@ -134,6 +133,80 @@ export class RefineTranscriptUseCase {
       sentenceCount: refinedTranscription.sentences.length,
       dictionaryVersion: refinedTranscription.dictionaryVersion,
     };
+  }
+
+  /**
+   * Process all chunks and merge results
+   * Handles overlap between chunks to avoid duplicate sentences
+   */
+  private async processChunks(
+    chunks: SegmentChunk[],
+    dictionary: ProperNounDictionary
+  ): Promise<RefinedSentence[]> {
+    const allSentences: RefinedSentence[] = [];
+    let previousContext: string | undefined;
+    let lastProcessedSegmentIndex = -1;
+
+    for (const chunk of chunks) {
+      this.log('Processing chunk', {
+        chunkIndex: chunk.chunkIndex,
+        totalChunks: chunk.totalChunks,
+        startIndex: chunk.startIndex,
+        endIndex: chunk.endIndex,
+        segmentCount: chunk.segments.length,
+      });
+
+      // Build prompt for this chunk
+      const prompt = this.promptService.buildChunkPrompt(chunk, dictionary, previousContext);
+      this.log('Chunk prompt built', {
+        chunkIndex: chunk.chunkIndex,
+        promptLength: prompt.length,
+      });
+
+      // Call LLM
+      const aiResponse = await this.aiGateway.generate(prompt);
+      this.log('Chunk AI response received', {
+        chunkIndex: chunk.chunkIndex,
+        responseLength: aiResponse.length,
+      });
+
+      // Parse response
+      const parsedResponse = this.parseResponse(aiResponse);
+      this.log('Chunk response parsed', {
+        chunkIndex: chunk.chunkIndex,
+        sentenceCount: parsedResponse.sentences.length,
+      });
+
+      // Filter sentences to avoid overlap
+      // Only include sentences that start after the last processed segment
+      const newSentences = parsedResponse.sentences.filter((sentence) => {
+        const minSegmentIndex = Math.min(...sentence.originalSegmentIndices);
+        return minSegmentIndex > lastProcessedSegmentIndex;
+      });
+
+      this.log('Filtered sentences for overlap', {
+        chunkIndex: chunk.chunkIndex,
+        originalCount: parsedResponse.sentences.length,
+        filteredCount: newSentences.length,
+      });
+
+      // Add new sentences
+      allSentences.push(...newSentences);
+
+      // Update last processed segment index
+      if (newSentences.length > 0) {
+        const lastSentence = newSentences[newSentences.length - 1];
+        lastProcessedSegmentIndex = Math.max(...lastSentence.originalSegmentIndices);
+      }
+
+      // Set context for next chunk (last 2 sentences)
+      if (allSentences.length > 0) {
+        const contextSentences = allSentences.slice(-2);
+        previousContext = contextSentences.map((s) => s.text).join('');
+      }
+    }
+
+    return allSentences;
   }
 
   private async uploadRefinedTranscriptToDrive(

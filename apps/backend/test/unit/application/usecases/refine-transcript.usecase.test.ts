@@ -3,7 +3,9 @@ import { NotFoundError } from '../../../../src/application/errors.js';
 import { RefineTranscriptUseCase } from '../../../../src/application/usecases/refine-transcript.usecase.js';
 import type { AiGateway } from '../../../../src/domain/gateways/ai.gateway.js';
 import type { RefinedTranscriptionRepositoryGateway } from '../../../../src/domain/gateways/refined-transcription-repository.gateway.js';
+import type { StorageGateway } from '../../../../src/domain/gateways/storage.gateway.js';
 import type { TranscriptionRepositoryGateway } from '../../../../src/domain/gateways/transcription-repository.gateway.js';
+import type { VideoRepositoryGateway } from '../../../../src/domain/gateways/video-repository.gateway.js';
 import { Transcription } from '../../../../src/domain/models/transcription.js';
 import type { ProperNounDictionary } from '../../../../src/domain/services/transcript-refinement-prompt.service.js';
 
@@ -11,6 +13,8 @@ describe('RefineTranscriptUseCase', () => {
   let useCase: RefineTranscriptUseCase;
   let transcriptionRepository: TranscriptionRepositoryGateway;
   let refinedTranscriptionRepository: RefinedTranscriptionRepositoryGateway;
+  let videoRepository: VideoRepositoryGateway;
+  let storageGateway: StorageGateway;
   let aiGateway: AiGateway;
   let idCounter: number;
 
@@ -79,6 +83,23 @@ describe('RefineTranscriptUseCase', () => {
       deleteByTranscriptionId: vi.fn().mockResolvedValue(undefined),
     };
 
+    videoRepository = {
+      save: vi.fn().mockResolvedValue(undefined),
+      findById: vi.fn().mockResolvedValue(null),
+      findByGoogleDriveFileId: vi.fn().mockResolvedValue(null),
+      findByStatus: vi.fn().mockResolvedValue([]),
+      findAll: vi.fn().mockResolvedValue([]),
+      delete: vi.fn().mockResolvedValue(undefined),
+    };
+
+    storageGateway = {
+      getFileMetadata: vi.fn().mockResolvedValue({ name: 'test-video.mp4' }),
+      downloadFile: vi.fn().mockResolvedValue(Buffer.from('')),
+      uploadFile: vi.fn().mockResolvedValue({ id: 'file-id', name: 'test.txt' }),
+      findOrCreateFolder: vi.fn().mockResolvedValue({ id: 'folder-id', name: 'test-folder' }),
+      listFiles: vi.fn().mockResolvedValue([]),
+    };
+
     aiGateway = {
       generate: vi.fn().mockResolvedValue(mockAiResponse),
     };
@@ -86,6 +107,8 @@ describe('RefineTranscriptUseCase', () => {
     useCase = new RefineTranscriptUseCase({
       transcriptionRepository,
       refinedTranscriptionRepository,
+      videoRepository,
+      storageGateway,
       aiGateway,
       generateId: () => `id-${++idCounter}`,
       loadDictionary: vi.fn().mockResolvedValue(mockDictionary),
