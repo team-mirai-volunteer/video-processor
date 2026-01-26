@@ -419,7 +419,8 @@ export function ProcessingPipeline({
     return (
       <div className="space-y-1 text-muted-foreground">
         <div>
-          <span className="font-medium text-foreground">字幕ブロック数:</span> {result.segmentsCount}
+          <span className="font-medium text-foreground">字幕ブロック数:</span>{' '}
+          {result.segmentsCount}
         </div>
         <div>
           <span className="font-medium text-foreground">動画の長さ:</span>{' '}
@@ -438,7 +439,8 @@ export function ProcessingPipeline({
       <div className="space-y-1 text-muted-foreground">
         {result.sentencesCount !== undefined && (
           <div>
-            <span className="font-medium text-foreground">整形後の文数:</span> {result.sentencesCount}
+            <span className="font-medium text-foreground">整形後の文数:</span>{' '}
+            {result.sentencesCount}
           </div>
         )}
       </div>
