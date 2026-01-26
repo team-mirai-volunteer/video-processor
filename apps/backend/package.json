@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "postinstall": "prisma generate --schema=src/infrastructure/database/prisma/schema.prisma",
-    "dev": "tsx watch src/index.ts",
+    "dev": "NODE_OPTIONS='--max-old-space-size=8192' tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "biome check .",
