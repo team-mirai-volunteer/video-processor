@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ApiError, apiClient } from '@/lib/api-client';
+import { BackendApiError } from '@/server/infrastructure/clients/backend-client';
+import { submitVideo } from '@/server/presentation/actions/submitVideo';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -21,12 +22,12 @@ export function SubmitForm() {
     setLoading(true);
 
     try {
-      const response = await apiClient.submitVideo({
+      const response = await submitVideo({
         googleDriveUrl,
       });
       router.push(`/videos/${response.id}`);
     } catch (err) {
-      if (err instanceof ApiError) {
+      if (err instanceof BackendApiError) {
         setError(err.message);
       } else {
         setError('動画の登録に失敗しました');
