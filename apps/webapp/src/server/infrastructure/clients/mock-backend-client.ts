@@ -27,6 +27,8 @@ const mockVideos: GetVideoResponse[] = [
     fileSizeBytes: 1500000000,
     status: 'completed',
     errorMessage: null,
+    gcsUri: null,
+    gcsExpiresAt: null,
     clips: [],
     processingJobs: [
       {

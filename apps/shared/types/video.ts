@@ -100,6 +100,8 @@ export interface VideoWithRelations {
   status: VideoStatus;
   transcriptionPhase: TranscriptionPhase | null;
   errorMessage: string | null;
+  gcsUri: string | null;
+  gcsExpiresAt: Date | null;
   clips: import('./clip.js').Clip[];
   processingJobs: import('./processing-job.js').ProcessingJobSummary[];
   transcription: Transcription | null;
