@@ -17,6 +17,7 @@ export interface TranscribeAudioUseCaseDeps {
 export interface TranscribeAudioInput {
   videoId: string;
   audioGcsUri: string;
+  onProgress?: (percent: number) => void;
 }
 
 export interface TranscribeAudioResult {
@@ -52,7 +53,7 @@ export class TranscribeAudioUseCase {
    * Efficient: audio is already in GCS, no upload required
    */
   async execute(input: TranscribeAudioInput): Promise<TranscribeAudioResult> {
-    const { videoId, audioGcsUri } = input;
+    const { videoId, audioGcsUri, onProgress } = input;
     log.info('Starting execution', { videoId, audioGcsUri });
 
     // Get video to verify it exists
@@ -66,6 +67,7 @@ export class TranscribeAudioUseCase {
     log.info('Starting transcription from GCS URI (Batch API)...');
     const transcriptionResult = await this.transcriptionGateway.transcribeLongAudioFromGcsUri({
       gcsUri: audioGcsUri,
+      onProgress,
     });
     log.info('Transcription completed', {
       fullTextLength: transcriptionResult.fullText.length,

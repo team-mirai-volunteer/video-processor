@@ -60,7 +60,10 @@ export class CreateTranscriptUseCase {
 
     try {
       // Update status to transcribing with downloading phase
-      currentVideo = currentVideo.withStatus('transcribing').withTranscriptionPhase('downloading');
+      currentVideo = currentVideo
+        .withStatus('transcribing')
+        .withTranscriptionPhase('downloading')
+        .withProgressMessage('動画をダウンロード中...');
       await this.videoRepository.save(currentVideo);
       log.info('Status updated to transcribing, phase: downloading');
 
@@ -79,7 +82,9 @@ export class CreateTranscriptUseCase {
       currentVideo = cachedVideo;
 
       // Update phase to extracting_audio
-      currentVideo = currentVideo.withTranscriptionPhase('extracting_audio');
+      currentVideo = currentVideo
+        .withTranscriptionPhase('extracting_audio')
+        .withProgressMessage('音声を抽出中...');
       await this.videoRepository.save(currentVideo);
       log.info('Phase updated to extracting_audio');
 
@@ -88,15 +93,46 @@ export class CreateTranscriptUseCase {
       log.info('Audio extracted and uploaded to GCS', { audioGcsUri: audioResult.audioGcsUri });
 
       // Update phase to transcribing
-      currentVideo = currentVideo.withTranscriptionPhase('transcribing');
+      currentVideo = currentVideo
+        .withTranscriptionPhase('transcribing')
+        .withProgressMessage('文字起こし中...');
       await this.videoRepository.save(currentVideo);
       log.info('Phase updated to transcribing');
+
+      // Track last update to avoid excessive DB writes
+      let lastUpdateValue = 0;
 
       // Step 3: Transcribe audio from GCS URI (no re-upload required)
       const transcribeResult = await this.transcribeAudioUseCase.execute({
         videoId,
         audioGcsUri: audioResult.audioGcsUri,
+        onProgress: async (value: number) => {
+          // Negative value = elapsed seconds, positive value = progress percent
+          if (value < 0) {
+            // Elapsed time: update every 10 seconds
+            const elapsedSeconds = -value;
+            if (elapsedSeconds - -lastUpdateValue >= 10 || lastUpdateValue >= 0) {
+              lastUpdateValue = value;
+              const minutes = Math.floor(elapsedSeconds / 60);
+              const seconds = elapsedSeconds % 60;
+              const timeStr = minutes > 0 ? `${minutes}分${seconds}秒` : `${seconds}秒`;
+              currentVideo = currentVideo.withProgressMessage(`文字起こし中 (経過: ${timeStr})...`);
+              await this.videoRepository.save(currentVideo);
+            }
+          } else if (value > 0 && value < 100) {
+            // Progress percent: update every 10%
+            if (value - lastUpdateValue >= 10 || lastUpdateValue < 0) {
+              lastUpdateValue = value;
+              currentVideo = currentVideo.withProgressMessage(`文字起こし中 (${value}%)...`);
+              await this.videoRepository.save(currentVideo);
+            }
+          }
+        },
       });
+
+      // Update progress before saving
+      currentVideo = currentVideo.withProgressMessage('文字起こし結果を保存中...');
+      await this.videoRepository.save(currentVideo);
       log.info('Transcription completed', {
         transcriptionId: transcribeResult.transcriptionId,
         segmentsCount: transcribeResult.segmentsCount,
@@ -105,7 +141,9 @@ export class CreateTranscriptUseCase {
       // Step 4: Refine transcript (optional)
       if (this.refineTranscriptUseCase) {
         // Update phase to refining
-        currentVideo = currentVideo.withTranscriptionPhase('refining');
+        currentVideo = currentVideo
+          .withTranscriptionPhase('refining')
+          .withProgressMessage('AI校正中...');
         await this.videoRepository.save(currentVideo);
         log.info('Phase updated to refining');
 
@@ -121,8 +159,8 @@ export class CreateTranscriptUseCase {
         }
       }
 
-      // Update video status to transcribed (phase will be cleared)
-      currentVideo = currentVideo.withStatus('transcribed');
+      // Update video status to transcribed (phase and progressMessage will be cleared)
+      currentVideo = currentVideo.withStatus('transcribed').withProgressMessage(null);
       await this.videoRepository.save(currentVideo);
       log.info('Video status updated to transcribed');
 

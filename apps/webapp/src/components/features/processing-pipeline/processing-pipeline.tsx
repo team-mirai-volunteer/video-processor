@@ -18,6 +18,7 @@ import type {
   GetRefinedTranscriptionResponse,
   GetTranscriptionResponse,
   TranscribeAudioResponse,
+  TranscriptionPhase,
   VideoWithRelations,
 } from '@video-processor/shared';
 import { Loader2, PlayCircle } from 'lucide-react';
@@ -43,6 +44,66 @@ interface StepsState {
   refine: StepState;
 }
 
+/**
+ * TranscriptionPhase からUIの各ステップ状態を導出する
+ */
+function deriveStepStatuses(
+  phase: TranscriptionPhase | null,
+  hasGcsUri: boolean,
+  hasTranscription: boolean,
+  hasRefinedTranscription: boolean
+): {
+  cache: StepStatus;
+  extractAudio: StepStatus;
+  transcribe: StepStatus;
+  refine: StepStatus;
+} {
+  // 実行中フェーズがある場合、そのフェーズに基づいて状態を決定
+  if (phase === 'downloading') {
+    return {
+      cache: 'running',
+      extractAudio: 'pending',
+      transcribe: 'pending',
+      refine: 'pending',
+    };
+  }
+
+  if (phase === 'extracting_audio') {
+    return {
+      cache: 'completed',
+      extractAudio: 'running',
+      transcribe: 'pending',
+      refine: 'pending',
+    };
+  }
+
+  if (phase === 'transcribing' || phase === 'saving' || phase === 'uploading') {
+    return {
+      cache: 'completed',
+      extractAudio: 'completed',
+      transcribe: 'running',
+      refine: 'pending',
+    };
+  }
+
+  if (phase === 'refining') {
+    return {
+      cache: 'completed',
+      extractAudio: 'completed',
+      transcribe: 'completed',
+      refine: 'running',
+    };
+  }
+
+  // フェーズがない場合、完了データの有無で判定
+  return {
+    cache: hasGcsUri ? 'completed' : 'ready',
+    extractAudio: hasTranscription ? 'completed' : hasGcsUri ? 'ready' : 'pending',
+    transcribe: hasTranscription ? 'completed' : 'pending',
+    refine: hasRefinedTranscription ? 'completed' : hasTranscription ? 'ready' : 'pending',
+  };
+}
+
 export function ProcessingPipeline({
   video,
   transcription,
@@ -52,15 +113,22 @@ export function ProcessingPipeline({
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
   const [runningAllSteps, setRunningAllSteps] = useState(false);
 
-  // Initialize step states based on video/transcription data
+  // Initialize step states based on video/transcription data and transcriptionPhase
   const initialSteps = useMemo((): StepsState => {
     const hasGcsUri = Boolean(video.gcsUri);
     const hasTranscription = Boolean(transcription);
     const hasRefinedTranscription = Boolean(refinedTranscription);
 
+    const statuses = deriveStepStatuses(
+      video.transcriptionPhase,
+      hasGcsUri,
+      hasTranscription,
+      hasRefinedTranscription
+    );
+
     return {
       cache: {
-        status: hasGcsUri ? 'completed' : 'ready',
+        status: statuses.cache,
         result: hasGcsUri
           ? {
               gcsUri: video.gcsUri,
@@ -69,10 +137,10 @@ export function ProcessingPipeline({
           : undefined,
       },
       extractAudio: {
-        status: hasTranscription ? 'completed' : hasGcsUri ? 'ready' : 'pending',
+        status: statuses.extractAudio,
       },
       transcribe: {
-        status: hasTranscription ? 'completed' : 'pending',
+        status: statuses.transcribe,
         result:
           hasTranscription && transcription
             ? {
@@ -83,7 +151,7 @@ export function ProcessingPipeline({
             : undefined,
       },
       refine: {
-        status: hasRefinedTranscription ? 'completed' : hasTranscription ? 'ready' : 'pending',
+        status: statuses.refine,
         result:
           hasRefinedTranscription && refinedTranscription
             ? {
@@ -98,10 +166,36 @@ export function ProcessingPipeline({
   const [steps, setSteps] = useState<StepsState>(initialSteps);
   const [progressMessage, setProgressMessage] = useState<string | null>(video.progressMessage);
 
-  // Polling for progress updates during cache or refine step
+  // propsが更新されたら（ポーリングで新データが来たら）ステータスを同期
+  useEffect(() => {
+    const hasGcsUri = Boolean(video.gcsUri);
+    const hasTranscription = Boolean(transcription);
+    const hasRefinedTranscription = Boolean(refinedTranscription);
+
+    const statuses = deriveStepStatuses(
+      video.transcriptionPhase,
+      hasGcsUri,
+      hasTranscription,
+      hasRefinedTranscription
+    );
+
+    setSteps((prev) => ({
+      cache: { ...prev.cache, status: statuses.cache },
+      extractAudio: { ...prev.extractAudio, status: statuses.extractAudio },
+      transcribe: { ...prev.transcribe, status: statuses.transcribe },
+      refine: { ...prev.refine, status: statuses.refine },
+    }));
+    setProgressMessage(video.progressMessage);
+  }, [video, transcription, refinedTranscription]);
+
+  // Polling for progress updates during any step running
   // Uses API Route instead of Server Action to avoid blocking during long-running operations
   useEffect(() => {
-    const isRunning = steps.cache.status === 'running' || steps.refine.status === 'running';
+    const isRunning =
+      steps.cache.status === 'running' ||
+      steps.extractAudio.status === 'running' ||
+      steps.transcribe.status === 'running' ||
+      steps.refine.status === 'running';
     if (!isRunning) {
       return;
     }
@@ -126,7 +220,13 @@ export function ProcessingPipeline({
     const interval = setInterval(pollProgress, 3000);
 
     return () => clearInterval(interval);
-  }, [steps.cache.status, steps.refine.status, video.id]);
+  }, [
+    steps.cache.status,
+    steps.extractAudio.status,
+    steps.transcribe.status,
+    steps.refine.status,
+    video.id,
+  ]);
 
   const updateStepState = useCallback((stepKey: keyof StepsState, update: Partial<StepState>) => {
     setSteps((prev) => ({
@@ -236,11 +336,11 @@ export function ProcessingPipeline({
   // Run all steps using existing transcribeVideo action
   const handleRunAllSteps = useCallback(async () => {
     setRunningAllSteps(true);
-    // Mark all steps as running
+    // 最初のステップだけ running、残りは pending
     setSteps({
       cache: { status: 'running' },
-      extractAudio: { status: 'running' },
-      transcribe: { status: 'running' },
+      extractAudio: { status: 'pending' },
+      transcribe: { status: 'pending' },
       refine: { status: 'pending' },
     });
     try {
@@ -319,7 +419,8 @@ export function ProcessingPipeline({
     return (
       <div className="space-y-1 text-muted-foreground">
         <div>
-          <span className="font-medium text-foreground">字幕ブロック数:</span> {result.segmentsCount}
+          <span className="font-medium text-foreground">字幕ブロック数:</span>{' '}
+          {result.segmentsCount}
         </div>
         <div>
           <span className="font-medium text-foreground">動画の長さ:</span>{' '}
@@ -338,7 +439,8 @@ export function ProcessingPipeline({
       <div className="space-y-1 text-muted-foreground">
         {result.sentencesCount !== undefined && (
           <div>
-            <span className="font-medium text-foreground">整形後の文数:</span> {result.sentencesCount}
+            <span className="font-medium text-foreground">整形後の文数:</span>{' '}
+            {result.sentencesCount}
           </div>
         )}
       </div>
@@ -380,7 +482,7 @@ export function ProcessingPipeline({
           onExecute={handleCacheVideo}
           canExecute={!isAnyStepRunning}
           error={steps.cache.error}
-          progressMessage={progressMessage}
+          progressMessage={steps.cache.status === 'running' ? progressMessage : undefined}
         >
           {renderCacheDetails()}
         </PipelineStep>
@@ -396,6 +498,7 @@ export function ProcessingPipeline({
           onExecute={handleExtractAudio}
           canExecute={!isAnyStepRunning && steps.cache.status === 'completed'}
           error={steps.extractAudio.error}
+          progressMessage={steps.extractAudio.status === 'running' ? progressMessage : undefined}
         >
           {renderExtractAudioDetails()}
         </PipelineStep>
@@ -414,6 +517,7 @@ export function ProcessingPipeline({
             (steps.extractAudio.status === 'completed' || steps.cache.status === 'completed')
           }
           error={steps.transcribe.error}
+          progressMessage={steps.transcribe.status === 'running' ? progressMessage : undefined}
         >
           {renderTranscribeDetails()}
         </PipelineStep>

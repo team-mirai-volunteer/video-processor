@@ -49,6 +49,8 @@ export interface TranscribeFromGcsParams {
   gcsUri: string;
   /** 言語ヒント (省略時は自動検出) */
   languageCode?: string;
+  /** 進捗コールバック (0-100) */
+  onProgress?: (percent: number) => void;
 }
 
 /**
