@@ -143,6 +143,17 @@ resource "google_cloud_run_v2_service" "main" {
         value = var.service_account_email
       }
 
+      # GCS Temp Storage
+      env {
+        name  = "TEMP_STORAGE_TYPE"
+        value = var.temp_storage_type
+      }
+
+      env {
+        name  = "VIDEO_TEMP_BUCKET"
+        value = var.video_temp_bucket != "" ? var.video_temp_bucket : "${var.project_id}-video-processor-temp"
+      }
+
       # Secret environment variables
       env {
         name = "OPENAI_API_KEY"
