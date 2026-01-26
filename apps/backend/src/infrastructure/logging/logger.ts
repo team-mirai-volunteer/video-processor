@@ -100,4 +100,4 @@ export function createLogger(component: string): Logger {
   };
 }
 
-export type { Logger, LogContext };
+export type { Logger };
