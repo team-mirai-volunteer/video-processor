@@ -215,6 +215,7 @@ export function VideoDetailClient({
           </CardHeader>
           <CardContent>
             <TranscriptViewer
+              videoId={video.id}
               rawTranscription={transcription}
               refinedTranscription={refinedTranscription}
               onRefine={handleRefineTranscript}

@@ -151,6 +151,16 @@ export const mockBackendClient = {
       durationSeconds: 3600,
     };
   },
+
+  async getTranscriptionSrt(_videoId: string): Promise<string> {
+    return `1
+00:00:00,000 --> 00:00:05,000
+Mock transcription subtitle 1
+
+2
+00:00:05,000 --> 00:00:10,000
+Mock transcription subtitle 2`;
+  },
 };
 
 class MockBackendApiError extends Error {
