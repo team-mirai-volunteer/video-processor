@@ -7,6 +7,7 @@ import {
   type RefinedSentence,
   RefinedTranscription,
 } from '../../domain/models/refined-transcription.js';
+import type { TranscriptionSegment } from '../../domain/models/transcription.js';
 import {
   CHUNK_OVERLAP,
   type ProperNounDictionary,
@@ -34,8 +35,15 @@ export interface RefineTranscriptResult {
   dictionaryVersion: string;
 }
 
-interface LlmResponse {
-  sentences: RefinedSentence[];
+/**
+ * Raw response from LLM (start/end indices only)
+ */
+interface LlmChunkResponse {
+  sentences: Array<{
+    text: string;
+    start: number;
+    end: number;
+  }>;
 }
 
 export class RefineTranscriptUseCase {
@@ -96,7 +104,7 @@ export class RefineTranscriptUseCase {
     });
 
     // 4. Process each chunk
-    const allSentences = await this.processChunks(chunks, dictionary);
+    const allSentences = await this.processChunks(chunks, transcription.segments, dictionary);
     this.log('All chunks processed', { totalSentences: allSentences.length });
 
     // 5. Generate fullText from sentences
@@ -137,37 +145,56 @@ export class RefineTranscriptUseCase {
   }
 
   /**
-   * Process all chunks in parallel and merge results
+   * Process all chunks with limited concurrency and merge results
    * Handles overlap between chunks to avoid duplicate or incomplete sentences
    */
   private async processChunks(
     chunks: SegmentChunk[],
+    segments: TranscriptionSegment[],
     dictionary: ProperNounDictionary
   ): Promise<RefinedSentence[]> {
-    this.log('Processing chunks in parallel', { chunkCount: chunks.length });
+    const concurrencyLimit = 3;
+    this.log('Processing chunks with limited concurrency', {
+      chunkCount: chunks.length,
+      concurrencyLimit,
+    });
 
-    // Process all chunks in parallel
-    const chunkResults = await Promise.all(
-      chunks.map(async (chunk) => {
-        this.log('Processing chunk', {
-          chunkIndex: chunk.chunkIndex,
-          totalChunks: chunk.totalChunks,
-          startIndex: chunk.startIndex,
-          endIndex: chunk.endIndex,
-        });
+    // Process chunks with limited concurrency
+    type RawSentence = { text: string; start: number; end: number };
+    const chunkResults: { chunk: SegmentChunk; rawSentences: RawSentence[] }[] = [];
 
-        const prompt = this.promptService.buildChunkPrompt(chunk, dictionary);
-        const aiResponse = await this.aiGateway.generate(prompt);
-        const parsedResponse = this.parseResponse(aiResponse);
+    for (let i = 0; i < chunks.length; i += concurrencyLimit) {
+      const batch = chunks.slice(i, i + concurrencyLimit);
+      this.log('Processing batch', {
+        batchStart: i,
+        batchSize: batch.length,
+        totalChunks: chunks.length,
+      });
 
-        this.log('Chunk processed', {
-          chunkIndex: chunk.chunkIndex,
-          sentenceCount: parsedResponse.sentences.length,
-        });
+      const batchResults = await Promise.all(
+        batch.map(async (chunk) => {
+          this.log('Processing chunk', {
+            chunkIndex: chunk.chunkIndex,
+            totalChunks: chunk.totalChunks,
+            startIndex: chunk.startIndex,
+            endIndex: chunk.endIndex,
+          });
 
-        return { chunk, sentences: parsedResponse.sentences };
-      })
-    );
+          const prompt = this.promptService.buildChunkPrompt(chunk, segments, dictionary);
+          const aiResponse = await this.aiGateway.generate(prompt);
+          const parsedResponse = this.parseResponse(aiResponse);
+
+          this.log('Chunk processed', {
+            chunkIndex: chunk.chunkIndex,
+            sentenceCount: parsedResponse.sentences.length,
+          });
+
+          return { chunk, rawSentences: parsedResponse.sentences };
+        })
+      );
+
+      chunkResults.push(...batchResults);
+    }
 
     // Sort by chunk index and merge results
     chunkResults.sort((a, b) => a.chunk.chunkIndex - b.chunk.chunkIndex);
@@ -175,23 +202,27 @@ export class RefineTranscriptUseCase {
     const allSentences: RefinedSentence[] = [];
     let lastProcessedSegmentIndex = -1;
 
-    for (const { chunk, sentences } of chunkResults) {
+    for (const { chunk, rawSentences } of chunkResults) {
       // Determine cutoff index for this chunk
       const isLastChunk = chunk.chunkIndex === chunk.totalChunks - 1;
       const cutoffIndex = isLastChunk ? chunk.endIndex : chunk.endIndex - CHUNK_OVERLAP;
 
       // Filter sentences:
-      // 1. Sentence must start after the last processed segment (avoid duplicates)
+      // 1. Sentence must start at or after the last processed segment (avoid duplicates)
       // 2. Sentence must end before the cutoff (avoid incomplete sentences at boundary)
-      const newSentences = sentences.filter((sentence) => {
-        const minSegmentIndex = Math.min(...sentence.originalSegmentIndices);
-        const maxSegmentIndex = Math.max(...sentence.originalSegmentIndices);
-        return minSegmentIndex > lastProcessedSegmentIndex && maxSegmentIndex <= cutoffIndex;
+      const filteredRawSentences = rawSentences.filter((sentence) => {
+        return sentence.start >= lastProcessedSegmentIndex && sentence.end <= cutoffIndex;
       });
+
+      // Convert to RefinedSentence with calculated timestamps
+      const newSentences = this.convertToRefinedSentences(
+        { sentences: filteredRawSentences },
+        segments
+      );
 
       this.log('Filtered sentences for overlap', {
         chunkIndex: chunk.chunkIndex,
-        originalCount: sentences.length,
+        originalCount: rawSentences.length,
         filteredCount: newSentences.length,
         cutoffIndex,
         lastProcessedSegmentIndex,
@@ -272,7 +303,10 @@ export class RefineTranscriptUseCase {
     }
   }
 
-  private parseResponse(response: string): LlmResponse {
+  /**
+   * Parse LLM response (without timestamps)
+   */
+  private parseResponse(response: string): LlmChunkResponse {
     // Try to extract JSON from the response
     // The LLM might include extra text before/after the JSON
     const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -281,7 +315,7 @@ export class RefineTranscriptUseCase {
     }
 
     try {
-      const parsed = JSON.parse(jsonMatch[0]) as LlmResponse;
+      const parsed = JSON.parse(jsonMatch[0]) as LlmChunkResponse;
 
       if (!parsed.sentences || !Array.isArray(parsed.sentences)) {
         throw new Error('Invalid response format: missing sentences array');
@@ -292,14 +326,11 @@ export class RefineTranscriptUseCase {
         if (typeof sentence.text !== 'string') {
           throw new Error('Invalid sentence: missing text');
         }
-        if (typeof sentence.startTimeSeconds !== 'number') {
-          throw new Error('Invalid sentence: missing startTimeSeconds');
+        if (typeof sentence.start !== 'number') {
+          throw new Error('Invalid sentence: missing start');
         }
-        if (typeof sentence.endTimeSeconds !== 'number') {
-          throw new Error('Invalid sentence: missing endTimeSeconds');
-        }
-        if (!Array.isArray(sentence.originalSegmentIndices)) {
-          throw new Error('Invalid sentence: missing originalSegmentIndices');
+        if (typeof sentence.end !== 'number') {
+          throw new Error('Invalid sentence: missing end');
         }
       }
 
@@ -310,5 +341,34 @@ export class RefineTranscriptUseCase {
       }
       throw e;
     }
+  }
+
+  /**
+   * Convert LLM response to RefinedSentence with calculated timestamps
+   */
+  private convertToRefinedSentences(
+    llmResponse: LlmChunkResponse,
+    segments: TranscriptionSegment[]
+  ): RefinedSentence[] {
+    return llmResponse.sentences.map((sentence) => {
+      const { start, end } = sentence;
+
+      // Calculate timestamps from original segments
+      const startTimeSeconds = segments[start]?.startTimeSeconds ?? 0;
+      const endTimeSeconds = segments[end]?.endTimeSeconds ?? 0;
+
+      // Generate indices array for originalSegmentIndices
+      const indices: number[] = [];
+      for (let i = start; i <= end; i++) {
+        indices.push(i);
+      }
+
+      return {
+        text: sentence.text,
+        startTimeSeconds,
+        endTimeSeconds,
+        originalSegmentIndices: indices,
+      };
+    });
   }
 }
