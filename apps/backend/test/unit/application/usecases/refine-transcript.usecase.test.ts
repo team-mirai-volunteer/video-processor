@@ -138,8 +138,9 @@ describe('RefineTranscriptUseCase', () => {
     await useCase.execute('video-1');
 
     const generateCall = vi.mocked(aiGateway.generate).mock.calls[0]?.[0];
-    expect(generateCall).toContain('[0] [0.08-0.20] どうも');
-    expect(generateCall).toContain('[1] [0.22-0.60] こんにちは');
+    // buildChunkPrompt uses format without timestamps: [index] text
+    expect(generateCall).toContain('[0] どうも');
+    expect(generateCall).toContain('[1] こんにちは');
     expect(generateCall).toContain('チーム未来 → チームみらい');
   });
 
