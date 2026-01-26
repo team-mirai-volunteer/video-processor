@@ -41,6 +41,12 @@ variable "google_credentials_json" {
   sensitive   = true
 }
 
+variable "webapp_api_key" {
+  description = "API key for webapp BFF authentication"
+  type        = string
+  sensitive   = true
+}
+
 # Application
 variable "container_image" {
   description = "Container image URL"

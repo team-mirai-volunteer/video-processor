@@ -104,6 +104,11 @@ variable "database_password_secret_id" {
   type        = string
 }
 
+variable "webapp_api_key_secret_id" {
+  description = "Secret Manager secret ID for webapp API key"
+  type        = string
+}
+
 # Application config
 variable "cors_origin" {
   description = "Allowed CORS origin"

@@ -30,3 +30,9 @@ variable "database_password" {
   type        = string
   sensitive   = true
 }
+
+variable "webapp_api_key" {
+  description = "API key for webapp BFF authentication"
+  type        = string
+  sensitive   = true
+}
