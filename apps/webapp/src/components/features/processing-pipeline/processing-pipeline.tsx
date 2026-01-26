@@ -21,7 +21,7 @@ import type {
   VideoWithRelations,
 } from '@video-processor/shared';
 import { Loader2, PlayCircle } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface ProcessingPipelineProps {
   video: VideoWithRelations;
@@ -96,6 +96,37 @@ export function ProcessingPipeline({
   }, [video, transcription, refinedTranscription]);
 
   const [steps, setSteps] = useState<StepsState>(initialSteps);
+  const [progressMessage, setProgressMessage] = useState<string | null>(video.progressMessage);
+
+  // Polling for progress updates during cache or refine step
+  // Uses API Route instead of Server Action to avoid blocking during long-running operations
+  useEffect(() => {
+    const isRunning = steps.cache.status === 'running' || steps.refine.status === 'running';
+    if (!isRunning) {
+      return;
+    }
+
+    const pollProgress = async () => {
+      try {
+        // Use API Route to avoid Server Action serialization blocking
+        const response = await fetch(`/api/videos/${video.id}/progress`);
+        if (response.ok) {
+          const data = await response.json();
+          setProgressMessage(data.progressMessage);
+        }
+      } catch (err) {
+        console.error('Failed to poll progress:', err);
+      }
+    };
+
+    // Initial poll
+    pollProgress();
+
+    // Poll every 3 seconds
+    const interval = setInterval(pollProgress, 3000);
+
+    return () => clearInterval(interval);
+  }, [steps.cache.status, steps.refine.status, video.id]);
 
   const updateStepState = useCallback((stepKey: keyof StepsState, update: Partial<StepState>) => {
     setSteps((prev) => ({
@@ -355,6 +386,7 @@ export function ProcessingPipeline({
           onExecute={handleCacheVideo}
           canExecute={!isAnyStepRunning}
           error={steps.cache.error}
+          progressMessage={progressMessage}
         >
           {renderCacheDetails()}
         </PipelineStep>
@@ -403,6 +435,7 @@ export function ProcessingPipeline({
           onExecute={handleRefineTranscript}
           canExecute={!isAnyStepRunning && steps.transcribe.status === 'completed'}
           error={steps.refine.error}
+          progressMessage={steps.refine.status === 'running' ? progressMessage : undefined}
         >
           {renderRefineDetails()}
         </PipelineStep>

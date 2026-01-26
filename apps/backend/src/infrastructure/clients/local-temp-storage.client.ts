@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type {
   TempStorageGateway,
@@ -64,6 +65,45 @@ export class LocalTempStorageClient implements TempStorageGateway {
     // Write file from stream
     const writeStream = fs.createWriteStream(filePath);
     await pipeline(source, writeStream);
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + this.expirationDays);
+
+    return {
+      gcsUri: `local://${filePath}`,
+      expiresAt,
+    };
+  }
+
+  /**
+   * Upload video to local temporary storage from a stream with progress tracking
+   */
+  async uploadFromStreamWithProgress(
+    params: TempStorageStreamUploadParams,
+    source: NodeJS.ReadableStream,
+    onProgress?: (bytesTransferred: number) => void
+  ): Promise<TempStorageUploadResult> {
+    const fileName = params.path ?? 'original.mp4';
+    const videoDir = path.join(this.baseDir, 'videos', params.videoId);
+    const filePath = path.join(videoDir, fileName);
+
+    // Create directory structure
+    await fs.promises.mkdir(videoDir, { recursive: true });
+
+    // Create progress tracking transform stream
+    let bytesTransferred = 0;
+    const progressTracker = new Transform({
+      transform(chunk, _encoding, callback) {
+        bytesTransferred += chunk.length;
+        onProgress?.(bytesTransferred);
+        this.push(chunk);
+        callback();
+      },
+    });
+
+    // Write file from stream with progress tracking
+    const writeStream = fs.createWriteStream(filePath);
+    await pipeline(source, progressTracker, writeStream);
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + this.expirationDays);

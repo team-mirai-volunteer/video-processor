@@ -26,6 +26,7 @@ export class VideoRepository implements VideoRepositoryGateway {
         status: props.status,
         transcriptionPhase: props.transcriptionPhase,
         errorMessage: props.errorMessage,
+        progressMessage: props.progressMessage,
         gcsUri: props.gcsUri,
         gcsExpiresAt: props.gcsExpiresAt,
         createdAt: props.createdAt,
@@ -40,6 +41,7 @@ export class VideoRepository implements VideoRepositoryGateway {
         status: props.status,
         transcriptionPhase: props.transcriptionPhase,
         errorMessage: props.errorMessage,
+        progressMessage: props.progressMessage,
         gcsUri: props.gcsUri,
         gcsExpiresAt: props.gcsExpiresAt,
         updatedAt: props.updatedAt,
@@ -116,6 +118,7 @@ export class VideoRepository implements VideoRepositoryGateway {
     status: string;
     transcriptionPhase: string | null;
     errorMessage: string | null;
+    progressMessage: string | null;
     gcsUri: string | null;
     gcsExpiresAt: Date | null;
     createdAt: Date;
@@ -132,6 +135,7 @@ export class VideoRepository implements VideoRepositoryGateway {
       status: record.status as VideoStatus,
       transcriptionPhase: record.transcriptionPhase as TranscriptionPhase | null,
       errorMessage: record.errorMessage,
+      progressMessage: record.progressMessage,
       gcsUri: record.gcsUri,
       gcsExpiresAt: record.gcsExpiresAt,
       createdAt: record.createdAt,

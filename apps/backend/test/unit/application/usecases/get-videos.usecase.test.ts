@@ -18,6 +18,7 @@ describe('GetVideosUseCase', () => {
       fileSizeBytes: 1000000,
       status: 'completed',
       transcriptionPhase: null,
+      progressMessage: null,
       errorMessage: null,
       gcsUri: null,
       gcsExpiresAt: null,

@@ -18,6 +18,7 @@ model Video {
   status               String    @default("pending")
   transcriptionPhase   String?   @map("transcription_phase")
   errorMessage         String?   @map("error_message")
+  progressMessage      String?   @map("progress_message")
   gcsUri               String?   @map("gcs_uri")
   gcsExpiresAt         DateTime? @map("gcs_expires_at")
   createdAt            DateTime  @default(now()) @map("created_at")

@@ -255,7 +255,12 @@ describe('TranscriptRefinementPromptService', () => {
       };
 
       const previousContext = '前の文章です。これも前の文章です。';
-      const prompt = service.buildChunkPrompt(chunk, largeSegments, mockDictionary, previousContext);
+      const prompt = service.buildChunkPrompt(
+        chunk,
+        largeSegments,
+        mockDictionary,
+        previousContext
+      );
 
       expect(prompt).toContain('## 前のチャンクの末尾');
       expect(prompt).toContain(previousContext);

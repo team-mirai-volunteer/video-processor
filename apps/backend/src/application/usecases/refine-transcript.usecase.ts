@@ -72,6 +72,21 @@ export class RefineTranscriptUseCase {
     this.transcriptOutputFolderId = deps.transcriptOutputFolderId;
   }
 
+  /**
+   * Update progress message in DB (non-blocking)
+   */
+  private async updateProgress(videoId: string, message: string | null): Promise<void> {
+    try {
+      const video = await this.videoRepository.findById(videoId);
+      if (video) {
+        await this.videoRepository.save(video.withProgressMessage(message));
+      }
+    } catch (e) {
+      // Ignore progress update errors
+      log.warn('Failed to update progress', { error: e instanceof Error ? e.message : 'Unknown' });
+    }
+  }
+
   async execute(videoId: string): Promise<RefineTranscriptResult> {
     log.info('Starting execution', { videoId });
 
@@ -87,6 +102,7 @@ export class RefineTranscriptUseCase {
 
     // 2. Load proper noun dictionary
     log.info('Loading proper noun dictionary...');
+    await this.updateProgress(videoId, '辞書を読み込み中...');
     const dictionary = await this.loadDictionary();
     log.info('Dictionary loaded', {
       version: dictionary.version,
@@ -101,8 +117,16 @@ export class RefineTranscriptUseCase {
     });
 
     // 4. Process each chunk
-    const allSentences = await this.processChunks(chunks, transcription.segments, dictionary);
+    const allSentences = await this.processChunks(
+      videoId,
+      chunks,
+      transcription.segments,
+      dictionary
+    );
     log.info('All chunks processed', { totalSentences: allSentences.length });
+
+    // Clear progress message
+    await this.updateProgress(videoId, null);
 
     // 5. Generate fullText from sentences
     const fullText = allSentences.map((s) => s.text).join('');
@@ -146,6 +170,7 @@ export class RefineTranscriptUseCase {
    * Handles overlap between chunks to avoid duplicate or incomplete sentences
    */
   private async processChunks(
+    videoId: string,
     chunks: SegmentChunk[],
     segments: TranscriptionSegment[],
     dictionary: ProperNounDictionary
@@ -156,9 +181,13 @@ export class RefineTranscriptUseCase {
       concurrencyLimit,
     });
 
+    // Initial progress update (force)
+    await this.updateProgress(videoId, `AI校正中... 0/${chunks.length} チャンク (0%)`);
+
     // Process chunks with limited concurrency
     type RawSentence = { text: string; start: number; end: number };
     const chunkResults: { chunk: SegmentChunk; rawSentences: RawSentence[] }[] = [];
+    let completedChunks = 0;
 
     for (let i = 0; i < chunks.length; i += concurrencyLimit) {
       const batch = chunks.slice(i, i + concurrencyLimit);
@@ -191,6 +220,14 @@ export class RefineTranscriptUseCase {
       );
 
       chunkResults.push(...batchResults);
+
+      // Update progress after each batch (force update)
+      completedChunks += batchResults.length;
+      const percent = Math.floor((completedChunks / chunks.length) * 100);
+      await this.updateProgress(
+        videoId,
+        `AI校正中... ${completedChunks}/${chunks.length} チャンク (${percent}%)`
+      );
     }
 
     // Sort by chunk index and merge results

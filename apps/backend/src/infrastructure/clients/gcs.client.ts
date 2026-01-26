@@ -1,3 +1,4 @@
+import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { Storage } from '@google-cloud/storage';
 import type {
@@ -101,6 +102,45 @@ export class GcsClient implements TempStorageGateway {
     });
 
     await pipeline(source, writeStream);
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + this.expirationDays);
+
+    return {
+      gcsUri,
+      expiresAt,
+    };
+  }
+
+  /**
+   * Upload video to temporary storage from a stream with progress tracking
+   */
+  async uploadFromStreamWithProgress(
+    params: TempStorageStreamUploadParams,
+    source: NodeJS.ReadableStream,
+    onProgress?: (bytesTransferred: number) => void
+  ): Promise<TempStorageUploadResult> {
+    const fileName = params.path ?? 'original.mp4';
+    const gcsPath = `videos/${params.videoId}/${fileName}`;
+    const gcsUri = `gs://${this.bucketName}/${gcsPath}`;
+
+    const bucket = this.storage.bucket(this.bucketName);
+    const file = bucket.file(gcsPath);
+    const writeStream = file.createWriteStream({
+      contentType: params.contentType ?? 'video/mp4',
+    });
+
+    let bytesTransferred = 0;
+    const progressTracker = new Transform({
+      transform(chunk, _encoding, callback) {
+        bytesTransferred += chunk.length;
+        onProgress?.(bytesTransferred);
+        this.push(chunk);
+        callback();
+      },
+    });
+
+    await pipeline(source, progressTracker, writeStream);
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + this.expirationDays);
