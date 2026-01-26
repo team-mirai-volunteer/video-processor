@@ -74,6 +74,10 @@ class InMemoryVideoRepository implements VideoRepositoryGateway {
   async findMany() {
     return { videos: [], total: 0 };
   }
+
+  async delete(id: string): Promise<void> {
+    this.videos.delete(id);
+  }
 }
 
 /**

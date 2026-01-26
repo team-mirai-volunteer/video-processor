@@ -36,7 +36,10 @@ describe.skipIf(!runIntegrationTests)('VideoRepository Integration', () => {
       durationSeconds: 3600,
       fileSizeBytes: 1000000,
       status: 'pending',
+      transcriptionPhase: null,
       errorMessage: null,
+      gcsUri: null,
+      gcsExpiresAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     });

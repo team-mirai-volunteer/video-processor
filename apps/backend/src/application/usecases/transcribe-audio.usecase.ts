@@ -2,7 +2,10 @@ import type { TranscriptionRepositoryGateway } from '../../domain/gateways/trans
 import type { TranscriptionGateway } from '../../domain/gateways/transcription.gateway.js';
 import type { VideoRepositoryGateway } from '../../domain/gateways/video-repository.gateway.js';
 import { Transcription } from '../../domain/models/transcription.js';
+import { createLogger } from '../../infrastructure/logging/logger.js';
 import { NotFoundError } from '../errors.js';
+
+const log = createLogger('TranscribeAudioUseCase');
 
 export interface TranscribeAudioUseCaseDeps {
   videoRepository: VideoRepositoryGateway;
@@ -44,33 +47,27 @@ export class TranscribeAudioUseCase {
     this.generateId = deps.generateId;
   }
 
-  private log(message: string, data?: Record<string, unknown>): void {
-    const timestamp = new Date().toISOString();
-    const logData = data ? ` ${JSON.stringify(data)}` : '';
-    console.log(`[TranscribeAudioUseCase] [${timestamp}] ${message}${logData}`);
-  }
-
   /**
    * Transcribe audio from GCS URI
    * Efficient: audio is already in GCS, no upload required
    */
   async execute(input: TranscribeAudioInput): Promise<TranscribeAudioResult> {
     const { videoId, audioGcsUri } = input;
-    this.log('Starting execution', { videoId, audioGcsUri });
+    log.info('Starting execution', { videoId, audioGcsUri });
 
     // Get video to verify it exists
     const video = await this.videoRepository.findById(videoId);
     if (!video) {
       throw new NotFoundError('Video', videoId);
     }
-    this.log('Found video', { videoId: video.id });
+    log.info('Found video', { videoId: video.id });
 
     // Transcribe audio from GCS URI (Batch API, no upload required)
-    this.log('Starting transcription from GCS URI (Batch API)...');
+    log.info('Starting transcription from GCS URI (Batch API)...');
     const transcriptionResult = await this.transcriptionGateway.transcribeLongAudioFromGcsUri({
       gcsUri: audioGcsUri,
     });
-    this.log('Transcription completed', {
+    log.info('Transcription completed', {
       fullTextLength: transcriptionResult.fullText.length,
       segmentsCount: transcriptionResult.segments.length,
       durationSeconds: transcriptionResult.durationSeconds,
@@ -94,7 +91,7 @@ export class TranscribeAudioUseCase {
 
     // Save transcription to database
     await this.transcriptionRepository.save(transcriptionDomain.value);
-    this.log('Transcription saved', { transcriptionId: transcriptionDomain.value.id });
+    log.info('Transcription saved', { transcriptionId: transcriptionDomain.value.id });
 
     return {
       videoId: video.id,

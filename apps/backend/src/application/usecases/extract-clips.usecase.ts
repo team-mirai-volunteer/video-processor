@@ -15,8 +15,11 @@ import { Clip } from '../../domain/models/clip.js';
 import type { Video } from '../../domain/models/video.js';
 import { ClipAnalysisPromptService } from '../../domain/services/clip-analysis-prompt.service.js';
 import { TimestampExtractorService } from '../../domain/services/timestamp-extractor.service.js';
+import { createLogger } from '../../infrastructure/logging/logger.js';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { CLIP_ERROR_CODES, createClipError } from '../errors/clip.errors.js';
+
+const log = createLogger('ExtractClipsUseCase');
 
 export interface ExtractClipsInput {
   videoId: string;
@@ -66,15 +69,9 @@ export class ExtractClipsUseCase {
     this.outputFolderId = deps.outputFolderId;
   }
 
-  private log(message: string, data?: Record<string, unknown>): void {
-    const timestamp = new Date().toISOString();
-    const logData = data ? ` ${JSON.stringify(data)}` : '';
-    console.log(`[ExtractClipsUseCase] [${timestamp}] ${message}${logData}`);
-  }
-
   async execute(input: ExtractClipsInput): Promise<ExtractClipsResponse> {
     const { videoId, clipInstructions } = input;
-    this.log('Starting execution', {
+    log.info('Starting execution', {
       videoId,
       clipInstructions: clipInstructions.substring(0, 100),
     });
@@ -89,7 +86,7 @@ export class ExtractClipsUseCase {
     if (!video) {
       throw new NotFoundError('Video', videoId);
     }
-    this.log('Found video', { videoId: video.id, status: video.status });
+    log.info('Found video', { videoId: video.id, status: video.status });
 
     // 2. Get transcription (for durationSeconds)
     const transcription = await this.transcriptionRepository.findByVideoId(videoId);
@@ -100,7 +97,7 @@ export class ExtractClipsUseCase {
       );
       throw new ValidationError(error.message);
     }
-    this.log('Found transcription', {
+    log.info('Found transcription', {
       transcriptionId: transcription.id,
       segmentsCount: transcription.segments.length,
     });
@@ -116,7 +113,7 @@ export class ExtractClipsUseCase {
       );
       throw new ValidationError(error.message);
     }
-    this.log('Found refined transcription', {
+    log.info('Found refined transcription', {
       refinedTranscriptionId: refinedTranscription.id,
       sentencesCount: refinedTranscription.sentences.length,
     });
@@ -124,14 +121,14 @@ export class ExtractClipsUseCase {
     try {
       // Update video status to extracting
       await this.videoRepository.save(video.withStatus('extracting'));
-      this.log('Status updated to extracting');
+      log.info('Status updated to extracting');
 
       // 3. Get video metadata
       const metadata = await this.storageGateway.getFileMetadata(video.googleDriveFileId);
-      this.log('Got video metadata', { name: metadata.name });
+      log.info('Got video metadata', { name: metadata.name });
 
       // 4. AI analysis (clip point suggestion)
-      this.log('Building prompt and calling AI...');
+      log.info('Building prompt and calling AI...');
       const prompt = this.clipAnalysisPromptService.buildPrompt({
         refinedTranscription: {
           fullText: refinedTranscription.fullText,
@@ -142,19 +139,19 @@ export class ExtractClipsUseCase {
         clipInstructions,
       });
       const aiResponseText = await this.aiGateway.generate(prompt);
-      this.log('AI response received', { responseLength: aiResponseText.length });
+      log.info('AI response received', { responseLength: aiResponseText.length });
       const aiResponse = this.clipAnalysisPromptService.parseResponse(aiResponseText);
-      this.log('AI response parsed', { clipsCount: aiResponse.clips.length });
+      log.info('AI response parsed', { clipsCount: aiResponse.clips.length });
 
       // 5. Extract timestamps
       const timestamps = this.timestampExtractor.extractTimestamps(aiResponse.clips);
-      this.log('Timestamps extracted', { timestampsCount: timestamps.length });
+      log.info('Timestamps extracted', { timestampsCount: timestamps.length });
 
       // 6. Prepare video file (from GCS cache or Google Drive)
       const { localPath: sourceVideoPath, video: updatedVideo } =
         await this.prepareVideoFile(video);
       const tempDir = path.dirname(sourceVideoPath);
-      this.log('Video file prepared', { sourceVideoPath });
+      log.info('Video file prepared', { sourceVideoPath });
 
       try {
         // 7. Create clips
@@ -175,14 +172,14 @@ export class ExtractClipsUseCase {
             clips.push(clipResult.value);
           }
         }
-        this.log('Clips created', { clipsCount: clips.length });
+        log.info('Clips created', { clipsCount: clips.length });
 
         await this.clipRepository.saveMany(clips);
 
         // 8. Get or create output folder
         // Prefer video's parent folder, fallback to outputFolderId for integration tests
         const parentFolder = metadata.parents?.[0] ?? this.outputFolderId;
-        this.log('Determining output folder', {
+        log.info('Determining output folder', {
           videoParentFolder: metadata.parents?.[0],
           fallbackOutputFolderId: this.outputFolderId,
           selectedParentFolder: parentFolder,
@@ -191,11 +188,11 @@ export class ExtractClipsUseCase {
           'ショート用',
           parentFolder
         );
-        this.log('Output folder ready', { shortsFolderId: shortsFolder.id });
+        log.info('Output folder ready', { shortsFolderId: shortsFolder.id });
 
         // 9. Process each clip using file-based extraction
         for (const [i, clip] of clips.entries()) {
-          this.log(`Processing clip ${i + 1}/${clips.length}`, {
+          log.info(`Processing clip ${i + 1}/${clips.length}`, {
             clipId: clip.id,
             title: clip.title,
             startTime: clip.startTimeSeconds,
@@ -209,7 +206,7 @@ export class ExtractClipsUseCase {
             await this.clipRepository.save(clip.withStatus('processing'));
 
             // Extract clip using FFmpeg (file-based, memory efficient)
-            this.log(`Extracting clip ${i + 1}...`);
+            log.info(`Extracting clip ${i + 1}...`);
             await this.videoProcessingGateway.extractClipFromFile(
               sourceVideoPath,
               clipOutputPath,
@@ -218,19 +215,19 @@ export class ExtractClipsUseCase {
             );
 
             const clipStats = await fs.promises.stat(clipOutputPath);
-            this.log(`Clip ${i + 1} extracted`, { sizeBytes: clipStats.size });
+            log.info(`Clip ${i + 1} extracted`, { sizeBytes: clipStats.size });
 
             // Read clip file and upload to Google Drive
             const clipBuffer = await fs.promises.readFile(clipOutputPath);
             const fileName = `${clip.title ?? clip.id}.mp4`;
-            this.log(`Uploading clip ${i + 1}...`, { fileName, parentFolderId: shortsFolder.id });
+            log.info(`Uploading clip ${i + 1}...`, { fileName, parentFolderId: shortsFolder.id });
             const uploadedFile = await this.storageGateway.uploadFile({
               name: fileName,
               mimeType: 'video/mp4',
               content: clipBuffer,
               parentFolderId: shortsFolder.id,
             });
-            this.log(`Clip ${i + 1} uploaded`, {
+            log.info(`Clip ${i + 1} uploaded`, {
               fileId: uploadedFile.id,
               webViewLink: uploadedFile.webViewLink,
             });
@@ -243,11 +240,11 @@ export class ExtractClipsUseCase {
               .withGoogleDriveInfo(uploadedFile.id, uploadedFile.webViewLink)
               .withStatus('completed');
             await this.clipRepository.save(completedClip);
-            this.log(`Clip ${i + 1} completed`);
+            log.info(`Clip ${i + 1} completed`);
           } catch (clipError) {
             const errorMessage =
               clipError instanceof Error ? clipError.message : 'Unknown error processing clip';
-            this.log(`Clip ${i + 1} failed`, { error: errorMessage });
+            log.warn(`Clip ${i + 1} failed`, { error: errorMessage });
             await this.clipRepository.save(clip.withStatus('failed', errorMessage));
             // Clean up clip file on error
             await fs.promises.unlink(clipOutputPath).catch(() => {});
@@ -255,7 +252,7 @@ export class ExtractClipsUseCase {
         }
 
         // 10. Create metadata file
-        this.log('Creating metadata file...');
+        log.info('Creating metadata file...');
         const metadataContent = {
           videoId: video.id,
           videoTitle: metadata.name,
@@ -276,11 +273,11 @@ export class ExtractClipsUseCase {
           content: Buffer.from(JSON.stringify(metadataContent, null, 2)),
           parentFolderId: shortsFolder.id,
         });
-        this.log('Metadata file uploaded');
+        log.info('Metadata file uploaded');
 
         // 11. Update video to completed
         await this.videoRepository.save(updatedVideo.withStatus('completed'));
-        this.log('Processing completed successfully');
+        log.info('Processing completed successfully');
 
         return {
           videoId: updatedVideo.id,
@@ -291,10 +288,10 @@ export class ExtractClipsUseCase {
         await this.cleanupTempDir(tempDir);
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      this.log('Processing failed', { error: errorMessage });
+      log.error('Processing failed', error as Error, { videoId });
 
       // Update video to failed
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await this.videoRepository.save(video.withStatus('failed', errorMessage));
 
       throw error;
@@ -325,21 +322,21 @@ export class ExtractClipsUseCase {
 
     // Step 1: Check if GCS cache is valid
     if (this.isGcsCacheValid(video) && gcsUri) {
-      this.log('GCS cache is valid', { gcsUri, expiresAt: video.gcsExpiresAt });
+      log.info('GCS cache is valid', { gcsUri, expiresAt: video.gcsExpiresAt });
       // Verify file actually exists in GCS
       const exists = await this.tempStorageGateway.exists(gcsUri);
       if (!exists) {
-        this.log('GCS file not found despite valid URI, will re-cache');
+        log.info('GCS file not found despite valid URI, will re-cache');
         gcsUri = null;
       }
     } else {
-      this.log('GCS cache is not valid or not available');
+      log.info('GCS cache is not valid or not available');
       gcsUri = null;
     }
 
     // Step 2: If not in GCS, download from Google Drive and cache
     if (!gcsUri) {
-      this.log('Downloading video from Google Drive and caching to GCS...');
+      log.info('Downloading video from Google Drive and caching to GCS...');
       try {
         // Stream download from Google Drive to GCS
         const driveStream = await this.storageGateway.downloadFileAsStream(video.googleDriveFileId);
@@ -352,13 +349,16 @@ export class ExtractClipsUseCase {
         // Update video record with GCS info
         currentVideo = currentVideo.withGcsInfo(gcsUri, expiresAt);
         await this.videoRepository.save(currentVideo);
-        this.log('Video cached to GCS and record updated', { gcsUri, expiresAt });
+        log.info('Video cached to GCS and record updated', {
+          gcsUri,
+          expiresAt: expiresAt.toISOString(),
+        });
       } catch (cacheError) {
         const error = createClipError(
           CLIP_ERROR_CODES.GCS_DOWNLOAD_FAILED,
           `Failed to cache video to GCS: ${cacheError instanceof Error ? cacheError.message : 'Unknown error'}`
         );
-        this.log(error.message, { severity: error.severity });
+        log.warn(error.message, { severity: error.severity });
         // Fallback: download directly from Google Drive to local file
         return this.downloadDirectlyToLocalFile(video);
       }
@@ -369,13 +369,13 @@ export class ExtractClipsUseCase {
       const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'extract-clips-'));
       const localPath = path.join(tempDir, 'source.mp4');
 
-      this.log('Downloading from GCS to local file...', { gcsUri, localPath });
+      log.info('Downloading from GCS to local file...', { gcsUri, localPath });
       const gcsStream = this.tempStorageGateway.downloadAsStream(gcsUri);
       const writeStream = fs.createWriteStream(localPath);
       await pipeline(gcsStream, writeStream);
 
       const stats = await fs.promises.stat(localPath);
-      this.log('Video downloaded to local file', { localPath, sizeBytes: stats.size });
+      log.info('Video downloaded to local file', { localPath, sizeBytes: stats.size });
 
       return { localPath, video: currentVideo };
     } catch (downloadError) {
@@ -383,7 +383,7 @@ export class ExtractClipsUseCase {
         CLIP_ERROR_CODES.GCS_DOWNLOAD_FAILED,
         `Failed to download from GCS: ${downloadError instanceof Error ? downloadError.message : 'Unknown error'}`
       );
-      this.log(error.message, { severity: error.severity });
+      log.warn(error.message, { severity: error.severity });
       // Fallback: download directly from Google Drive
       return this.downloadDirectlyToLocalFile(video);
     }
@@ -395,7 +395,7 @@ export class ExtractClipsUseCase {
   private async downloadDirectlyToLocalFile(
     video: Video
   ): Promise<{ localPath: string; video: Video }> {
-    this.log('Falling back to direct Google Drive download...');
+    log.info('Falling back to direct Google Drive download...');
 
     try {
       const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'extract-clips-'));
@@ -406,7 +406,7 @@ export class ExtractClipsUseCase {
       await pipeline(driveStream, writeStream);
 
       const stats = await fs.promises.stat(localPath);
-      this.log('Video downloaded directly from Google Drive', { localPath, sizeBytes: stats.size });
+      log.info('Video downloaded directly from Google Drive', { localPath, sizeBytes: stats.size });
 
       return { localPath, video };
     } catch (err) {
@@ -424,10 +424,10 @@ export class ExtractClipsUseCase {
       const files = await fs.promises.readdir(dirPath);
       await Promise.all(files.map((file) => fs.promises.unlink(path.join(dirPath, file))));
       await fs.promises.rmdir(dirPath);
-      this.log('Temp directory cleaned up', { dirPath });
+      log.debug('Temp directory cleaned up', { dirPath });
     } catch {
       // Ignore cleanup errors
-      this.log('Failed to cleanup temp directory (non-critical)', { dirPath });
+      log.debug('Failed to cleanup temp directory (non-critical)', { dirPath });
     }
   }
 }

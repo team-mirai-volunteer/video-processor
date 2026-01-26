@@ -8,6 +8,7 @@
     "dev": "NODE_OPTIONS='--max-old-space-size=8192' tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "test": "vitest",

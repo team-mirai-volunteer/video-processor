@@ -14,7 +14,10 @@ import {
   type SegmentChunk,
   TranscriptRefinementPromptService,
 } from '../../domain/services/transcript-refinement-prompt.service.js';
+import { createLogger } from '../../infrastructure/logging/logger.js';
 import { NotFoundError } from '../errors.js';
+
+const log = createLogger('RefineTranscriptUseCase');
 
 export interface RefineTranscriptUseCaseDeps {
   transcriptionRepository: TranscriptionRepositoryGateway;
@@ -69,12 +72,6 @@ export class RefineTranscriptUseCase {
     this.transcriptOutputFolderId = deps.transcriptOutputFolderId;
   }
 
-  private log(message: string, data?: Record<string, unknown>): void {
-    const timestamp = new Date().toISOString();
-    const logData = data ? ` ${JSON.stringify(data)}` : '';
-    console.log(`[RefineTranscriptUseCase] [${timestamp}] ${message}${logData}`);
-  }
-
   /**
    * Update progress message in DB (non-blocking)
    */
@@ -86,35 +83,35 @@ export class RefineTranscriptUseCase {
       }
     } catch (e) {
       // Ignore progress update errors
-      this.log('Failed to update progress', { error: e instanceof Error ? e.message : 'Unknown' });
+      log.warn('Failed to update progress', { error: e instanceof Error ? e.message : 'Unknown' });
     }
   }
 
   async execute(videoId: string): Promise<RefineTranscriptResult> {
-    this.log('Starting execution', { videoId });
+    log.info('Starting execution', { videoId });
 
     // 1. Get raw transcription by videoId
     const transcription = await this.transcriptionRepository.findByVideoId(videoId);
     if (!transcription) {
       throw new NotFoundError('Transcription', videoId);
     }
-    this.log('Found transcription', {
+    log.info('Found transcription', {
       transcriptionId: transcription.id,
       segmentCount: transcription.segments.length,
     });
 
     // 2. Load proper noun dictionary
-    this.log('Loading proper noun dictionary...');
+    log.info('Loading proper noun dictionary...');
     await this.updateProgress(videoId, '辞書を読み込み中...');
     const dictionary = await this.loadDictionary();
-    this.log('Dictionary loaded', {
+    log.info('Dictionary loaded', {
       version: dictionary.version,
       entryCount: dictionary.entries.length,
     });
 
     // 3. Split segments into chunks
     const chunks = this.promptService.splitIntoChunks(transcription.segments);
-    this.log('Segments split into chunks', {
+    log.info('Segments split into chunks', {
       chunkCount: chunks.length,
       segmentCount: transcription.segments.length,
     });
@@ -126,7 +123,7 @@ export class RefineTranscriptUseCase {
       transcription.segments,
       dictionary
     );
-    this.log('All chunks processed', { totalSentences: allSentences.length });
+    log.info('All chunks processed', { totalSentences: allSentences.length });
 
     // Clear progress message
     await this.updateProgress(videoId, null);
@@ -153,7 +150,7 @@ export class RefineTranscriptUseCase {
 
     // 7. Save to repository
     await this.refinedTranscriptionRepository.save(refinedTranscription);
-    this.log('Refined transcription saved', { id: refinedTranscription.id });
+    log.info('Refined transcription saved', { id: refinedTranscription.id });
 
     // 8. Upload refined transcript to Google Drive (best effort)
     await this.uploadRefinedTranscriptToDrive(videoId, refinedTranscription);
@@ -179,7 +176,7 @@ export class RefineTranscriptUseCase {
     dictionary: ProperNounDictionary
   ): Promise<RefinedSentence[]> {
     const concurrencyLimit = 3;
-    this.log('Processing chunks with limited concurrency', {
+    log.info('Processing chunks with limited concurrency', {
       chunkCount: chunks.length,
       concurrencyLimit,
     });
@@ -194,7 +191,7 @@ export class RefineTranscriptUseCase {
 
     for (let i = 0; i < chunks.length; i += concurrencyLimit) {
       const batch = chunks.slice(i, i + concurrencyLimit);
-      this.log('Processing batch', {
+      log.info('Processing batch', {
         batchStart: i,
         batchSize: batch.length,
         totalChunks: chunks.length,
@@ -202,7 +199,7 @@ export class RefineTranscriptUseCase {
 
       const batchResults = await Promise.all(
         batch.map(async (chunk) => {
-          this.log('Processing chunk', {
+          log.debug('Processing chunk', {
             chunkIndex: chunk.chunkIndex,
             totalChunks: chunk.totalChunks,
             startIndex: chunk.startIndex,
@@ -213,7 +210,7 @@ export class RefineTranscriptUseCase {
           const aiResponse = await this.aiGateway.generate(prompt);
           const parsedResponse = this.parseResponse(aiResponse);
 
-          this.log('Chunk processed', {
+          log.debug('Chunk processed', {
             chunkIndex: chunk.chunkIndex,
             sentenceCount: parsedResponse.sentences.length,
           });
@@ -257,7 +254,7 @@ export class RefineTranscriptUseCase {
         segments
       );
 
-      this.log('Filtered sentences for overlap', {
+      log.debug('Filtered sentences for overlap', {
         chunkIndex: chunk.chunkIndex,
         originalCount: rawSentences.length,
         filteredCount: newSentences.length,
@@ -282,16 +279,14 @@ export class RefineTranscriptUseCase {
   ): Promise<void> {
     try {
       if (!this.transcriptOutputFolderId) {
-        this.log(
-          'Warning: TRANSCRIPT_OUTPUT_FOLDER_ID not set, skipping refined transcript upload'
-        );
+        log.warn('TRANSCRIPT_OUTPUT_FOLDER_ID not set, skipping refined transcript upload');
         return;
       }
 
       // Get video to get googleDriveFileId
       const video = await this.videoRepository.findById(videoId);
       if (!video) {
-        this.log('Warning: Video not found, skipping refined transcript upload');
+        log.warn('Video not found, skipping refined transcript upload');
         return;
       }
 
@@ -328,13 +323,13 @@ export class RefineTranscriptUseCase {
         parentFolderId: videoFolder.id,
       });
 
-      this.log('Refined transcript files uploaded to Google Drive', {
+      log.info('Refined transcript files uploaded to Google Drive', {
         folderId: videoFolder.id,
         files: [`${videoName}_整形済み.txt`, `${videoName}_整形済み.json`],
       });
     } catch (uploadError) {
       // Log but don't fail - file upload is optional
-      this.log('Warning: Failed to upload refined transcript files to Google Drive', {
+      log.warn('Failed to upload refined transcript files to Google Drive', {
         error: uploadError instanceof Error ? uploadError.message : 'Unknown error',
       });
     }

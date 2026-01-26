@@ -25,12 +25,16 @@ module.exports = {
     },
 
     // Application layer should only depend on domain
+    // Exception: Logger is allowed as a cross-cutting concern (see docs/20260126_2227_GCP構造化ログ設計.md)
     {
       name: 'application-cannot-depend-on-infrastructure',
       severity: 'error',
       comment: 'Application layer must not depend on infrastructure layer (DDD violation)',
       from: { path: '^src/application' },
-      to: { path: '^src/infrastructure' },
+      to: {
+        path: '^src/infrastructure',
+        pathNot: '^src/infrastructure/logging/',
+      },
     },
     {
       name: 'application-cannot-depend-on-presentation',

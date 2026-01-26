@@ -130,10 +130,12 @@ describe('TranscriptRefinementPromptService', () => {
       const chunks = service.splitIntoChunks(mockSegments, 100);
 
       expect(chunks).toHaveLength(1);
-      expect(chunks[0].startIndex).toBe(0);
-      expect(chunks[0].endIndex).toBe(6);
-      expect(chunks[0].chunkIndex).toBe(0);
-      expect(chunks[0].totalChunks).toBe(1);
+      const firstChunk = chunks[0];
+      expect(firstChunk).toBeDefined();
+      expect(firstChunk?.startIndex).toBe(0);
+      expect(firstChunk?.endIndex).toBe(6);
+      expect(firstChunk?.chunkIndex).toBe(0);
+      expect(firstChunk?.totalChunks).toBe(1);
     });
 
     it('should split segments into multiple chunks with overlap', () => {
@@ -155,12 +157,12 @@ describe('TranscriptRefinementPromptService', () => {
       expect(chunks.length).toBeGreaterThan(1);
 
       // First chunk should start at 0 and have 500 segments
-      expect(chunks[0].startIndex).toBe(0);
-      expect(chunks[0].endIndex).toBe(499);
+      expect(chunks[0]?.startIndex).toBe(0);
+      expect(chunks[0]?.endIndex).toBe(499);
 
       // Second chunk should overlap with first by CHUNK_OVERLAP (100)
       // startIndex = 499 + 1 - 100 = 400
-      expect(chunks[1].startIndex).toBe(400);
+      expect(chunks[1]?.startIndex).toBe(400);
 
       // All chunks should have correct totalChunks
       for (const chunk of chunks) {
@@ -182,9 +184,11 @@ describe('TranscriptRefinementPromptService', () => {
 
       // Use default chunk size (500)
       const chunks = service.splitIntoChunks(manySegments);
+      const firstChunk = chunks[0];
+      expect(firstChunk).toBeDefined();
 
       // First chunk should cover 500 segments (index 0-499)
-      expect(chunks[0].endIndex - chunks[0].startIndex + 1).toBe(500);
+      expect((firstChunk?.endIndex ?? 0) - (firstChunk?.startIndex ?? 0) + 1).toBe(500);
     });
   });
 

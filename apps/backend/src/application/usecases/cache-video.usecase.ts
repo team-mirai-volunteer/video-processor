@@ -2,7 +2,10 @@ import type { StorageGateway } from '../../domain/gateways/storage.gateway.js';
 import type { TempStorageGateway } from '../../domain/gateways/temp-storage.gateway.js';
 import type { VideoRepositoryGateway } from '../../domain/gateways/video-repository.gateway.js';
 import type { Video } from '../../domain/models/video.js';
+import { createLogger } from '../../infrastructure/logging/logger.js';
 import { NotFoundError } from '../errors.js';
+
+const log = createLogger('CacheVideoUseCase');
 
 export interface CacheVideoUseCaseDeps {
   videoRepository: VideoRepositoryGateway;
@@ -70,12 +73,6 @@ export class CacheVideoUseCase {
     this.tempStorageGateway = deps.tempStorageGateway;
   }
 
-  private log(message: string, data?: Record<string, unknown>): void {
-    const timestamp = new Date().toISOString();
-    const logData = data ? ` ${JSON.stringify(data)}` : '';
-    console.log(`[CacheVideoUseCase] [${timestamp}] ${message}${logData}`);
-  }
-
   /**
    * Update progress message in DB (non-blocking)
    */
@@ -86,24 +83,24 @@ export class CacheVideoUseCase {
   }
 
   async execute(videoId: string): Promise<CacheVideoResult> {
-    this.log('Starting execution', { videoId });
+    log.info('Starting execution', { videoId });
 
     // Get video
     let video = await this.videoRepository.findById(videoId);
     if (!video) {
       throw new NotFoundError('Video', videoId);
     }
-    this.log('Found video', { videoId: video.id, googleDriveFileId: video.googleDriveFileId });
+    log.info('Found video', { videoId: video.id, googleDriveFileId: video.googleDriveFileId });
 
     // Update progress: checking cache
     video = await this.updateProgress(video, 'キャッシュ確認中...');
 
     // Check if already cached and not expired
     if (video.gcsUri && video.gcsExpiresAt && video.gcsExpiresAt > new Date()) {
-      this.log('Checking existing cache...', { gcsUri: video.gcsUri });
+      log.info('Checking existing cache...', { gcsUri: video.gcsUri });
       const exists = await this.tempStorageGateway.exists(video.gcsUri);
       if (exists) {
-        this.log('Video already cached in GCS');
+        log.info('Video already cached in GCS');
         // Clear progress message
         await this.updateProgress(video, null);
         return {
@@ -120,7 +117,7 @@ export class CacheVideoUseCase {
 
     // Get file size for progress calculation
     const totalBytes = video.fileSizeBytes ?? 0;
-    this.log('Starting stream transfer from Google Drive to GCS...', { totalBytes });
+    log.info('Starting stream transfer from Google Drive to GCS...', { totalBytes });
 
     // Stream from Google Drive to GCS with progress tracking
     const stream = await this.storageGateway.downloadFileAsStream(video.googleDriveFileId);
@@ -142,17 +139,17 @@ export class CacheVideoUseCase {
 
           // Update progress asynchronously (don't await to avoid blocking stream)
           this.updateProgress(video, message).catch((err) => {
-            this.log('Failed to update progress', { error: String(err) });
+            log.warn('Failed to update progress', { error: String(err) });
           });
         }
       }
     );
-    this.log('Stream transfer completed', { gcsUri, expiresAt });
+    log.info('Stream transfer completed', { gcsUri, expiresAt: expiresAt.toISOString() });
 
     // Update video with GCS info and clear progress message
     const updatedVideo = video.withGcsInfo(gcsUri, expiresAt).withProgressMessage(null);
     await this.videoRepository.save(updatedVideo);
-    this.log('Video record updated with GCS info');
+    log.info('Video record updated with GCS info');
 
     return {
       videoId: video.id,

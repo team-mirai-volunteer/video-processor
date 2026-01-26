@@ -283,6 +283,8 @@ describe.skipIf(!runIntegrationTests)('CreateTranscriptUseCase Integration', () 
     const refineDeps: RefineTranscriptUseCaseDeps = {
       transcriptionRepository,
       refinedTranscriptionRepository,
+      videoRepository,
+      storageGateway: localStorageClient,
       aiGateway: openaiClient,
       generateId: () => uuidv4(),
       loadDictionary,

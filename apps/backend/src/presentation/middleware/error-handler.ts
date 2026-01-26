@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { ApplicationError } from '../../application/errors.js';
+import { logger } from '../../infrastructure/logging/logger.js';
 
 /**
  * Error response type
@@ -13,21 +14,21 @@ interface ErrorResponseBody {
  * Global error handler middleware
  */
 export function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction): void {
-  // Log error
-  console.error('[Error]', {
-    name: err.name,
-    message: err.message,
-    stack: err.stack,
-  });
-
-  // Handle application errors
+  // Handle application errors (user-caused errors) as WARNING
   if (err instanceof ApplicationError) {
+    logger.warn('[ErrorHandler] Application error', {
+      errorName: err.name,
+      message: err.message,
+      statusCode: err.statusCode,
+    });
     const body: ErrorResponseBody = { error: err.message };
     res.status(err.statusCode).json(body);
     return;
   }
 
-  // Handle unexpected errors
+  // Handle unexpected errors as ERROR
+  logger.error('[ErrorHandler] Unexpected error', err);
+
   const body: ErrorResponseBody = {
     error: process.env.NODE_ENV === 'production' ? 'Internal Server Error' : err.message,
   };

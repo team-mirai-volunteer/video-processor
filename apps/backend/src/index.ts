@@ -1,5 +1,6 @@
 import express, { type Express } from 'express';
 import { disconnectDatabase } from './infrastructure/database/connection.js';
+import { logger } from './infrastructure/logging/logger.js';
 import { apiKeyAuth } from './presentation/middleware/api-key-auth.js';
 import { errorHandler } from './presentation/middleware/error-handler.js';
 import { requestLogger } from './presentation/middleware/logger.js';
@@ -38,16 +39,18 @@ app.use(errorHandler);
 const port = process.env.PORT ?? 8080;
 
 const server = app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-  console.log(`Environment: ${process.env.NODE_ENV ?? 'development'}`);
+  logger.info('Server started', {
+    port,
+    environment: process.env.NODE_ENV ?? 'development',
+  });
 });
 
 // Graceful shutdown
 const shutdown = async () => {
-  console.log('Shutting down gracefully...');
+  logger.info('Shutting down gracefully...');
   server.close(async () => {
     await disconnectDatabase();
-    console.log('Server closed');
+    logger.info('Server closed');
     process.exit(0);
   });
 };
