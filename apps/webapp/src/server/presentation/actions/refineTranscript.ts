@@ -1,8 +1,8 @@
 'use server';
 
 import type { RefineTranscriptResponse } from '@video-processor/shared';
-import { backendClient } from '../../infrastructure/clients/backend-client';
+import { getBackendClient } from '../../infrastructure/clients/get-backend-client';
 
 export async function refineTranscript(videoId: string): Promise<RefineTranscriptResponse> {
-  return backendClient.refineTranscript(videoId);
+  return getBackendClient().refineTranscript(videoId);
 }
