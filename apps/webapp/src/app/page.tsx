@@ -5,6 +5,8 @@ import { loadVideos } from '@/server/presentation/loaders/loadVideos';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage() {
   const response = await loadVideos();
 
