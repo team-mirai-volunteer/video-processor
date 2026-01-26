@@ -1,4 +1,6 @@
 import type {
+  CacheVideoResponse,
+  ExtractAudioResponse,
   ExtractClipsRequest,
   ExtractClipsResponse,
   GetRefinedTranscriptionResponse,
@@ -9,6 +11,7 @@ import type {
   RefineTranscriptResponse,
   SubmitVideoRequest,
   SubmitVideoResponse,
+  TranscribeAudioResponse,
   TranscribeVideoResponse,
   VideoSummary,
 } from '@video-processor/shared';
@@ -117,6 +120,33 @@ export const mockBackendClient = {
     return {
       videoId,
       status: 'extracting',
+    };
+  },
+
+  // Pipeline Steps
+  async cacheVideo(videoId: string): Promise<CacheVideoResponse> {
+    return {
+      videoId,
+      gcsUri: `gs://mock-bucket/videos/${videoId}`,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      cached: true,
+    };
+  },
+
+  async extractAudio(videoId: string): Promise<ExtractAudioResponse> {
+    return {
+      videoId,
+      format: 'flac',
+      sizeBytes: 1024 * 1024 * 50, // 50MB
+    };
+  },
+
+  async transcribeAudio(videoId: string): Promise<TranscribeAudioResponse> {
+    return {
+      videoId,
+      transcriptionId: `transcription-${videoId}`,
+      segmentsCount: 100,
+      durationSeconds: 3600,
     };
   },
 };

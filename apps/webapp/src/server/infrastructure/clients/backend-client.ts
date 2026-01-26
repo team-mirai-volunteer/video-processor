@@ -1,4 +1,6 @@
 import type {
+  CacheVideoResponse,
+  ExtractAudioResponse,
   ExtractClipsRequest,
   ExtractClipsResponse,
   GetClipsResponse,
@@ -10,6 +12,7 @@ import type {
   RefineTranscriptResponse,
   SubmitVideoRequest,
   SubmitVideoResponse,
+  TranscribeAudioResponse,
   TranscribeVideoResponse,
 } from '@video-processor/shared';
 
@@ -128,6 +131,25 @@ export const backendClient = {
       }
       throw error;
     }
+  },
+
+  // Pipeline Steps
+  async cacheVideo(videoId: string): Promise<CacheVideoResponse> {
+    return fetchBackend<CacheVideoResponse>(`/api/videos/${videoId}/cache`, {
+      method: 'POST',
+    });
+  },
+
+  async extractAudio(videoId: string): Promise<ExtractAudioResponse> {
+    return fetchBackend<ExtractAudioResponse>(`/api/videos/${videoId}/extract-audio`, {
+      method: 'POST',
+    });
+  },
+
+  async transcribeAudio(videoId: string): Promise<TranscribeAudioResponse> {
+    return fetchBackend<TranscribeAudioResponse>(`/api/videos/${videoId}/transcribe-audio`, {
+      method: 'POST',
+    });
   },
 };
 
