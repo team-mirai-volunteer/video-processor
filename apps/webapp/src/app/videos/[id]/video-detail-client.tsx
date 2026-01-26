@@ -1,6 +1,7 @@
 'use client';
 
 import { ClipList } from '@/components/features/clip-list';
+import { ProcessingPipeline } from '@/components/features/processing-pipeline';
 import { TranscriptViewer } from '@/components/features/transcript';
 import { StatusBadge } from '@/components/features/video-list';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,6 @@ import { formatBytes, formatDate, formatDuration } from '@/lib/utils';
 import { extractClips } from '@/server/presentation/actions/extractClips';
 import { getVideoStatus } from '@/server/presentation/actions/getVideoStatus';
 import { refineTranscript } from '@/server/presentation/actions/refineTranscript';
-import { transcribeVideo } from '@/server/presentation/actions/transcribeVideo';
 import type {
   GetRefinedTranscriptionResponse,
   GetTranscriptionResponse,
@@ -47,7 +47,6 @@ export function VideoDetailClient({
   const [transcription, setTranscription] = useState(initialTranscription);
   const [refinedTranscription, setRefinedTranscription] = useState(initialRefinedTranscription);
   const [error, setError] = useState<string | null>(null);
-  const [transcribing, setTranscribing] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [clipInstructions, setClipInstructions] = useState('');
   const [extracting, setExtracting] = useState(false);
@@ -87,18 +86,6 @@ export function VideoDetailClient({
       }
     };
   }, [shouldPoll, pollStatus]);
-
-  const handleTranscribe = async () => {
-    setTranscribing(true);
-    try {
-      const transcribeResponse = await transcribeVideo(video.id);
-      setVideo({ ...video, status: transcribeResponse.status });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '文字起こし作成に失敗しました');
-    } finally {
-      setTranscribing(false);
-    }
-  };
 
   const handleExtractClips = async () => {
     if (!clipInstructions.trim()) return;
@@ -208,86 +195,35 @@ export function VideoDetailClient({
         </CardContent>
       </Card>
 
-      {/* 文字起こしカード */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            文字起こし
-          </CardTitle>
-          <CardDescription>動画の文字起こし結果です</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {video.status === 'pending' && (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground mb-4">
-                文字起こしを作成して、動画の内容を文字に起こします。
-              </p>
-              <Button onClick={handleTranscribe} disabled={transcribing}>
-                {transcribing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {transcribing ? '作成中...' : '文字起こし作成'}
-              </Button>
-            </div>
-          )}
-          {video.status === 'transcribing' && (
-            <div className="text-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">
-                {video.transcriptionPhase === 'downloading' && '動画をダウンロード中...'}
-                {video.transcriptionPhase === 'extracting_audio' && '音声を抽出中...'}
-                {video.transcriptionPhase === 'transcribing' && '文字起こし中...'}
-                {video.transcriptionPhase === 'saving' && '文字起こしを保存中...'}
-                {video.transcriptionPhase === 'uploading' && 'ファイルをアップロード中...'}
-                {video.transcriptionPhase === 'refining' && 'AIで校正中...'}
-                {!video.transcriptionPhase && '文字起こしを作成中です...'}
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">自動的に更新されます</p>
-            </div>
-          )}
-          {video.status === 'failed' && (
-            <div className="text-center py-8">
-              <div className="text-destructive mb-4">
-                <p className="font-medium">文字起こしの作成に失敗しました</p>
-                {video.errorMessage && <p className="text-sm mt-2">{video.errorMessage}</p>}
-              </div>
-              <Button onClick={handleTranscribe} disabled={transcribing}>
-                {transcribing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {transcribing ? '再試行中...' : '再試行する'}
-              </Button>
-            </div>
-          )}
-          {transcription && (
-            <div className="space-y-4">
-              <TranscriptViewer
-                rawTranscription={transcription}
-                refinedTranscription={refinedTranscription}
-                onRefine={handleRefineTranscript}
-                isRefining={isRefining}
-                isLoadingRefined={false}
-              />
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleTranscribe}
-                  disabled={transcribing}
-                >
-                  {transcribing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {transcribing ? '再作成中...' : '文字起こし再作成'}
-                </Button>
-              </div>
-            </div>
-          )}
-          {!transcription &&
-            (video.status === 'transcribed' ||
-              video.status === 'extracting' ||
-              video.status === 'completed') && (
-              <div className="text-center py-8 text-muted-foreground">
-                文字起こしが見つかりません
-              </div>
-            )}
-        </CardContent>
-      </Card>
+      {/* 処理パイプライン */}
+      <ProcessingPipeline
+        video={video}
+        transcription={transcription}
+        refinedTranscription={refinedTranscription}
+        onStepComplete={pollStatus}
+      />
+
+      {/* 文字起こし結果表示カード */}
+      {transcription && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              文字起こし結果
+            </CardTitle>
+            <CardDescription>動画の文字起こし結果です</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TranscriptViewer
+              rawTranscription={transcription}
+              refinedTranscription={refinedTranscription}
+              onRefine={handleRefineTranscript}
+              isRefining={isRefining}
+              isLoadingRefined={false}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* 切り抜き指示フォーム - transcribedまたはcompleted状態の時に表示 */}
       {(video.status === 'transcribed' || video.status === 'completed') && (
@@ -350,7 +286,7 @@ export function VideoDetailClient({
                   切り抜き作成には文字起こしの校正が必要です。
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  文字起こしカードの「Refined」タブから校正を実行してください。
+                  処理パイプラインの「AI校正」ステップを実行してください。
                 </p>
               </div>
             )}

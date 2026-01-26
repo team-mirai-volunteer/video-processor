@@ -27,7 +27,9 @@ export type {
 
 // API types
 export type {
+  CacheVideoResponse,
   ErrorResponse,
+  ExtractAudioResponse,
   ExtractClipsRequest,
   ExtractClipsResponse,
   GetClipResponse,
@@ -44,5 +46,6 @@ export type {
   RefineTranscriptResponse,
   SubmitVideoRequest,
   SubmitVideoResponse,
+  TranscribeAudioResponse,
   TranscribeVideoResponse,
 } from './api.js';
