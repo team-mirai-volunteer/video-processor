@@ -34,4 +34,19 @@ export interface VideoProcessingGateway {
     outputPath: string,
     format: 'wav' | 'flac'
   ): Promise<void>;
+
+  /**
+   * Extract a clip from a video file to a file
+   * Memory efficient: no buffer loading required
+   * @param inputPath Path to input video file
+   * @param outputPath Path to output video file
+   * @param startTimeSeconds Start time in seconds
+   * @param endTimeSeconds End time in seconds
+   */
+  extractClipFromFile(
+    inputPath: string,
+    outputPath: string,
+    startTimeSeconds: number,
+    endTimeSeconds: number
+  ): Promise<void>;
 }

@@ -1,3 +1,7 @@
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { pipeline } from 'node:stream/promises';
 import type { ExtractClipsResponse } from '@video-processor/shared';
 import type { AiGateway } from '../../domain/gateways/ai.gateway.js';
 import type { ClipRepositoryGateway } from '../../domain/gateways/clip-repository.gateway.js';
@@ -146,124 +150,146 @@ export class ExtractClipsUseCase {
       const timestamps = this.timestampExtractor.extractTimestamps(aiResponse.clips);
       this.log('Timestamps extracted', { timestampsCount: timestamps.length });
 
-      // 6. Get video buffer (from GCS or Google Drive)
-      const videoBuffer = await this.getVideoBuffer(video);
-      this.log('Video buffer obtained', { sizeBytes: videoBuffer.length });
+      // 6. Prepare video file (from GCS cache or Google Drive)
+      const { localPath: sourceVideoPath, video: updatedVideo } =
+        await this.prepareVideoFile(video);
+      const tempDir = path.dirname(sourceVideoPath);
+      this.log('Video file prepared', { sourceVideoPath });
 
-      // 7. Create clips
-      const clips: Clip[] = [];
-      for (const ts of timestamps) {
-        const clipResult = Clip.createWithFlexibleDuration(
-          {
-            videoId: video.id,
-            title: ts.title,
-            startTimeSeconds: ts.startTimeSeconds,
-            endTimeSeconds: ts.endTimeSeconds,
-            transcript: ts.transcript,
-          },
-          this.generateId
-        );
-
-        if (clipResult.success) {
-          clips.push(clipResult.value);
-        }
-      }
-      this.log('Clips created', { clipsCount: clips.length });
-
-      await this.clipRepository.saveMany(clips);
-
-      // 8. Get or create output folder
-      // Prefer video's parent folder, fallback to outputFolderId for integration tests
-      const parentFolder = metadata.parents?.[0] ?? this.outputFolderId;
-      this.log('Determining output folder', {
-        videoParentFolder: metadata.parents?.[0],
-        fallbackOutputFolderId: this.outputFolderId,
-        selectedParentFolder: parentFolder,
-      });
-      const shortsFolder = await this.storageGateway.findOrCreateFolder('ショート用', parentFolder);
-      this.log('Output folder ready', { shortsFolderId: shortsFolder.id });
-
-      // 9. Process each clip
-      for (const [i, clip] of clips.entries()) {
-        this.log(`Processing clip ${i + 1}/${clips.length}`, {
-          clipId: clip.id,
-          title: clip.title,
-          startTime: clip.startTimeSeconds,
-          endTime: clip.endTimeSeconds,
-        });
-        try {
-          // Update clip status
-          await this.clipRepository.save(clip.withStatus('processing'));
-
-          // Extract clip using FFmpeg
-          this.log(`Extracting clip ${i + 1}...`);
-          const clipBuffer = await this.videoProcessingGateway.extractClip(
-            videoBuffer,
-            clip.startTimeSeconds,
-            clip.endTimeSeconds
+      try {
+        // 7. Create clips
+        const clips: Clip[] = [];
+        for (const ts of timestamps) {
+          const clipResult = Clip.createWithFlexibleDuration(
+            {
+              videoId: updatedVideo.id,
+              title: ts.title,
+              startTimeSeconds: ts.startTimeSeconds,
+              endTimeSeconds: ts.endTimeSeconds,
+              transcript: ts.transcript,
+            },
+            this.generateId
           );
-          this.log(`Clip ${i + 1} extracted`, { sizeBytes: clipBuffer.length });
 
-          // Upload clip
-          const fileName = `${clip.title ?? clip.id}.mp4`;
-          this.log(`Uploading clip ${i + 1}...`, { fileName, parentFolderId: shortsFolder.id });
-          const uploadedFile = await this.storageGateway.uploadFile({
-            name: fileName,
-            mimeType: 'video/mp4',
-            content: clipBuffer,
-            parentFolderId: shortsFolder.id,
-          });
-          this.log(`Clip ${i + 1} uploaded`, {
-            fileId: uploadedFile.id,
-            webViewLink: uploadedFile.webViewLink,
-          });
-
-          // Update clip with Google Drive info
-          const completedClip = clip
-            .withGoogleDriveInfo(uploadedFile.id, uploadedFile.webViewLink)
-            .withStatus('completed');
-          await this.clipRepository.save(completedClip);
-          this.log(`Clip ${i + 1} completed`);
-        } catch (clipError) {
-          const errorMessage =
-            clipError instanceof Error ? clipError.message : 'Unknown error processing clip';
-          this.log(`Clip ${i + 1} failed`, { error: errorMessage });
-          await this.clipRepository.save(clip.withStatus('failed', errorMessage));
+          if (clipResult.success) {
+            clips.push(clipResult.value);
+          }
         }
+        this.log('Clips created', { clipsCount: clips.length });
+
+        await this.clipRepository.saveMany(clips);
+
+        // 8. Get or create output folder
+        // Prefer video's parent folder, fallback to outputFolderId for integration tests
+        const parentFolder = metadata.parents?.[0] ?? this.outputFolderId;
+        this.log('Determining output folder', {
+          videoParentFolder: metadata.parents?.[0],
+          fallbackOutputFolderId: this.outputFolderId,
+          selectedParentFolder: parentFolder,
+        });
+        const shortsFolder = await this.storageGateway.findOrCreateFolder(
+          'ショート用',
+          parentFolder
+        );
+        this.log('Output folder ready', { shortsFolderId: shortsFolder.id });
+
+        // 9. Process each clip using file-based extraction
+        for (const [i, clip] of clips.entries()) {
+          this.log(`Processing clip ${i + 1}/${clips.length}`, {
+            clipId: clip.id,
+            title: clip.title,
+            startTime: clip.startTimeSeconds,
+            endTime: clip.endTimeSeconds,
+          });
+
+          const clipOutputPath = path.join(tempDir, `clip_${i}.mp4`);
+
+          try {
+            // Update clip status
+            await this.clipRepository.save(clip.withStatus('processing'));
+
+            // Extract clip using FFmpeg (file-based, memory efficient)
+            this.log(`Extracting clip ${i + 1}...`);
+            await this.videoProcessingGateway.extractClipFromFile(
+              sourceVideoPath,
+              clipOutputPath,
+              clip.startTimeSeconds,
+              clip.endTimeSeconds
+            );
+
+            const clipStats = await fs.promises.stat(clipOutputPath);
+            this.log(`Clip ${i + 1} extracted`, { sizeBytes: clipStats.size });
+
+            // Read clip file and upload to Google Drive
+            const clipBuffer = await fs.promises.readFile(clipOutputPath);
+            const fileName = `${clip.title ?? clip.id}.mp4`;
+            this.log(`Uploading clip ${i + 1}...`, { fileName, parentFolderId: shortsFolder.id });
+            const uploadedFile = await this.storageGateway.uploadFile({
+              name: fileName,
+              mimeType: 'video/mp4',
+              content: clipBuffer,
+              parentFolderId: shortsFolder.id,
+            });
+            this.log(`Clip ${i + 1} uploaded`, {
+              fileId: uploadedFile.id,
+              webViewLink: uploadedFile.webViewLink,
+            });
+
+            // Clean up clip file immediately after upload
+            await fs.promises.unlink(clipOutputPath).catch(() => {});
+
+            // Update clip with Google Drive info
+            const completedClip = clip
+              .withGoogleDriveInfo(uploadedFile.id, uploadedFile.webViewLink)
+              .withStatus('completed');
+            await this.clipRepository.save(completedClip);
+            this.log(`Clip ${i + 1} completed`);
+          } catch (clipError) {
+            const errorMessage =
+              clipError instanceof Error ? clipError.message : 'Unknown error processing clip';
+            this.log(`Clip ${i + 1} failed`, { error: errorMessage });
+            await this.clipRepository.save(clip.withStatus('failed', errorMessage));
+            // Clean up clip file on error
+            await fs.promises.unlink(clipOutputPath).catch(() => {});
+          }
+        }
+
+        // 10. Create metadata file
+        this.log('Creating metadata file...');
+        const metadataContent = {
+          videoId: video.id,
+          videoTitle: metadata.name,
+          clipInstructions,
+          clips: clips.map((c) => ({
+            id: c.id,
+            title: c.title,
+            startTimeSeconds: c.startTimeSeconds,
+            endTimeSeconds: c.endTimeSeconds,
+            transcript: c.transcript,
+          })),
+          processedAt: new Date().toISOString(),
+        };
+
+        await this.storageGateway.uploadFile({
+          name: `${updatedVideo.id}_clips_metadata.json`,
+          mimeType: 'application/json',
+          content: Buffer.from(JSON.stringify(metadataContent, null, 2)),
+          parentFolderId: shortsFolder.id,
+        });
+        this.log('Metadata file uploaded');
+
+        // 11. Update video to completed
+        await this.videoRepository.save(updatedVideo.withStatus('completed'));
+        this.log('Processing completed successfully');
+
+        return {
+          videoId: updatedVideo.id,
+          status: 'completed',
+        };
+      } finally {
+        // Cleanup temp directory
+        await this.cleanupTempDir(tempDir);
       }
-
-      // 10. Create metadata file
-      this.log('Creating metadata file...');
-      const metadataContent = {
-        videoId: video.id,
-        videoTitle: metadata.name,
-        clipInstructions,
-        clips: clips.map((c) => ({
-          id: c.id,
-          title: c.title,
-          startTimeSeconds: c.startTimeSeconds,
-          endTimeSeconds: c.endTimeSeconds,
-          transcript: c.transcript,
-        })),
-        processedAt: new Date().toISOString(),
-      };
-
-      await this.storageGateway.uploadFile({
-        name: `${video.id}_clips_metadata.json`,
-        mimeType: 'application/json',
-        content: Buffer.from(JSON.stringify(metadataContent, null, 2)),
-        parentFolderId: shortsFolder.id,
-      });
-      this.log('Metadata file uploaded');
-
-      // 11. Update video to completed
-      await this.videoRepository.save(video.withStatus('completed'));
-      this.log('Processing completed successfully');
-
-      return {
-        videoId: video.id,
-        status: 'completed',
-      };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.log('Processing failed', { error: errorMessage });
@@ -276,39 +302,132 @@ export class ExtractClipsUseCase {
   }
 
   /**
-   * Get video buffer from GCS (if available) or Google Drive
-   * フォールバック戦略: GCS → Google Drive
+   * Check if GCS cache is valid
    */
-  private async getVideoBuffer(video: Video): Promise<Buffer> {
-    // Note: video.gcsUri is expected to be added by Session A
-    // For now, we check if tempStorageGateway can be used
-    // If GCS URI is not available, download from Google Drive
+  private isGcsCacheValid(video: Video): boolean {
+    if (!video.gcsUri || !video.gcsExpiresAt) {
+      return false;
+    }
+    // Check if cache has expired (with 5 minute buffer)
+    const now = new Date();
+    const bufferMs = 5 * 60 * 1000;
+    return video.gcsExpiresAt.getTime() > now.getTime() + bufferMs;
+  }
 
-    // TODO: Once Session A implements gcsUri on Video model, use:
-    // if (video.gcsUri && await this.tempStorageGateway.exists(video.gcsUri)) {
-    //   return this.tempStorageGateway.download(video.gcsUri);
-    // }
+  /**
+   * Ensure video is cached in GCS and download to local temp file
+   * フォールバック戦略: GCS → Google Drive
+   * @returns Path to local temp file (caller must clean up)
+   */
+  private async prepareVideoFile(video: Video): Promise<{ localPath: string; video: Video }> {
+    let currentVideo = video;
+    let gcsUri = video.gcsUri;
 
-    // Download from Google Drive
-    this.log('Downloading video from Google Drive...');
-    const buffer = await this.storageGateway.downloadFile(video.googleDriveFileId);
-    this.log('Video downloaded', { sizeBytes: buffer.length });
-
-    // Try to save to GCS for future use (best effort)
-    try {
-      const { gcsUri, expiresAt } = await this.tempStorageGateway.upload({
-        videoId: video.id,
-        content: buffer,
-      });
-      this.log('Video saved to GCS', { gcsUri, expiresAt });
-      // Note: VideoレコードへのGCS情報保存はSession Aがモデル拡張後に実装
-    } catch (gcsError) {
-      // GCS upload failure is not critical, continue with the buffer
-      this.log('GCS upload failed (non-critical)', {
-        error: gcsError instanceof Error ? gcsError.message : 'Unknown error',
-      });
+    // Step 1: Check if GCS cache is valid
+    if (this.isGcsCacheValid(video) && gcsUri) {
+      this.log('GCS cache is valid', { gcsUri, expiresAt: video.gcsExpiresAt });
+      // Verify file actually exists in GCS
+      const exists = await this.tempStorageGateway.exists(gcsUri);
+      if (!exists) {
+        this.log('GCS file not found despite valid URI, will re-cache');
+        gcsUri = null;
+      }
+    } else {
+      this.log('GCS cache is not valid or not available');
+      gcsUri = null;
     }
 
-    return buffer;
+    // Step 2: If not in GCS, download from Google Drive and cache
+    if (!gcsUri) {
+      this.log('Downloading video from Google Drive and caching to GCS...');
+      try {
+        // Stream download from Google Drive to GCS
+        const driveStream = await this.storageGateway.downloadFileAsStream(video.googleDriveFileId);
+        const { gcsUri: newGcsUri, expiresAt } = await this.tempStorageGateway.uploadFromStream(
+          { videoId: video.id },
+          driveStream
+        );
+        gcsUri = newGcsUri;
+
+        // Update video record with GCS info
+        currentVideo = currentVideo.withGcsInfo(gcsUri, expiresAt);
+        await this.videoRepository.save(currentVideo);
+        this.log('Video cached to GCS and record updated', { gcsUri, expiresAt });
+      } catch (cacheError) {
+        const error = createClipError(
+          CLIP_ERROR_CODES.GCS_DOWNLOAD_FAILED,
+          `Failed to cache video to GCS: ${cacheError instanceof Error ? cacheError.message : 'Unknown error'}`
+        );
+        this.log(error.message, { severity: error.severity });
+        // Fallback: download directly from Google Drive to local file
+        return this.downloadDirectlyToLocalFile(video);
+      }
+    }
+
+    // Step 3: Download from GCS to local temp file
+    try {
+      const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'extract-clips-'));
+      const localPath = path.join(tempDir, 'source.mp4');
+
+      this.log('Downloading from GCS to local file...', { gcsUri, localPath });
+      const gcsStream = this.tempStorageGateway.downloadAsStream(gcsUri);
+      const writeStream = fs.createWriteStream(localPath);
+      await pipeline(gcsStream, writeStream);
+
+      const stats = await fs.promises.stat(localPath);
+      this.log('Video downloaded to local file', { localPath, sizeBytes: stats.size });
+
+      return { localPath, video: currentVideo };
+    } catch (downloadError) {
+      const error = createClipError(
+        CLIP_ERROR_CODES.GCS_DOWNLOAD_FAILED,
+        `Failed to download from GCS: ${downloadError instanceof Error ? downloadError.message : 'Unknown error'}`
+      );
+      this.log(error.message, { severity: error.severity });
+      // Fallback: download directly from Google Drive
+      return this.downloadDirectlyToLocalFile(video);
+    }
+  }
+
+  /**
+   * Fallback: Download directly from Google Drive to local temp file
+   */
+  private async downloadDirectlyToLocalFile(
+    video: Video
+  ): Promise<{ localPath: string; video: Video }> {
+    this.log('Falling back to direct Google Drive download...');
+
+    try {
+      const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'extract-clips-'));
+      const localPath = path.join(tempDir, 'source.mp4');
+
+      const driveStream = await this.storageGateway.downloadFileAsStream(video.googleDriveFileId);
+      const writeStream = fs.createWriteStream(localPath);
+      await pipeline(driveStream, writeStream);
+
+      const stats = await fs.promises.stat(localPath);
+      this.log('Video downloaded directly from Google Drive', { localPath, sizeBytes: stats.size });
+
+      return { localPath, video };
+    } catch (err) {
+      throw new Error(
+        `${CLIP_ERROR_CODES.TEMP_FILE_CREATION_FAILED}: Failed to create temp file: ${err instanceof Error ? err.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Cleanup temporary directory and its contents
+   */
+  private async cleanupTempDir(dirPath: string): Promise<void> {
+    try {
+      const files = await fs.promises.readdir(dirPath);
+      await Promise.all(files.map((file) => fs.promises.unlink(path.join(dirPath, file))));
+      await fs.promises.rmdir(dirPath);
+      this.log('Temp directory cleaned up', { dirPath });
+    } catch {
+      // Ignore cleanup errors
+      this.log('Failed to cleanup temp directory (non-critical)', { dirPath });
+    }
   }
 }
