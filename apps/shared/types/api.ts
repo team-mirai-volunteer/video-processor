@@ -213,7 +213,7 @@ export interface CacheVideoResponse {
 export interface ExtractAudioResponse {
   videoId: string;
   format: 'flac';
-  sizeBytes: number;
+  audioGcsUri: string;
 }
 
 /**

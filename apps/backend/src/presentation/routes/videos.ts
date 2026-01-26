@@ -215,7 +215,7 @@ router.post('/:videoId/cache', async (req, res, next) => {
 
 /**
  * POST /api/videos/:videoId/extract-audio
- * Extract audio from cached video
+ * Extract audio from cached video (stream version)
  */
 router.post('/:videoId/extract-audio', async (req, res, next) => {
   try {
@@ -225,7 +225,7 @@ router.post('/:videoId/extract-audio', async (req, res, next) => {
     const response: ExtractAudioResponse = {
       videoId: result.videoId,
       format: 'flac',
-      sizeBytes: result.audioBuffer.length,
+      audioGcsUri: result.audioGcsUri,
     };
     res.status(200).json(response);
   } catch (error) {
@@ -244,14 +244,13 @@ router.post('/:videoId/transcribe-audio', async (req, res, next) => {
     // Step 1: Cache video (auto-skips if already cached)
     await cacheVideoUseCase.execute(videoId ?? '');
 
-    // Step 2: Extract audio
+    // Step 2: Extract audio (stream version - uploads to GCS)
     const audioResult = await extractAudioUseCase.execute(videoId ?? '', 'flac');
 
-    // Step 3: Transcribe audio
+    // Step 3: Transcribe audio from GCS URI
     const transcribeResult = await transcribeAudioUseCase.execute({
       videoId: videoId ?? '',
-      audioBuffer: audioResult.audioBuffer,
-      mimeType: 'audio/flac',
+      audioGcsUri: audioResult.audioGcsUri,
     });
 
     const response: TranscribeAudioResponse = {

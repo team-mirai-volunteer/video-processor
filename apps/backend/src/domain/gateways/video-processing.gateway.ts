@@ -23,14 +23,6 @@ export interface VideoProcessingGateway {
   getVideoDuration(videoBuffer: Buffer): Promise<number>;
 
   /**
-   * Extract audio from video
-   * @param videoBuffer The video content
-   * @param format Output format ('wav' | 'flac')
-   * @returns Audio data as buffer (16kHz, mono, 16bit)
-   */
-  extractAudio(videoBuffer: Buffer, format: 'wav' | 'flac'): Promise<Buffer>;
-
-  /**
    * Extract audio from a video file to a file
    * Memory efficient: no buffer loading required
    * @param inputPath Path to input video file
