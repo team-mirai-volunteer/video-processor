@@ -10,6 +10,7 @@ import type {
   SubmitVideoRequest,
   SubmitVideoResponse,
   TranscribeVideoResponse,
+  VideoSummary,
 } from '@video-processor/shared';
 
 const mockVideos: GetVideoResponse[] = [
@@ -29,23 +30,33 @@ const mockVideos: GetVideoResponse[] = [
         id: 'job-1',
         status: 'completed',
         clipInstructions: 'テスト指示',
-        completedAt: new Date().toISOString(),
+        completedAt: new Date(),
       },
     ],
-    transcriptionPhase: 'not_started',
+    transcriptionPhase: null,
     transcription: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
   },
 ];
+
+// VideoSummary形式に変換
+const mockVideoSummaries: VideoSummary[] = mockVideos.map((v) => ({
+  id: v.id,
+  googleDriveUrl: v.googleDriveUrl,
+  title: v.title,
+  status: v.status,
+  clipCount: v.clips.length,
+  createdAt: v.createdAt,
+}));
 
 export const mockBackendClient = {
   // Videos
   async getVideos(_query?: GetVideosQuery): Promise<GetVideosResponse> {
     return {
-      data: mockVideos,
+      data: mockVideoSummaries,
       pagination: {
-        total: mockVideos.length,
+        total: mockVideoSummaries.length,
         page: 1,
         limit: 10,
         totalPages: 1,
@@ -66,14 +77,8 @@ export const mockBackendClient = {
       id: 'new-video-id',
       googleDriveFileId: request.googleDriveUrl.split('/d/')[1]?.split('/')[0] || 'unknown',
       googleDriveUrl: request.googleDriveUrl,
-      title: 'New Video',
-      description: null,
-      durationSeconds: null,
-      fileSizeBytes: null,
       status: 'pending',
-      errorMessage: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: new Date(),
     };
   },
 
@@ -82,9 +87,10 @@ export const mockBackendClient = {
   },
 
   // Transcription
-  async transcribeVideo(_videoId: string): Promise<TranscribeVideoResponse> {
+  async transcribeVideo(videoId: string): Promise<TranscribeVideoResponse> {
     return {
-      message: 'Transcription started',
+      videoId,
+      status: 'transcribing',
     };
   },
 
@@ -92,9 +98,10 @@ export const mockBackendClient = {
     throw new MockBackendApiError(404, 'Transcription not found');
   },
 
-  async refineTranscript(_videoId: string): Promise<RefineTranscriptResponse> {
+  async refineTranscript(videoId: string): Promise<RefineTranscriptResponse> {
     return {
-      message: 'Refinement started',
+      videoId,
+      status: 'refining',
     };
   },
 
@@ -104,12 +111,12 @@ export const mockBackendClient = {
 
   // Clips
   async extractClips(
-    _videoId: string,
+    videoId: string,
     _request: ExtractClipsRequest
   ): Promise<ExtractClipsResponse> {
     return {
-      jobId: 'mock-job-id',
-      message: 'Clip extraction started',
+      videoId,
+      status: 'extracting',
     };
   },
 };
