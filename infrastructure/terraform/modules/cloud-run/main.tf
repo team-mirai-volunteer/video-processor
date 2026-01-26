@@ -17,6 +17,34 @@ resource "google_project_iam_member" "cloud_run_trace" {
   member  = "serviceAccount:${var.service_account_email}"
 }
 
+# GCS Bucket for temporary video storage
+resource "google_storage_bucket" "video_temp" {
+  name     = "${var.project_id}-video-processor-temp"
+  location = var.region
+  project  = var.project_id
+
+  # Auto-delete objects after 60 days
+  lifecycle_rule {
+    condition {
+      age = 60
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
+  force_destroy = true
+
+  uniform_bucket_level_access = true
+}
+
+# Grant Cloud Run service account access to the bucket
+resource "google_storage_bucket_iam_member" "video_temp_access" {
+  bucket = google_storage_bucket.video_temp.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${var.service_account_email}"
+}
+
 # Artifact Registry Repository
 resource "google_artifact_registry_repository" "main" {
   location      = var.region

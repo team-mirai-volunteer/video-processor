@@ -132,43 +132,59 @@ env {
 
 ## tfvars設定（stg）
 
-`envs/stg/.env`に設定する変数:
+**重要**: `deploy.sh`を使用すること。直接`terraform`コマンドや`TF_VAR_*`環境変数は使わない。
 
-```bash
-TF_VAR_project_id="mirai-video-processor"
-TF_VAR_database_password="xxx"
-TF_VAR_openai_api_key="sk-xxx"
-TF_VAR_google_credentials_json='{"type":"service_account",...}'
-TF_VAR_webapp_api_key="xxx"
-TF_VAR_container_image="asia-northeast1-docker.pkg.dev/..."
-TF_VAR_migration_image="asia-northeast1-docker.pkg.dev/..."
-TF_VAR_google_drive_output_folder_id="xxx"
-TF_VAR_transcript_output_folder_id="xxx"
-```
+`deploy.sh`は内部で`envsubst`を使い、`terraform.tfvars.tpl`から`terraform.tfvars`を自動生成する。
+
+**必要な環境変数**（CI/CDまたはローカルでexport）:
+
+| 環境変数名 | 説明 |
+|-----------|------|
+| `GCP_PROJECT_ID` | GCPプロジェクトID |
+| `DATABASE_PASSWORD` | Cloud SQL パスワード |
+| `OPENAI_API_KEY` | OpenAI APIキー |
+| `GOOGLE_CREDENTIALS_JSON` | サービスアカウントJSON |
+| `WEBAPP_API_KEY` | BFF認証キー |
+| `CONTAINER_IMAGE` | Cloud Runコンテナイメージ |
+| `MIGRATION_IMAGE` | マイグレーションジョブイメージ |
+| `CORS_ORIGIN` | CORS許可オリジン |
+| `GOOGLE_DRIVE_OUTPUT_FOLDER_ID` | クリップ出力先フォルダID |
+| `TRANSCRIPT_OUTPUT_FOLDER_ID` | 文字起こし出力先フォルダID |
 
 ---
 
-## よく使うコマンド
+## Dockerイメージのビルド・プッシュ
 
 ```bash
-# stg環境に移動
-cd infrastructure/terraform/envs/stg
+# レジストリ
+REGISTRY=asia-northeast1-docker.pkg.dev/mirai-video-processor/video-processor-stg
 
-# 環境変数読み込み
-source .env
+# バックエンドイメージ（Cloud Run サービス用）
+docker build --platform linux/amd64 -f apps/backend/Dockerfile -t ${REGISTRY}/backend:latest .
+docker push ${REGISTRY}/backend:latest
 
-# 初期化
-terraform init
+# マイグレーションイメージ（Cloud Run ジョブ用）
+docker build --platform linux/amd64 -f apps/backend/Dockerfile --target migrator -t ${REGISTRY}/migration:latest .
+docker push ${REGISTRY}/migration:latest
+```
 
-# 差分確認
-terraform plan
+**注意**: `--platform linux/amd64`は必須（Cloud Runはamd64のみ）
 
-# 適用
-terraform apply
+---
+
+## Terraformデプロイ
+
+```bash
+# deploy.shを使用（必須）
+cd infrastructure/terraform
+./deploy.sh stg plan   # 差分確認
+./deploy.sh stg apply  # 適用
 
 # フォーマット（全体）
 terraform fmt -recursive
 ```
+
+**禁止**: `terraform plan/apply`を直接実行、`TF_VAR_*`環境変数の使用
 
 ---
 

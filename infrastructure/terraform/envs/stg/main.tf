@@ -87,13 +87,13 @@ module "cloud_run" {
   migration_image       = var.migration_image
   service_account_email = google_service_account.cloud_run.email
 
-  # stg environment settings (optimized for cost)
-  cpu             = "0.5"
-  memory          = "512Mi"
+  # stg environment settings
+  cpu             = "4"
+  memory          = "16Gi"
   min_instances   = 0
   max_instances   = 1
-  concurrency     = 1 # Required when cpu < 1
-  request_timeout = 300
+  concurrency     = 80
+  request_timeout = 900 # 15 minutes for large video processing
 
   allow_unauthenticated = true
 
