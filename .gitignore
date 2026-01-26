@@ -49,6 +49,7 @@ prisma/*.db
 tmp/
 temp/
 *.tmp
+.cache/
 
 # Playwright
 test-results/
