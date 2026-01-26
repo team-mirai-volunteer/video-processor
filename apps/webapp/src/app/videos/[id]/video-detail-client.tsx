@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/features/video-list';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { formatBytes, formatDate, formatDuration } from '@/lib/utils';
 import { extractClips } from '@/server/presentation/actions/extractClips';
@@ -18,6 +19,7 @@ import type {
   VideoWithRelations,
 } from '@video-processor/shared';
 import {
+  AlertTriangle,
   ArrowLeft,
   Calendar,
   Clock,
@@ -49,6 +51,7 @@ export function VideoDetailClient({
   const [error, setError] = useState<string | null>(null);
   const [isRefining, setIsRefining] = useState(false);
   const [clipInstructions, setClipInstructions] = useState('');
+  const [multipleClips, setMultipleClips] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
 
@@ -94,9 +97,10 @@ export function VideoDetailClient({
     setExtractError(null);
 
     try {
-      await extractClips(video.id, { clipInstructions });
+      await extractClips(video.id, { clipInstructions, multipleClips });
       await pollStatus();
       setClipInstructions('');
+      setMultipleClips(false);
     } catch (err) {
       setExtractError(err instanceof Error ? err.message : '切り抜き処理の開始に失敗しました');
     } finally {
@@ -240,6 +244,43 @@ export function VideoDetailClient({
           <CardContent>
             {refinedTranscription ? (
               <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <Label htmlFor="multipleClips" className="text-sm font-medium">
+                    クリップ数
+                  </Label>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`text-sm ${!multipleClips ? 'font-medium' : 'text-muted-foreground'}`}
+                    >
+                      単一
+                    </span>
+                    <Switch
+                      id="multipleClips"
+                      checked={multipleClips}
+                      onCheckedChange={setMultipleClips}
+                      disabled={extracting}
+                    />
+                    <span
+                      className={`text-sm ${multipleClips ? 'font-medium' : 'text-muted-foreground'}`}
+                    >
+                      複数
+                    </span>
+                  </div>
+                </div>
+
+                {multipleClips && (
+                  <div className="flex items-start gap-2 p-3 text-sm bg-amber-50 text-amber-800 rounded-md border border-amber-200">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <div>
+                      複数クリップを作成する場合は、AIが各クリップの区切りを判別できるよう、明確に記載してください。
+                      <br />
+                      <span className="text-muted-foreground">
+                        （例：「1. ○○の部分」「2. △△の部分」）
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="clipInstructions">切り抜き指示</Label>
                   <Textarea

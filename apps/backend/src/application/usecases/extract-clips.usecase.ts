@@ -24,6 +24,8 @@ const log = createLogger('ExtractClipsUseCase');
 export interface ExtractClipsInput {
   videoId: string;
   clipInstructions: string;
+  /** true=複数クリップを許可, false=単一クリップのみ (デフォルト: false) */
+  multipleClips?: boolean;
 }
 
 export interface ExtractClipsUseCaseDeps {
@@ -70,7 +72,7 @@ export class ExtractClipsUseCase {
   }
 
   async execute(input: ExtractClipsInput): Promise<ExtractClipsResponse> {
-    const { videoId, clipInstructions } = input;
+    const { videoId, clipInstructions, multipleClips = false } = input;
     log.info('Starting execution', {
       videoId,
       clipInstructions: clipInstructions.substring(0, 100),
@@ -128,7 +130,7 @@ export class ExtractClipsUseCase {
       log.info('Got video metadata', { name: metadata.name });
 
       // 4. AI analysis (clip point suggestion)
-      log.info('Building prompt and calling AI...');
+      log.info('Building prompt and calling AI...', { multipleClips });
       const prompt = this.clipAnalysisPromptService.buildPrompt({
         refinedTranscription: {
           fullText: refinedTranscription.fullText,
@@ -137,6 +139,7 @@ export class ExtractClipsUseCase {
         },
         videoTitle: video.title ?? metadata.name,
         clipInstructions,
+        multipleClips,
       });
       const aiResponseText = await this.aiGateway.generate(prompt);
       log.info('AI response received', { responseLength: aiResponseText.length });

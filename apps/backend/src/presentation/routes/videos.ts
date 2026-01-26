@@ -277,6 +277,7 @@ router.post('/:videoId/extract-clips', async (req, res, next) => {
     const result = await extractClipsUseCase.execute({
       videoId: videoId ?? '',
       clipInstructions: body.clipInstructions,
+      multipleClips: body.multipleClips ?? false,
     });
     res.status(202).json(result);
   } catch (error) {
