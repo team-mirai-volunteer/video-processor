@@ -4,5 +4,5 @@ import { getBackendClient } from '../../infrastructure/clients/get-backend-clien
 export async function loadRefinedTranscription(
   videoId: string
 ): Promise<GetRefinedTranscriptionResponse | null> {
-  return getBackendClient().getRefinedTranscription(videoId);
+  return getBackendClient().getRefinedTranscription(videoId, { revalidate: false });
 }

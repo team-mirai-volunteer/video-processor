@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatBytes, formatDate, formatDuration } from '@/lib/utils';
 import { extractClips } from '@/server/presentation/actions/extractClips';
+import { getVideoStatus } from '@/server/presentation/actions/getVideoStatus';
 import { refineTranscript } from '@/server/presentation/actions/refineTranscript';
 import { transcribeVideo } from '@/server/presentation/actions/transcribeVideo';
 import type {
@@ -27,8 +28,7 @@ import {
   Scissors,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface Props {
   video: VideoWithRelations;
@@ -36,22 +36,57 @@ interface Props {
   initialRefinedTranscription: GetRefinedTranscriptionResponse | null;
 }
 
+const POLLING_INTERVAL = 3000; // 3秒
+
 export function VideoDetailClient({
   video: initialVideo,
   initialTranscription,
   initialRefinedTranscription,
 }: Props) {
-  const router = useRouter();
-
   const [video, setVideo] = useState(initialVideo);
-  const transcription = initialTranscription;
-  const refinedTranscription = initialRefinedTranscription;
+  const [transcription, setTranscription] = useState(initialTranscription);
+  const [refinedTranscription, setRefinedTranscription] = useState(initialRefinedTranscription);
   const [error, setError] = useState<string | null>(null);
   const [transcribing, setTranscribing] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [clipInstructions, setClipInstructions] = useState('');
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
+
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ポーリングが必要なステータスかどうか判定
+  const shouldPoll = video.status === 'transcribing' || video.status === 'extracting';
+
+  // ポーリング処理
+  const pollStatus = useCallback(async () => {
+    try {
+      const result = await getVideoStatus(video.id);
+      setVideo(result.video as VideoWithRelations);
+      if (result.transcription) {
+        setTranscription(result.transcription);
+      }
+      if (result.refinedTranscription) {
+        setRefinedTranscription(result.refinedTranscription);
+      }
+    } catch (err) {
+      console.error('ポーリングエラー:', err);
+    }
+  }, [video.id]);
+
+  // ポーリングの開始/停止
+  useEffect(() => {
+    if (shouldPoll) {
+      pollingRef.current = setInterval(pollStatus, POLLING_INTERVAL);
+    }
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [shouldPoll, pollStatus]);
 
   const handleTranscribe = async () => {
     setTranscribing(true);
@@ -73,7 +108,7 @@ export function VideoDetailClient({
 
     try {
       await extractClips(video.id, { clipInstructions });
-      router.refresh();
+      await pollStatus();
       setClipInstructions('');
     } catch (err) {
       setExtractError(err instanceof Error ? err.message : '切り抜き処理の開始に失敗しました');
@@ -86,7 +121,7 @@ export function VideoDetailClient({
     setIsRefining(true);
     try {
       await refineTranscript(video.id);
-      router.refresh();
+      await pollStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : '文字起こし校正に失敗しました');
     } finally {
@@ -206,9 +241,7 @@ export function VideoDetailClient({
                 {video.transcriptionPhase === 'refining' && 'AIで校正中...'}
                 {!video.transcriptionPhase && '文字起こしを作成中です...'}
               </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                ページを更新すると最新の進捗を確認できます
-              </p>
+              <p className="text-xs text-muted-foreground mt-2">自動的に更新されます</p>
             </div>
           )}
           {video.status === 'failed' && (
@@ -334,12 +367,9 @@ export function VideoDetailClient({
               <div className="text-center">
                 <p className="font-medium">切り抜き動画を作成中...</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  この処理には数分かかる場合があります。ページを更新して進捗を確認できます。
+                  この処理には数分かかる場合があります。自動的に更新されます。
                 </p>
               </div>
-              <Button variant="outline" onClick={() => router.refresh()}>
-                更新
-              </Button>
             </div>
           </CardContent>
         </Card>

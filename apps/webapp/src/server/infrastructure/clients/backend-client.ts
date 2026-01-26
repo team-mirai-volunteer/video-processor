@@ -26,14 +26,21 @@ class BackendApiError extends Error {
   }
 }
 
-async function fetchBackend<T>(endpoint: string, options?: RequestInit): Promise<T> {
+type FetchOptions = Omit<RequestInit, 'cache'> & {
+  revalidate?: number | false;
+};
+
+async function fetchBackend<T>(endpoint: string, options?: FetchOptions): Promise<T> {
+  const { revalidate, ...fetchOptions } = options ?? {};
   const url = `${BACKEND_URL}${endpoint}`;
   const response = await fetch(url, {
-    ...options,
+    ...fetchOptions,
+    ...(revalidate === false ? { cache: 'no-store' as const } : {}),
+    ...(typeof revalidate === 'number' ? { next: { revalidate } } : {}),
     headers: {
       'Content-Type': 'application/json',
       'X-API-Key': BACKEND_API_KEY,
-      ...options?.headers,
+      ...fetchOptions?.headers,
     },
   });
 
@@ -57,8 +64,8 @@ export const backendClient = {
     return fetchBackend<GetVideosResponse>(`/api/videos${queryString ? `?${queryString}` : ''}`);
   },
 
-  async getVideo(id: string): Promise<GetVideoResponse> {
-    return fetchBackend<GetVideoResponse>(`/api/videos/${id}`);
+  async getVideo(id: string, options?: { revalidate?: number | false }): Promise<GetVideoResponse> {
+    return fetchBackend<GetVideoResponse>(`/api/videos/${id}`, options);
   },
 
   async submitVideo(request: SubmitVideoRequest): Promise<SubmitVideoResponse> {
@@ -93,8 +100,11 @@ export const backendClient = {
     });
   },
 
-  async getTranscription(videoId: string): Promise<GetTranscriptionResponse> {
-    return fetchBackend<GetTranscriptionResponse>(`/api/videos/${videoId}/transcription`);
+  async getTranscription(
+    videoId: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetTranscriptionResponse> {
+    return fetchBackend<GetTranscriptionResponse>(`/api/videos/${videoId}/transcription`, options);
   },
 
   async refineTranscript(videoId: string): Promise<RefineTranscriptResponse> {
@@ -103,10 +113,14 @@ export const backendClient = {
     });
   },
 
-  async getRefinedTranscription(videoId: string): Promise<GetRefinedTranscriptionResponse | null> {
+  async getRefinedTranscription(
+    videoId: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetRefinedTranscriptionResponse | null> {
     try {
       return await fetchBackend<GetRefinedTranscriptionResponse>(
-        `/api/videos/${videoId}/transcription/refined`
+        `/api/videos/${videoId}/transcription/refined`,
+        options
       );
     } catch (error) {
       if (error instanceof BackendApiError && error.status === 404) {
