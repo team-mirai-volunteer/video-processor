@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { formatDate, formatDuration } from '@/lib/utils';
 import { cacheVideo } from '@/server/presentation/actions/cacheVideo';
 import { extractAudio } from '@/server/presentation/actions/extractAudio';
-import { getVideoStatus } from '@/server/presentation/actions/getVideoStatus';
 import { refineTranscript } from '@/server/presentation/actions/refineTranscript';
 import { transcribeAudio } from '@/server/presentation/actions/transcribeAudio';
 import { transcribeVideo } from '@/server/presentation/actions/transcribeVideo';
@@ -99,20 +98,21 @@ export function ProcessingPipeline({
   const [steps, setSteps] = useState<StepsState>(initialSteps);
   const [progressMessage, setProgressMessage] = useState<string | null>(video.progressMessage);
 
-  // Polling for progress updates during cache step
+  // Polling for progress updates during cache or refine step
+  // Uses API Route instead of Server Action to avoid blocking during long-running operations
   useEffect(() => {
-    if (steps.cache.status !== 'running') {
+    const isRunning = steps.cache.status === 'running' || steps.refine.status === 'running';
+    if (!isRunning) {
       return;
     }
 
     const pollProgress = async () => {
       try {
-        const status = await getVideoStatus(video.id);
-        setProgressMessage(status.video.progressMessage);
-
-        // Check if cache completed
-        if (status.video.gcsUri) {
-          setProgressMessage(null);
+        // Use API Route to avoid Server Action serialization blocking
+        const response = await fetch(`/api/videos/${video.id}/progress`);
+        if (response.ok) {
+          const data = await response.json();
+          setProgressMessage(data.progressMessage);
         }
       } catch (err) {
         console.error('Failed to poll progress:', err);
@@ -122,11 +122,11 @@ export function ProcessingPipeline({
     // Initial poll
     pollProgress();
 
-    // Poll every 5 seconds
-    const interval = setInterval(pollProgress, 5000);
+    // Poll every 3 seconds
+    const interval = setInterval(pollProgress, 3000);
 
     return () => clearInterval(interval);
-  }, [steps.cache.status, video.id]);
+  }, [steps.cache.status, steps.refine.status, video.id]);
 
   const updateStepState = useCallback((stepKey: keyof StepsState, update: Partial<StepState>) => {
     setSteps((prev) => ({
@@ -435,6 +435,7 @@ export function ProcessingPipeline({
           onExecute={handleRefineTranscript}
           canExecute={!isAnyStepRunning && steps.transcribe.status === 'completed'}
           error={steps.refine.error}
+          progressMessage={steps.refine.status === 'running' ? progressMessage : undefined}
         >
           {renderRefineDetails()}
         </PipelineStep>
