@@ -2,17 +2,9 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "workspaces": {
     "apps/backend": {
-      "entry": ["src/application/errors.ts", "src/domain/models/*.ts"],
+      "entry": ["src/index.ts"],
       "project": ["src/**/*.ts"],
-      "ignore": [
-        "src/**/*.test.ts",
-        "test/**/*.ts",
-        "src/application/services/video-processing.service.ts",
-        "src/application/usecases/process-video.usecase.ts",
-        "src/domain/gateways/*.ts",
-        "src/domain/services/timestamp-extractor.service.ts",
-        "src/infrastructure/clients/*.ts"
-      ],
+      "ignore": ["src/**/*.test.ts", "test/**/*.ts"],
       "ignoreDependencies": ["dotenv"],
       "vitest": false
     },
