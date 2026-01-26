@@ -22,3 +22,8 @@ output "database_password_secret_id" {
   description = "Secret Manager secret ID for database password"
   value       = google_secret_manager_secret.database_password.secret_id
 }
+
+output "webapp_api_key_secret_id" {
+  description = "Secret Manager secret ID for webapp API key"
+  value       = google_secret_manager_secret.webapp_api_key.secret_id
+}

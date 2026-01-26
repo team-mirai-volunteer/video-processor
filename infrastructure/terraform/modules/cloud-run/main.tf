@@ -136,6 +136,16 @@ resource "google_cloud_run_v2_service" "main" {
         }
       }
 
+      env {
+        name = "WEBAPP_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = var.webapp_api_key_secret_id
+            version = "latest"
+          }
+        }
+      }
+
       # Cloud SQL connection
       volume_mounts {
         name       = "cloudsql"

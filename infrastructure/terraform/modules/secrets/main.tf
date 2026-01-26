@@ -64,3 +64,25 @@ resource "google_secret_manager_secret_iam_member" "database_password_access" {
   member    = "serviceAccount:${var.cloud_run_service_account_email}"
   project   = var.project_id
 }
+
+# Secret: Webapp API Key
+resource "google_secret_manager_secret" "webapp_api_key" {
+  secret_id = "${var.project_name}-webapp-api-key"
+  project   = var.project_id
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "webapp_api_key" {
+  secret      = google_secret_manager_secret.webapp_api_key.id
+  secret_data = var.webapp_api_key
+}
+
+resource "google_secret_manager_secret_iam_member" "webapp_api_key_access" {
+  secret_id = google_secret_manager_secret.webapp_api_key.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.cloud_run_service_account_email}"
+  project   = var.project_id
+}
