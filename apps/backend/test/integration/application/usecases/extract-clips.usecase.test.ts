@@ -9,9 +9,11 @@ import {
   type ExtractClipsUseCaseDeps,
 } from '../../../../src/application/usecases/extract-clips.usecase.js';
 import type { ClipRepositoryGateway } from '../../../../src/domain/gateways/clip-repository.gateway.js';
+import type { RefinedTranscriptionRepositoryGateway } from '../../../../src/domain/gateways/refined-transcription-repository.gateway.js';
 import type { TranscriptionRepositoryGateway } from '../../../../src/domain/gateways/transcription-repository.gateway.js';
 import type { VideoRepositoryGateway } from '../../../../src/domain/gateways/video-repository.gateway.js';
 import type { Clip } from '../../../../src/domain/models/clip.js';
+import { RefinedTranscription } from '../../../../src/domain/models/refined-transcription.js';
 import { Transcription } from '../../../../src/domain/models/transcription.js';
 import { Video } from '../../../../src/domain/models/video.js';
 import { FFmpegClient } from '../../../../src/infrastructure/clients/ffmpeg.client.js';
@@ -107,6 +109,38 @@ class InMemoryTranscriptionRepository implements TranscriptionRepositoryGateway 
 }
 
 /**
+ * In-memory RefinedTranscriptionRepository for testing
+ */
+class InMemoryRefinedTranscriptionRepository implements RefinedTranscriptionRepositoryGateway {
+  private refinedTranscriptions: Map<string, RefinedTranscription> = new Map();
+
+  async save(refinedTranscription: RefinedTranscription): Promise<void> {
+    this.refinedTranscriptions.set(refinedTranscription.id, refinedTranscription);
+  }
+
+  async findById(id: string): Promise<RefinedTranscription | null> {
+    return this.refinedTranscriptions.get(id) ?? null;
+  }
+
+  async findByTranscriptionId(transcriptionId: string): Promise<RefinedTranscription | null> {
+    for (const rt of this.refinedTranscriptions.values()) {
+      if (rt.transcriptionId === transcriptionId) {
+        return rt;
+      }
+    }
+    return null;
+  }
+
+  async deleteByTranscriptionId(transcriptionId: string): Promise<void> {
+    for (const [id, rt] of this.refinedTranscriptions.entries()) {
+      if (rt.transcriptionId === transcriptionId) {
+        this.refinedTranscriptions.delete(id);
+      }
+    }
+  }
+}
+
+/**
  * In-memory ClipRepository for testing
  */
 class InMemoryClipRepository implements ClipRepositoryGateway {
@@ -141,6 +175,7 @@ describe.skipIf(!runIntegrationTests)('ExtractClipsUseCase Integration', () => {
   let useCase: ExtractClipsUseCase;
   let videoRepository: InMemoryVideoRepository;
   let transcriptionRepository: InMemoryTranscriptionRepository;
+  let refinedTranscriptionRepository: InMemoryRefinedTranscriptionRepository;
   let clipRepository: InMemoryClipRepository;
   let localStorageClient: LocalStorageClient;
   let localTempStorageClient: LocalTempStorageClient;
@@ -161,6 +196,7 @@ describe.skipIf(!runIntegrationTests)('ExtractClipsUseCase Integration', () => {
     // Initialize repositories
     videoRepository = new InMemoryVideoRepository();
     transcriptionRepository = new InMemoryTranscriptionRepository();
+    refinedTranscriptionRepository = new InMemoryRefinedTranscriptionRepository();
     clipRepository = new InMemoryClipRepository();
 
     // Create use case with real dependencies
@@ -168,6 +204,7 @@ describe.skipIf(!runIntegrationTests)('ExtractClipsUseCase Integration', () => {
       videoRepository,
       clipRepository,
       transcriptionRepository,
+      refinedTranscriptionRepository,
       storageGateway: localStorageClient,
       tempStorageGateway: localTempStorageClient,
       aiGateway: openAiClient,
@@ -258,6 +295,38 @@ describe.skipIf(!runIntegrationTests)('ExtractClipsUseCase Integration', () => {
 
     const transcription = transcriptionResult.value;
     await transcriptionRepository.save(transcription);
+
+    // Create a RefinedTranscription for the video
+    const refinedTranscriptionResult = RefinedTranscription.create(
+      {
+        transcriptionId: transcription.id,
+        fullText:
+          'どうもこんにちは、チーム未来投手の安野高広です。本日は年始ということで、チーム未来が2026年になし遂げること、代して2026年プランを発表したいと思います。',
+        sentences: [
+          {
+            text: 'どうもこんにちは、チーム未来投手の安野高広です。',
+            startTimeSeconds: 0.08,
+            endTimeSeconds: 3.12,
+            originalSegmentIndices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+          },
+          {
+            text: '本日は年始ということで、チーム未来が2026年になし遂げること、代して2026年プランを発表したいと思います。',
+            startTimeSeconds: 3.36,
+            endTimeSeconds: 12.68,
+            originalSegmentIndices: [
+              12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+              33, 34, 35, 36, 37, 38,
+            ],
+          },
+        ],
+        dictionaryVersion: 'test-v1',
+      },
+      () => uuidv4()
+    );
+    expect(refinedTranscriptionResult.success).toBe(true);
+    if (!refinedTranscriptionResult.success) return;
+
+    await refinedTranscriptionRepository.save(refinedTranscriptionResult.value);
 
     // Act: Execute the use case
     const result = await useCase.execute({

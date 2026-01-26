@@ -29,4 +29,17 @@ export interface VideoProcessingGateway {
    * @returns Audio data as buffer (16kHz, mono, 16bit)
    */
   extractAudio(videoBuffer: Buffer, format: 'wav' | 'flac'): Promise<Buffer>;
+
+  /**
+   * Extract audio from a video file to a file
+   * Memory efficient: no buffer loading required
+   * @param inputPath Path to input video file
+   * @param outputPath Path to output audio file
+   * @param format Output format ('wav' | 'flac')
+   */
+  extractAudioFromFile(
+    inputPath: string,
+    outputPath: string,
+    format: 'wav' | 'flac'
+  ): Promise<void>;
 }

@@ -90,7 +90,8 @@ export class GcsClient implements TempStorageGateway {
     params: TempStorageStreamUploadParams,
     source: NodeJS.ReadableStream
   ): Promise<TempStorageUploadResult> {
-    const gcsPath = `videos/${params.videoId}/original.mp4`;
+    const fileName = params.path ?? 'original.mp4';
+    const gcsPath = `videos/${params.videoId}/${fileName}`;
     const gcsUri = `gs://${this.bucketName}/${gcsPath}`;
 
     const bucket = this.storage.bucket(this.bucketName);

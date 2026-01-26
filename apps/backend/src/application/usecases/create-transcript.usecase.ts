@@ -86,20 +86,19 @@ export class CreateTranscriptUseCase {
       await this.videoRepository.save(currentVideo);
       this.log('Phase updated to extracting_audio');
 
-      // Step 2: Extract audio
-      const audioResult = await this.extractAudioUseCase.execute(videoId, 'flac');
-      this.log('Audio extracted', { sizeBytes: audioResult.audioBuffer.length });
+      // Step 2: Extract audio (stream version - memory efficient)
+      const audioResult = await this.extractAudioUseCase.executeWithStream(videoId, 'flac');
+      this.log('Audio extracted and uploaded to GCS', { audioGcsUri: audioResult.audioGcsUri });
 
       // Update phase to transcribing
       currentVideo = currentVideo.withTranscriptionPhase('transcribing');
       await this.videoRepository.save(currentVideo);
       this.log('Phase updated to transcribing');
 
-      // Step 3: Transcribe audio
-      const transcribeResult = await this.transcribeAudioUseCase.execute({
+      // Step 3: Transcribe audio from GCS URI (no re-upload required)
+      const transcribeResult = await this.transcribeAudioUseCase.executeWithGcsUri({
         videoId,
-        audioBuffer: audioResult.audioBuffer,
-        mimeType: 'audio/flac',
+        audioGcsUri: audioResult.audioGcsUri,
       });
       this.log('Transcription completed', {
         transcriptionId: transcribeResult.transcriptionId,

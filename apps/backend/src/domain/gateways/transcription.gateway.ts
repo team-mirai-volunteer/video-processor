@@ -42,6 +42,16 @@ export interface TranscribeParams {
 }
 
 /**
+ * GCS URIから文字起こしを行うパラメータ
+ */
+export interface TranscribeFromGcsParams {
+  /** GCS URI (gs://bucket/path) */
+  gcsUri: string;
+  /** 言語ヒント (省略時は自動検出) */
+  languageCode?: string;
+}
+
+/**
  * 文字起こしゲートウェイ
  */
 export interface TranscriptionGateway {
@@ -57,4 +67,11 @@ export interface TranscriptionGateway {
    * @throws TranscriptionError 文字起こし失敗時
    */
   transcribeLongAudio(params: TranscribeParams): Promise<TranscriptionResult>;
+
+  /**
+   * GCS上の音声ファイルから文字起こしを実行（Batch API、480分まで対応）
+   * 音声が既にGCSにある場合はこちらを使用（アップロード不要で効率的）
+   * @throws TranscriptionError 文字起こし失敗時
+   */
+  transcribeLongAudioFromGcsUri(params: TranscribeFromGcsParams): Promise<TranscriptionResult>;
 }
