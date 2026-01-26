@@ -1,2 +1,2 @@
-export { StatusBadge } from './status-badge';
-export { VideoTable } from './video-table';
+export { StatusBadge } from '@/components/features/video-list/status-badge';
+export { VideoTable } from '@/components/features/video-list/video-table';

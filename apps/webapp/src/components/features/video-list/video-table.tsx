@@ -1,5 +1,6 @@
 'use client';
 
+import { StatusBadge } from '@/components/features/video-list/status-badge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,7 +27,6 @@ import type { VideoSummary } from '@video-processor/shared';
 import { Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
-import { StatusBadge } from './status-badge';
 
 interface VideoTableProps {
   videos: VideoSummary[];

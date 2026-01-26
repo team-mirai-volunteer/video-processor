@@ -1,5 +1,6 @@
 'use client';
 
+import { RefinedTranscriptView } from '@/components/features/transcript/refined-transcript-view';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type {
@@ -8,7 +9,6 @@ import type {
 } from '@video-processor/shared';
 import { Check, Copy, Loader2, Sparkles } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { RefinedTranscriptView } from './refined-transcript-view';
 
 interface TranscriptViewerProps {
   rawTranscription: GetTranscriptionResponse | null;
