@@ -160,7 +160,7 @@ export function ProcessingPipeline({
     } catch (err) {
       updateStepState('cache', {
         status: 'error',
-        error: err instanceof Error ? err.message : 'キャッシュ処理に失敗しました',
+        error: err instanceof Error ? err.message : '動画の読み込みに失敗しました',
       });
     }
   }, [video.id, updateStepState, onStepComplete]);
@@ -181,7 +181,7 @@ export function ProcessingPipeline({
     } catch (err) {
       updateStepState('extractAudio', {
         status: 'error',
-        error: err instanceof Error ? err.message : '音声抽出に失敗しました',
+        error: err instanceof Error ? err.message : '音声の取り出しに失敗しました',
       });
     }
   }, [video.id, updateStepState, onStepComplete]);
@@ -228,7 +228,7 @@ export function ProcessingPipeline({
     } catch (err) {
       updateStepState('refine', {
         status: 'error',
-        error: err instanceof Error ? err.message : 'AI校正に失敗しました',
+        error: err instanceof Error ? err.message : '字幕テキストの整形に失敗しました',
       });
     }
   }, [video.id, updateStepState, onStepComplete]);
@@ -278,7 +278,7 @@ export function ProcessingPipeline({
     return (
       <div className="space-y-1 text-muted-foreground">
         <div>
-          <span className="font-medium text-foreground">GCS URI:</span> {result.gcsUri}
+          <span className="font-medium text-foreground">保存先:</span> {result.gcsUri}
         </div>
         {result.expiresAt && (
           <div>
@@ -288,8 +288,8 @@ export function ProcessingPipeline({
         )}
         {result.cached !== undefined && (
           <div>
-            <span className="font-medium text-foreground">ステータス:</span>{' '}
-            {result.cached ? '既存キャッシュを利用' : '新規キャッシュ作成'}
+            <span className="font-medium text-foreground">状態:</span>{' '}
+            {result.cached ? '前回のデータを再利用' : '新しく読み込み完了'}
           </div>
         )}
       </div>
@@ -302,11 +302,11 @@ export function ProcessingPipeline({
     return (
       <div className="space-y-1 text-muted-foreground">
         <div>
-          <span className="font-medium text-foreground">フォーマット:</span>{' '}
+          <span className="font-medium text-foreground">音声形式:</span>{' '}
           {result.format?.toUpperCase()}
         </div>
         <div>
-          <span className="font-medium text-foreground">GCS URI:</span>{' '}
+          <span className="font-medium text-foreground">保存先:</span>{' '}
           <span className="text-xs break-all">{result.audioGcsUri}</span>
         </div>
       </div>
@@ -319,10 +319,10 @@ export function ProcessingPipeline({
     return (
       <div className="space-y-1 text-muted-foreground">
         <div>
-          <span className="font-medium text-foreground">セグメント数:</span> {result.segmentsCount}
+          <span className="font-medium text-foreground">字幕ブロック数:</span> {result.segmentsCount}
         </div>
         <div>
-          <span className="font-medium text-foreground">音声長:</span>{' '}
+          <span className="font-medium text-foreground">動画の長さ:</span>{' '}
           {formatDuration(result.durationSeconds)}
         </div>
       </div>
@@ -338,13 +338,7 @@ export function ProcessingPipeline({
       <div className="space-y-1 text-muted-foreground">
         {result.sentencesCount !== undefined && (
           <div>
-            <span className="font-medium text-foreground">文数:</span> {result.sentencesCount}
-          </div>
-        )}
-        {result.dictionaryVersion && (
-          <div>
-            <span className="font-medium text-foreground">辞書バージョン:</span>{' '}
-            {result.dictionaryVersion}
+            <span className="font-medium text-foreground">整形後の文数:</span> {result.sentencesCount}
           </div>
         )}
       </div>
@@ -356,8 +350,8 @@ export function ProcessingPipeline({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>処理パイプライン</CardTitle>
-            <CardDescription>動画処理の各ステップを個別に実行できます</CardDescription>
+            <CardTitle>動画の準備</CardTitle>
+            <CardDescription>文字起こしと字幕作成のための前処理を行います</CardDescription>
           </div>
           <Button onClick={handleRunAllSteps} disabled={isAnyStepRunning || runningAllSteps}>
             {runningAllSteps ? (
@@ -378,8 +372,8 @@ export function ProcessingPipeline({
         {/* Step 1: Cache */}
         <PipelineStep
           stepNumber={1}
-          title="キャッシュ (Drive → GCS)"
-          description="Google DriveからGCSへ動画をストリーム転送します"
+          title="動画の読み込み"
+          description="Google Driveから動画ファイルを取得します"
           status={steps.cache.status}
           isExpanded={expandedStep === 'cache'}
           onToggle={() => toggleStep('cache')}
@@ -394,8 +388,8 @@ export function ProcessingPipeline({
         {/* Step 2: Extract Audio */}
         <PipelineStep
           stepNumber={2}
-          title="音声抽出"
-          description="GCSにキャッシュされた動画から音声を抽出します (FLAC形式)"
+          title="音声の取り出し"
+          description="動画から音声データを取り出します"
           status={steps.extractAudio.status}
           isExpanded={expandedStep === 'extractAudio'}
           onToggle={() => toggleStep('extractAudio')}
@@ -409,8 +403,8 @@ export function ProcessingPipeline({
         {/* Step 3: Transcribe */}
         <PipelineStep
           stepNumber={3}
-          title="文字起こし"
-          description="音声からSpeech-to-Text APIで文字起こしを行います"
+          title="音声を文字に変換"
+          description="音声を解析してテキストに変換します"
           status={steps.transcribe.status}
           isExpanded={expandedStep === 'transcribe'}
           onToggle={() => toggleStep('transcribe')}
@@ -427,8 +421,8 @@ export function ProcessingPipeline({
         {/* Step 4: Refine */}
         <PipelineStep
           stepNumber={4}
-          title="AI校正"
-          description="文字起こし結果をAIで校正します"
+          title="字幕テキストの整形"
+          description="AIが文章を読みやすく整え、誤字を修正します"
           status={steps.refine.status}
           isExpanded={expandedStep === 'refine'}
           onToggle={() => toggleStep('refine')}
