@@ -3,6 +3,7 @@ import type { google } from '@google-cloud/speech/build/protos/protos.js';
 import { Storage } from '@google-cloud/storage';
 import { v4 as uuidv4 } from 'uuid';
 import type {
+  TranscribeFromGcsParams,
   TranscribeParams,
   TranscriptionGateway,
   TranscriptionResult,
@@ -205,6 +206,48 @@ export class SpeechToTextClient implements TranscriptionGateway {
         // Ignore cleanup errors
       }
     }
+  }
+
+  /**
+   * Transcribe audio from GCS URI using Batch Recognize API
+   * More efficient when audio is already in GCS (no upload required)
+   * @param params Transcription parameters with GCS URI
+   * @returns Transcription result with segments and timestamps
+   */
+  async transcribeLongAudioFromGcsUri(
+    params: TranscribeFromGcsParams
+  ): Promise<TranscriptionResult> {
+    const { gcsUri, languageCode } = params;
+
+    // Configure Batch Recognize request
+    const config: google.cloud.speech.v2.IRecognitionConfig = {
+      autoDecodingConfig: {},
+      languageCodes: languageCode ? [languageCode] : ['ja-JP'],
+      model: 'chirp',
+      features: {
+        enableWordTimeOffsets: true,
+      },
+    };
+
+    const recognizer = `projects/${this.projectId}/locations/${this.location}/recognizers/_`;
+
+    const request: google.cloud.speech.v2.IBatchRecognizeRequest = {
+      recognizer,
+      config,
+      files: [{ uri: gcsUri }],
+      recognitionOutputConfig: {
+        inlineResponseConfig: {},
+      },
+    };
+
+    // Call Batch Recognize API (returns a long-running operation)
+    const [operation] = await this.client.batchRecognize(request);
+
+    // Wait for operation to complete
+    const [response] = await operation.promise();
+
+    // Parse the inline response
+    return this.parseBatchResponse(response);
   }
 
   /**

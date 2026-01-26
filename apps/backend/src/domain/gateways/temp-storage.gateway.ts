@@ -20,6 +20,8 @@ export interface TempStorageUploadParams {
 export interface TempStorageStreamUploadParams {
   videoId: string;
   contentType?: string;
+  /** Custom path within video directory (e.g., 'audio.flac'). Defaults to 'original.mp4' */
+  path?: string;
 }
 
 /**

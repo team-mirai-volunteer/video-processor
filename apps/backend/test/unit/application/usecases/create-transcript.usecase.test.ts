@@ -54,10 +54,22 @@ describe('CreateTranscriptUseCase', () => {
         audioBuffer: Buffer.from('audio content'),
         format: 'flac',
       }),
+      executeWithStream: vi.fn().mockResolvedValue({
+        videoId: 'video-1',
+        audioGcsUri: 'gs://bucket/videos/video-1/audio.flac',
+        format: 'flac',
+      }),
     } as unknown as ExtractAudioUseCase;
 
     transcribeAudioUseCase = {
       execute: vi.fn().mockResolvedValue({
+        videoId: 'video-1',
+        transcriptionId: 'transcription-1',
+        fullText: 'This is a test transcription.',
+        segmentsCount: 5,
+        durationSeconds: 2.5,
+      }),
+      executeWithGcsUri: vi.fn().mockResolvedValue({
         videoId: 'video-1',
         transcriptionId: 'transcription-1',
         fullText: 'This is a test transcription.',
@@ -82,11 +94,10 @@ describe('CreateTranscriptUseCase', () => {
 
     expect(videoRepository.findById).toHaveBeenCalledWith('video-1');
     expect(cacheVideoUseCase.execute).toHaveBeenCalledWith('video-1');
-    expect(extractAudioUseCase.execute).toHaveBeenCalledWith('video-1', 'flac');
-    expect(transcribeAudioUseCase.execute).toHaveBeenCalledWith({
+    expect(extractAudioUseCase.executeWithStream).toHaveBeenCalledWith('video-1', 'flac');
+    expect(transcribeAudioUseCase.executeWithGcsUri).toHaveBeenCalledWith({
       videoId: 'video-1',
-      audioBuffer: Buffer.from('audio content'),
-      mimeType: 'audio/flac',
+      audioGcsUri: 'gs://bucket/videos/video-1/audio.flac',
     });
 
     // Verify video status was updated to transcribed
@@ -113,11 +124,13 @@ describe('CreateTranscriptUseCase', () => {
     await useCase.execute('video-1');
 
     expect(cacheVideoUseCase.execute).toHaveBeenCalledWith('video-1');
-    expect(extractAudioUseCase.execute).toHaveBeenCalled();
+    expect(extractAudioUseCase.executeWithStream).toHaveBeenCalled();
   });
 
   it('should update video status to failed on error', async () => {
-    vi.mocked(transcribeAudioUseCase.execute).mockRejectedValue(new Error('Transcription failed'));
+    vi.mocked(transcribeAudioUseCase.executeWithGcsUri).mockRejectedValue(
+      new Error('Transcription failed')
+    );
 
     await expect(useCase.execute('video-1')).rejects.toThrow('Transcription failed');
 

@@ -54,8 +54,9 @@ export class LocalTempStorageClient implements TempStorageGateway {
     params: TempStorageStreamUploadParams,
     source: NodeJS.ReadableStream
   ): Promise<TempStorageUploadResult> {
+    const fileName = params.path ?? 'original.mp4';
     const videoDir = path.join(this.baseDir, 'videos', params.videoId);
-    const filePath = path.join(videoDir, 'original.mp4');
+    const filePath = path.join(videoDir, fileName);
 
     // Create directory structure
     await fs.promises.mkdir(videoDir, { recursive: true });

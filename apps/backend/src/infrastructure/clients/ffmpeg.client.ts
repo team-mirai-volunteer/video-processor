@@ -114,6 +114,35 @@ export class FFmpegClient implements VideoProcessingGateway {
   }
 
   /**
+   * Extract audio from a video file to a file
+   * Memory efficient: no buffer loading required
+   * @param inputPath Path to input video file
+   * @param outputPath Path to output audio file
+   * @param format Output format ('wav' | 'flac')
+   */
+  async extractAudioFromFile(
+    inputPath: string,
+    outputPath: string,
+    format: 'wav' | 'flac'
+  ): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      const command = ffmpeg(inputPath).noVideo().audioFrequency(16000).audioChannels(1);
+
+      if (format === 'wav') {
+        command.audioCodec('pcm_s16le');
+      } else {
+        command.audioCodec('flac');
+      }
+
+      command
+        .output(outputPath)
+        .on('end', () => resolve())
+        .on('error', (err: Error) => reject(err))
+        .run();
+    });
+  }
+
+  /**
    * Cleanup temporary directory and its contents
    */
   private async cleanup(tempDir: string): Promise<void> {

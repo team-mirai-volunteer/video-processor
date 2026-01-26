@@ -166,4 +166,83 @@ describe.skipIf(!runIntegrationTests)('FFmpegClient Integration', () => {
       await expect(client.extractAudio(invalidBuffer, 'wav')).rejects.toThrow();
     });
   });
+
+  describe('extractAudioFromFile', () => {
+    it('should extract WAV audio from file to file', async () => {
+      const tempDir = await fs.promises.mkdtemp(path.join(OUTPUT_DIR, 'ffmpeg-test-'));
+      const inputPath = path.join(tempDir, 'input.mp4');
+      const outputPath = path.join(tempDir, 'output.wav');
+
+      try {
+        // Create output dir if not exists
+        await fs.promises.mkdir(OUTPUT_DIR, { recursive: true });
+
+        // Copy test video to temp input
+        await fs.promises.copyFile(SAMPLE_VIDEO_PATH, inputPath);
+
+        // Execute
+        await client.extractAudioFromFile(inputPath, outputPath, 'wav');
+
+        // Verify output exists and is valid WAV
+        const audioBuffer = await fs.promises.readFile(outputPath);
+        expect(audioBuffer.length).toBeGreaterThan(0);
+
+        // WAV files start with 'RIFF' magic bytes
+        const magic = audioBuffer.slice(0, 4).toString('ascii');
+        expect(magic).toBe('RIFF');
+
+        // Verify 16kHz mono
+        const numChannels = audioBuffer.readUInt16LE(22);
+        const sampleRate = audioBuffer.readUInt32LE(24);
+        expect(numChannels).toBe(1);
+        expect(sampleRate).toBe(16000);
+      } finally {
+        // Cleanup
+        await fs.promises.rm(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should extract FLAC audio from file to file', async () => {
+      const tempDir = await fs.promises.mkdtemp(path.join(OUTPUT_DIR, 'ffmpeg-test-'));
+      const inputPath = path.join(tempDir, 'input.mp4');
+      const outputPath = path.join(tempDir, 'output.flac');
+
+      try {
+        // Create output dir if not exists
+        await fs.promises.mkdir(OUTPUT_DIR, { recursive: true });
+
+        // Copy test video to temp input
+        await fs.promises.copyFile(SAMPLE_VIDEO_PATH, inputPath);
+
+        // Execute
+        await client.extractAudioFromFile(inputPath, outputPath, 'flac');
+
+        // Verify output exists and is valid FLAC
+        const audioBuffer = await fs.promises.readFile(outputPath);
+        expect(audioBuffer.length).toBeGreaterThan(0);
+
+        // FLAC files start with 'fLaC' magic bytes
+        const magic = audioBuffer.slice(0, 4).toString('ascii');
+        expect(magic).toBe('fLaC');
+      } finally {
+        // Cleanup
+        await fs.promises.rm(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should throw an error for non-existent input file', async () => {
+      const tempDir = await fs.promises.mkdtemp(path.join(OUTPUT_DIR, 'ffmpeg-test-'));
+      const inputPath = path.join(tempDir, 'non-existent.mp4');
+      const outputPath = path.join(tempDir, 'output.wav');
+
+      try {
+        // Create output dir if not exists
+        await fs.promises.mkdir(OUTPUT_DIR, { recursive: true });
+
+        await expect(client.extractAudioFromFile(inputPath, outputPath, 'wav')).rejects.toThrow();
+      } finally {
+        await fs.promises.rm(tempDir, { recursive: true, force: true });
+      }
+    });
+  });
 });
