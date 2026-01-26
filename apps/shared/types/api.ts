@@ -123,6 +123,8 @@ export interface GetClipResponse {
  */
 export interface ExtractClipsRequest {
   clipInstructions: string;
+  /** true=複数クリップを許可, false=単一クリップのみ (デフォルト: false) */
+  multipleClips?: boolean;
 }
 
 /**

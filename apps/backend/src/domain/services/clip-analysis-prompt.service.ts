@@ -9,6 +9,8 @@ export interface ClipAnalysisPromptParams {
   };
   videoTitle: string | null;
   clipInstructions: string;
+  /** true=複数クリップを許可, false=単一クリップのみ (デフォルト: false) */
+  multipleClips?: boolean;
 }
 
 /**
@@ -19,9 +21,14 @@ export class ClipAnalysisPromptService {
    * Build a prompt for AI to analyze transcription and select clips
    */
   buildPrompt(params: ClipAnalysisPromptParams): string {
-    const { refinedTranscription, videoTitle, clipInstructions } = params;
+    const { refinedTranscription, videoTitle, clipInstructions, multipleClips = false } = params;
 
     const transcriptionText = this.formatTranscriptionForPrompt(refinedTranscription.sentences);
+
+    // 単一/複数クリップに応じた注意事項を生成
+    const clipCountInstruction = multipleClips
+      ? '- ユーザーの指示に基づいて、必要に応じて複数のクリップを抽出してください'
+      : '- 必ず1つのクリップのみを抽出してください。複数の箇所が指示されている場合は、最も重要または最初に指示された1箇所のみを選んでください';
 
     return `あなたは動画編集アシスタントです。
 以下の文字起こしデータを分析し、ユーザーの指示に基づいて切り抜くべき箇所を特定してください。
@@ -58,7 +65,8 @@ startTimeSeconds/endTimeSecondsは上記の文字起こしのタイムスタン�
 - 動画の総時間は${refinedTranscription.durationSeconds}秒です。startTimeSeconds/endTimeSecondsは必ずこの範囲内（0〜${refinedTranscription.durationSeconds}）で指定してください
 - 発言の途中で切れないよう、タイムスタンプを参照して自然な区切りを選んでください
 - transcriptは文字起こしデータからそのまま抜粋してください
-- 必ずJSON形式で出力してください`;
+- 必ずJSON形式で出力してください
+${clipCountInstruction}`;
   }
 
   /**
