@@ -13,17 +13,11 @@ export interface ExtractAudioUseCaseDeps {
   videoProcessingGateway: VideoProcessingGateway;
 }
 
-export interface ExtractAudioResult {
-  videoId: string;
-  audioBuffer: Buffer;
-  format: 'wav' | 'flac';
-}
-
 /**
- * Result of stream-based audio extraction
+ * Result of audio extraction
  * Audio is uploaded to GCS instead of returned as buffer
  */
-export interface ExtractAudioStreamResult {
+export interface ExtractAudioResult {
   videoId: string;
   audioGcsUri: string;
   format: 'wav' | 'flac';
@@ -54,48 +48,8 @@ export class ExtractAudioUseCase {
     console.log(`[ExtractAudioUseCase] [${timestamp}] ${message}${logData}`);
   }
 
-  async execute(videoId: string, format: 'wav' | 'flac' = 'flac'): Promise<ExtractAudioResult> {
-    this.log('Starting execution', { videoId, format });
-
-    // Get video
-    const video = await this.videoRepository.findById(videoId);
-    if (!video) {
-      throw new NotFoundError('Video', videoId);
-    }
-    this.log('Found video', { videoId: video.id });
-
-    // Check if video is cached
-    if (!video.gcsUri) {
-      throw new Error(`Video ${videoId} is not cached in GCS. Run CacheVideoUseCase first.`);
-    }
-
-    // Check if cache exists
-    const exists = await this.tempStorageGateway.exists(video.gcsUri);
-    if (!exists) {
-      throw new Error(
-        `Video cache not found at ${video.gcsUri}. Cache may have expired. Run CacheVideoUseCase again.`
-      );
-    }
-
-    // Download video from GCS
-    this.log('Downloading video from GCS...', { gcsUri: video.gcsUri });
-    const videoBuffer = await this.tempStorageGateway.download(video.gcsUri);
-    this.log('Video downloaded', { sizeBytes: videoBuffer.length });
-
-    // Extract audio
-    this.log('Extracting audio...', { format });
-    const audioBuffer = await this.videoProcessingGateway.extractAudio(videoBuffer, format);
-    this.log('Audio extracted', { sizeBytes: audioBuffer.length });
-
-    return {
-      videoId: video.id,
-      audioBuffer,
-      format,
-    };
-  }
-
   /**
-   * Stream version: Extract audio and upload directly to GCS
+   * Extract audio and upload directly to GCS
    * Memory efficient: suitable for large videos (1GB+)
    *
    * Flow:
@@ -103,10 +57,7 @@ export class ExtractAudioUseCase {
    * 2. FFmpeg file-to-file conversion
    * 3. Stream upload from temp file to GCS
    */
-  async executeWithStream(
-    videoId: string,
-    format: 'wav' | 'flac' = 'flac'
-  ): Promise<ExtractAudioStreamResult> {
+  async execute(videoId: string, format: 'wav' | 'flac' = 'flac'): Promise<ExtractAudioResult> {
     this.log('Starting stream execution', { videoId, format });
 
     // Get video

@@ -111,7 +111,7 @@ describe.skipIf(!runIntegrationTests)('ExtractAudioUseCase GCS Integration', () 
     }
   });
 
-  describe('executeWithStream (GCS -> FFmpeg -> GCS)', () => {
+  describe('execute (GCS -> FFmpeg -> GCS)', () => {
     it('should extract FLAC audio from GCS video and upload back to GCS', async () => {
       // Arrange: Upload sample video to GCS
       const videoId = uuidv4();
@@ -131,7 +131,7 @@ describe.skipIf(!runIntegrationTests)('ExtractAudioUseCase GCS Integration', () 
       await videoRepository.save(video);
 
       // Act: Execute the stream version
-      const result = await useCase.executeWithStream(videoId, 'flac');
+      const result = await useCase.execute(videoId, 'flac');
       createdGcsUris.push(result.audioGcsUri);
 
       // Assert: Check result
@@ -152,7 +152,7 @@ describe.skipIf(!runIntegrationTests)('ExtractAudioUseCase GCS Integration', () 
       const magic = audioBuffer.subarray(0, 4).toString('ascii');
       expect(magic).toBe('fLaC');
 
-      console.log('GCS ExtractAudioUseCase.executeWithStream result:', {
+      console.log('GCS ExtractAudioUseCase.execute result:', {
         videoGcsUri,
         audioGcsUri: result.audioGcsUri,
         audioSize: audioBuffer.length,
@@ -179,7 +179,7 @@ describe.skipIf(!runIntegrationTests)('ExtractAudioUseCase GCS Integration', () 
       await videoRepository.save(video);
 
       // Act: Execute with WAV format
-      const result = await useCase.executeWithStream(videoId, 'wav');
+      const result = await useCase.execute(videoId, 'wav');
       createdGcsUris.push(result.audioGcsUri);
 
       // Assert
@@ -232,7 +232,7 @@ describe.skipIf(!runIntegrationTests)('ExtractAudioUseCase GCS Integration', () 
       const memBefore = process.memoryUsage().heapUsed;
 
       // Execute stream processing
-      const result = await useCase.executeWithStream(videoId, 'flac');
+      const result = await useCase.execute(videoId, 'flac');
       createdGcsUris.push(result.audioGcsUri);
 
       // Record memory usage after

@@ -98,7 +98,7 @@ describe.skipIf(!runIntegrationTests)('ExtractAudioUseCase Integration', () => {
     });
   });
 
-  describe('executeWithStream', () => {
+  describe('execute', () => {
     it('should extract audio and upload to local storage', async () => {
       // Arrange: Copy sample video to local temp storage
       const videoId = uuidv4();
@@ -121,7 +121,7 @@ describe.skipIf(!runIntegrationTests)('ExtractAudioUseCase Integration', () => {
       await videoRepository.save(video);
 
       // Act: Execute the stream version
-      const result = await useCase.executeWithStream(videoId, 'flac');
+      const result = await useCase.execute(videoId, 'flac');
 
       // Assert: Check result
       expect(result).toHaveProperty('videoId', videoId);
@@ -141,7 +141,7 @@ describe.skipIf(!runIntegrationTests)('ExtractAudioUseCase Integration', () => {
       const magic = audioBuffer.slice(0, 4).toString('ascii');
       expect(magic).toBe('fLaC');
 
-      console.log('ExtractAudioUseCase.executeWithStream result:', {
+      console.log('ExtractAudioUseCase.execute result:', {
         audioGcsUri: result.audioGcsUri,
         audioSize: audioBuffer.length,
         format: result.format,
@@ -168,7 +168,7 @@ describe.skipIf(!runIntegrationTests)('ExtractAudioUseCase Integration', () => {
       await videoRepository.save(video);
 
       // Act: Execute with WAV format
-      const result = await useCase.executeWithStream(videoId, 'wav');
+      const result = await useCase.execute(videoId, 'wav');
 
       // Assert
       expect(result.format).toBe('wav');
@@ -198,7 +198,7 @@ describe.skipIf(!runIntegrationTests)('ExtractAudioUseCase Integration', () => {
       await videoRepository.save(videoResult.value);
 
       // Act & Assert
-      await expect(useCase.executeWithStream(videoId, 'flac')).rejects.toThrow(/not cached in GCS/);
+      await expect(useCase.execute(videoId, 'flac')).rejects.toThrow(/not cached in GCS/);
     });
 
     it('should throw error when cache file does not exist', async () => {
@@ -218,14 +218,12 @@ describe.skipIf(!runIntegrationTests)('ExtractAudioUseCase Integration', () => {
       await videoRepository.save(video);
 
       // Act & Assert
-      await expect(useCase.executeWithStream(videoId, 'flac')).rejects.toThrow(/cache not found/);
+      await expect(useCase.execute(videoId, 'flac')).rejects.toThrow(/cache not found/);
     });
 
     it('should throw error when video does not exist', async () => {
       // Act & Assert
-      await expect(useCase.executeWithStream('non-existent-id', 'flac')).rejects.toThrow(
-        /Video.*not found/
-      );
+      await expect(useCase.execute('non-existent-id', 'flac')).rejects.toThrow(/Video.*not found/);
     });
   });
 });

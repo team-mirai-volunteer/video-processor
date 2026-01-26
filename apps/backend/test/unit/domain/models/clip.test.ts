@@ -1,37 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import {
-  Clip,
-  formatSecondsToTime,
-  parseTimeToSeconds,
-} from '../../../../src/domain/models/clip.js';
+import { Clip } from '../../../../src/domain/models/clip.js';
 
 describe('Clip', () => {
   const generateId = () => 'clip-id-123';
-
-  describe('parseTimeToSeconds', () => {
-    it('should parse HH:MM:SS format', () => {
-      expect(parseTimeToSeconds('01:30:45')).toBe(5445);
-      expect(parseTimeToSeconds('00:01:30')).toBe(90);
-      expect(parseTimeToSeconds('00:00:30')).toBe(30);
-    });
-
-    it('should parse MM:SS format', () => {
-      expect(parseTimeToSeconds('01:30')).toBe(90);
-      expect(parseTimeToSeconds('00:30')).toBe(30);
-    });
-
-    it('should parse SS format', () => {
-      expect(parseTimeToSeconds('30')).toBe(30);
-    });
-  });
-
-  describe('formatSecondsToTime', () => {
-    it('should format seconds to HH:MM:SS', () => {
-      expect(formatSecondsToTime(5445)).toBe('01:30:45');
-      expect(formatSecondsToTime(90)).toBe('00:01:30');
-      expect(formatSecondsToTime(30)).toBe('00:00:30');
-    });
-  });
 
   describe('create', () => {
     it('should create a Clip with valid time range', () => {
