@@ -92,7 +92,7 @@ module "cloud_run" {
   memory          = "512Mi"
   min_instances   = 0
   max_instances   = 1
-  concurrency     = 1  # Required when cpu < 1
+  concurrency     = 1 # Required when cpu < 1
   request_timeout = 300
 
   allow_unauthenticated = true
@@ -106,6 +106,7 @@ module "cloud_run" {
   openai_api_key_secret_id     = module.secrets.openai_api_key_secret_id
   google_credentials_secret_id = module.secrets.google_credentials_secret_id
   database_password_secret_id  = module.secrets.database_password_secret_id
+  webapp_api_key_secret_id     = module.secrets.webapp_api_key_secret_id
 
   cors_origin                   = var.cors_origin
   google_drive_output_folder_id = var.google_drive_output_folder_id
@@ -124,6 +125,7 @@ module "secrets" {
   openai_api_key          = var.openai_api_key
   google_credentials_json = var.google_credentials_json
   database_password       = var.database_password
+  webapp_api_key          = var.webapp_api_key
 
   # Use the Cloud Run service account email from the resource we created above
   cloud_run_service_account_email = google_service_account.cloud_run.email
