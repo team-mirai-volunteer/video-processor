@@ -1,7 +1,10 @@
 import type { StorageGateway } from '../../domain/gateways/storage.gateway.js';
 import type { TempStorageGateway } from '../../domain/gateways/temp-storage.gateway.js';
 import type { VideoRepositoryGateway } from '../../domain/gateways/video-repository.gateway.js';
+import { createLogger } from '../../infrastructure/logging/logger.js';
 import { NotFoundError } from '../errors.js';
+
+const log = createLogger('CacheVideoUseCase');
 
 export interface CacheVideoUseCaseDeps {
   videoRepository: VideoRepositoryGateway;
@@ -35,28 +38,22 @@ export class CacheVideoUseCase {
     this.tempStorageGateway = deps.tempStorageGateway;
   }
 
-  private log(message: string, data?: Record<string, unknown>): void {
-    const timestamp = new Date().toISOString();
-    const logData = data ? ` ${JSON.stringify(data)}` : '';
-    console.log(`[CacheVideoUseCase] [${timestamp}] ${message}${logData}`);
-  }
-
   async execute(videoId: string): Promise<CacheVideoResult> {
-    this.log('Starting execution', { videoId });
+    log.info('Starting execution', { videoId });
 
     // Get video
     const video = await this.videoRepository.findById(videoId);
     if (!video) {
       throw new NotFoundError('Video', videoId);
     }
-    this.log('Found video', { videoId: video.id, googleDriveFileId: video.googleDriveFileId });
+    log.info('Found video', { videoId: video.id, googleDriveFileId: video.googleDriveFileId });
 
     // Check if already cached and not expired
     if (video.gcsUri && video.gcsExpiresAt && video.gcsExpiresAt > new Date()) {
-      this.log('Checking existing cache...', { gcsUri: video.gcsUri });
+      log.info('Checking existing cache...', { gcsUri: video.gcsUri });
       const exists = await this.tempStorageGateway.exists(video.gcsUri);
       if (exists) {
-        this.log('Video already cached in GCS');
+        log.info('Video already cached in GCS');
         return {
           videoId: video.id,
           gcsUri: video.gcsUri,
@@ -67,19 +64,19 @@ export class CacheVideoUseCase {
     }
 
     // Stream from Google Drive to GCS
-    this.log('Starting stream transfer from Google Drive to GCS...');
+    log.info('Starting stream transfer from Google Drive to GCS...');
     const stream = await this.storageGateway.downloadFileAsStream(video.googleDriveFileId);
 
     const { gcsUri, expiresAt } = await this.tempStorageGateway.uploadFromStream(
       { videoId: video.id },
       stream
     );
-    this.log('Stream transfer completed', { gcsUri, expiresAt });
+    log.info('Stream transfer completed', { gcsUri, expiresAt: expiresAt.toISOString() });
 
     // Update video with GCS info
     const updatedVideo = video.withGcsInfo(gcsUri, expiresAt);
     await this.videoRepository.save(updatedVideo);
-    this.log('Video record updated with GCS info');
+    log.info('Video record updated with GCS info');
 
     return {
       videoId: video.id,

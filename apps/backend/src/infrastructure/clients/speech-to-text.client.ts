@@ -12,6 +12,9 @@ import type {
   TranscriptionResult,
   TranscriptionSegment,
 } from '../../domain/gateways/transcription.gateway.js';
+import { createLogger } from '../logging/logger.js';
+
+const log = createLogger('SpeechToTextClient');
 
 interface DictionaryEntry {
   correct: string;
@@ -370,10 +373,9 @@ export class SpeechToTextClient implements TranscriptionGateway {
         ],
       };
     } catch (error) {
-      console.warn(
-        '[SpeechToTextClient] Failed to load dictionary, continuing without adaptation:',
-        error
-      );
+      log.warn('Failed to load dictionary, continuing without adaptation', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return {};
     }
   }

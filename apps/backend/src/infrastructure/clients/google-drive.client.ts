@@ -10,6 +10,9 @@ import {
   DownloadForbiddenError,
   FileNotFoundError,
 } from '../errors/storage.errors.js';
+import { createLogger } from '../logging/logger.js';
+
+const log = createLogger('GoogleDriveClient');
 
 interface GoogleDriveClientConfig {
   serviceAccountEmail: string;
@@ -140,7 +143,7 @@ export class GoogleDriveClient implements StorageGateway {
       const { status, data } = gaxiosError.response;
       const errorMessage = data?.error?.message ?? '';
 
-      console.error(`[GoogleDriveClient] Download failed for ${fileId}:`, {
+      log.error(`Download failed for ${fileId}`, undefined, {
         status,
         message: errorMessage,
       });
