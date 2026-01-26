@@ -192,3 +192,36 @@ export interface GetRefinedTranscriptionResponse {
   createdAt: Date;
   updatedAt: Date;
 }
+
+// ============================================================================
+// Pipeline Step APIs
+// ============================================================================
+
+/**
+ * POST /api/videos/:videoId/cache response
+ */
+export interface CacheVideoResponse {
+  videoId: string;
+  gcsUri: string;
+  expiresAt: string; // ISO 8601
+  cached: boolean;
+}
+
+/**
+ * POST /api/videos/:videoId/extract-audio response
+ */
+export interface ExtractAudioResponse {
+  videoId: string;
+  format: 'flac';
+  sizeBytes: number;
+}
+
+/**
+ * POST /api/videos/:videoId/transcribe-audio response
+ */
+export interface TranscribeAudioResponse {
+  videoId: string;
+  transcriptionId: string;
+  segmentsCount: number;
+  durationSeconds: number;
+}
