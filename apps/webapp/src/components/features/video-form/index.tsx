@@ -1,1 +1,1 @@
-export { SubmitForm } from './submit-form';
+export { SubmitForm } from '@/components/features/video-form/submit-form';

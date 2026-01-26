@@ -1,12 +1,12 @@
 'use server';
 
+import { BackendApiError } from '@/server/infrastructure/clients/backend-client';
+import { getBackendClient } from '@/server/infrastructure/clients/get-backend-client';
 import type {
   GetRefinedTranscriptionResponse,
   GetTranscriptionResponse,
   GetVideoResponse,
 } from '@video-processor/shared';
-import { BackendApiError } from '../../infrastructure/clients/backend-client';
-import { getBackendClient } from '../../infrastructure/clients/get-backend-client';
 
 export interface VideoStatusResponse {
   video: GetVideoResponse;

@@ -1,3 +1,4 @@
+import { VideoDetailClient } from '@/app/videos/[id]/video-detail-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { BackendApiError } from '@/server/infrastructure/clients/backend-client';
@@ -6,7 +7,6 @@ import { loadTranscription } from '@/server/presentation/loaders/loadTranscripti
 import { loadVideo } from '@/server/presentation/loaders/loadVideo';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { VideoDetailClient } from './video-detail-client';
 
 interface Props {
   params: Promise<{ id: string }>;

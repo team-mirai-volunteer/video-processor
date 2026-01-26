@@ -1,7 +1,7 @@
 'use client';
 
+import { ClipCard } from '@/components/features/clip-list/clip-card';
 import type { Clip } from '@video-processor/shared';
-import { ClipCard } from './clip-card';
 
 interface ClipListProps {
   clips: Clip[];

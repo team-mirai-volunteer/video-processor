@@ -1,5 +1,9 @@
 'use client';
 
+import {
+  PipelineStep,
+  type StepStatus,
+} from '@/components/features/processing-pipeline/pipeline-step';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatBytes, formatDate, formatDuration } from '@/lib/utils';
@@ -18,7 +22,6 @@ import type {
 } from '@video-processor/shared';
 import { Loader2, PlayCircle } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import { PipelineStep, type StepStatus } from './pipeline-step';
 
 interface ProcessingPipelineProps {
   video: VideoWithRelations;

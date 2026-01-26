@@ -1,7 +1,7 @@
 'use server';
 
+import { getBackendClient } from '@/server/infrastructure/clients/get-backend-client';
 import type { ExtractClipsRequest, ExtractClipsResponse } from '@video-processor/shared';
-import { getBackendClient } from '../../infrastructure/clients/get-backend-client';
 
 export async function extractClips(
   videoId: string,
