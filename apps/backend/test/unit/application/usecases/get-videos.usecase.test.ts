@@ -17,7 +17,10 @@ describe('GetVideosUseCase', () => {
       durationSeconds: 3600,
       fileSizeBytes: 1000000,
       status: 'completed',
+      transcriptionPhase: null,
       errorMessage: null,
+      gcsUri: null,
+      gcsExpiresAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -34,6 +37,7 @@ describe('GetVideosUseCase', () => {
         ],
         total: 2,
       }),
+      delete: vi.fn(),
     };
 
     useCase = new GetVideosUseCase({ videoRepository });
@@ -62,12 +66,12 @@ describe('GetVideosUseCase', () => {
   });
 
   it('should filter by status', async () => {
-    await useCase.execute({ status: 'processing' });
+    await useCase.execute({ status: 'transcribing' });
 
     expect(videoRepository.findMany).toHaveBeenCalledWith({
       page: 1,
       limit: 20,
-      status: 'processing',
+      status: 'transcribing',
     });
   });
 
