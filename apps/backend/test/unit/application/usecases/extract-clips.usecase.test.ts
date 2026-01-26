@@ -53,6 +53,7 @@ describe('ExtractClipsUseCase', () => {
   const mockTempStorageGateway: TempStorageGateway = {
     upload: vi.fn(),
     uploadFromStream: vi.fn(),
+    uploadFromStreamWithProgress: vi.fn(),
     download: vi.fn(),
     downloadAsStream: vi.fn(),
     exists: vi.fn(),
@@ -118,6 +119,7 @@ describe('ExtractClipsUseCase', () => {
       fileSizeBytes: 1000000,
       status: 'transcribed',
       transcriptionPhase: null,
+      progressMessage: null,
       errorMessage: null,
       gcsUri: null,
       gcsExpiresAt: null,

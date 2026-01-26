@@ -24,6 +24,7 @@ describe('CreateTranscriptUseCase', () => {
     fileSizeBytes: null,
     status: 'pending',
     transcriptionPhase: null,
+    progressMessage: null,
     errorMessage: null,
     gcsUri: null,
     gcsExpiresAt: null,
