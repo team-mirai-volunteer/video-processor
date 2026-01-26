@@ -14,6 +14,9 @@ import { LocalTempStorageClient } from '../../../../src/infrastructure/clients/l
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SAMPLE_VIDEO_PATH = path.resolve(__dirname, '../../../fixtures/sample.mp4');
 
+/** テスト用: 24時間後の有効期限 */
+const testExpiresAt = () => new Date(Date.now() + 24 * 60 * 60 * 1000);
+
 /**
  * Check if ffmpeg is available on the system
  */
@@ -114,7 +117,7 @@ describe.skipIf(!runIntegrationTests)('ExtractAudioUseCase Integration', () => {
       if (!videoResult.success) return;
 
       // Update video with gcsUri
-      const video = videoResult.value.withGcsUri(`local://${cachedVideoPath}`);
+      const video = videoResult.value.withGcsInfo(`local://${cachedVideoPath}`, testExpiresAt());
       await videoRepository.save(video);
 
       // Act: Execute the stream version
@@ -161,7 +164,7 @@ describe.skipIf(!runIntegrationTests)('ExtractAudioUseCase Integration', () => {
       expect(videoResult.success).toBe(true);
       if (!videoResult.success) return;
 
-      const video = videoResult.value.withGcsUri(`local://${cachedVideoPath}`);
+      const video = videoResult.value.withGcsInfo(`local://${cachedVideoPath}`, testExpiresAt());
       await videoRepository.save(video);
 
       // Act: Execute with WAV format
@@ -208,7 +211,10 @@ describe.skipIf(!runIntegrationTests)('ExtractAudioUseCase Integration', () => {
       expect(videoResult.success).toBe(true);
       if (!videoResult.success) return;
 
-      const video = videoResult.value.withGcsUri('local:///non/existent/path/video.mp4');
+      const video = videoResult.value.withGcsInfo(
+        'local:///non/existent/path/video.mp4',
+        testExpiresAt()
+      );
       await videoRepository.save(video);
 
       // Act & Assert
