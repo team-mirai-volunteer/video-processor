@@ -23,6 +23,7 @@ describe('CreateTranscriptUseCase', () => {
     durationSeconds: null,
     fileSizeBytes: null,
     status: 'pending',
+    transcriptionPhase: null,
     errorMessage: null,
     gcsUri: null,
     gcsExpiresAt: null,
@@ -90,8 +91,8 @@ describe('CreateTranscriptUseCase', () => {
 
     // Verify video status was updated to transcribed
     const saveCallArgs = vi.mocked(videoRepository.save).mock.calls;
-    const lastSaveCall = saveCallArgs[saveCallArgs.length - 1][0];
-    expect(lastSaveCall.status).toBe('transcribed');
+    const lastSaveCall = saveCallArgs[saveCallArgs.length - 1]?.[0];
+    expect(lastSaveCall?.status).toBe('transcribed');
   });
 
   it('should throw NotFoundError when video does not exist', async () => {
@@ -121,9 +122,9 @@ describe('CreateTranscriptUseCase', () => {
     await expect(useCase.execute('video-1')).rejects.toThrow('Transcription failed');
 
     const saveCallArgs = vi.mocked(videoRepository.save).mock.calls;
-    const lastSaveCall = saveCallArgs[saveCallArgs.length - 1][0];
-    expect(lastSaveCall.status).toBe('failed');
-    expect(lastSaveCall.errorMessage).toBe('Transcription failed');
+    const lastSaveCall = saveCallArgs[saveCallArgs.length - 1]?.[0];
+    expect(lastSaveCall?.status).toBe('failed');
+    expect(lastSaveCall?.errorMessage).toBe('Transcription failed');
   });
 
   it('should update phases in order during execution', async () => {

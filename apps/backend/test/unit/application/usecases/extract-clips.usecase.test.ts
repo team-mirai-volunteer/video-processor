@@ -10,13 +10,11 @@ import type { ClipRepositoryGateway } from '../../../../src/domain/gateways/clip
 import type { RefinedTranscriptionRepositoryGateway } from '../../../../src/domain/gateways/refined-transcription-repository.gateway.js';
 import type { StorageGateway } from '../../../../src/domain/gateways/storage.gateway.js';
 import type { TempStorageGateway } from '../../../../src/domain/gateways/temp-storage.gateway.js';
-import type {
-  TranscriptionEntity,
-  TranscriptionRepositoryGateway,
-} from '../../../../src/domain/gateways/transcription-repository.gateway.js';
+import type { TranscriptionRepositoryGateway } from '../../../../src/domain/gateways/transcription-repository.gateway.js';
 import type { VideoProcessingGateway } from '../../../../src/domain/gateways/video-processing.gateway.js';
 import type { VideoRepositoryGateway } from '../../../../src/domain/gateways/video-repository.gateway.js';
 import { RefinedTranscription } from '../../../../src/domain/models/refined-transcription.js';
+import { Transcription } from '../../../../src/domain/models/transcription.js';
 import { Video } from '../../../../src/domain/models/video.js';
 
 describe('ExtractClipsUseCase', () => {
@@ -26,6 +24,7 @@ describe('ExtractClipsUseCase', () => {
     findById: vi.fn(),
     findByGoogleDriveFileId: vi.fn(),
     findMany: vi.fn(),
+    delete: vi.fn(),
   };
 
   const mockClipRepository: ClipRepositoryGateway = {
@@ -37,8 +36,9 @@ describe('ExtractClipsUseCase', () => {
 
   const mockTranscriptionRepository: TranscriptionRepositoryGateway = {
     save: vi.fn(),
+    findById: vi.fn(),
     findByVideoId: vi.fn(),
-    delete: vi.fn(),
+    deleteByVideoId: vi.fn(),
   };
 
   const mockStorageGateway: StorageGateway = {
@@ -125,7 +125,7 @@ describe('ExtractClipsUseCase', () => {
       updatedAt: new Date(),
     });
 
-    const mockTranscription: TranscriptionEntity = {
+    const mockTranscription = Transcription.fromProps({
       id: 'transcription-1',
       videoId: 'video-1',
       fullText: 'Hello, this is a test video.',
@@ -140,7 +140,7 @@ describe('ExtractClipsUseCase', () => {
       languageCode: 'ja-JP',
       durationSeconds: 600,
       createdAt: new Date(),
-    };
+    });
 
     const mockRefinedTranscription = RefinedTranscription.fromProps({
       id: 'refined-1',

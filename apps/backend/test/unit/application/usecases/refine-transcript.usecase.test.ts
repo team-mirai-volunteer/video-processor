@@ -85,17 +85,17 @@ describe('RefineTranscriptUseCase', () => {
       save: vi.fn().mockResolvedValue(undefined),
       findById: vi.fn().mockResolvedValue(null),
       findByGoogleDriveFileId: vi.fn().mockResolvedValue(null),
-      findByStatus: vi.fn().mockResolvedValue([]),
-      findAll: vi.fn().mockResolvedValue([]),
+      findMany: vi.fn().mockResolvedValue({ videos: [], total: 0 }),
       delete: vi.fn().mockResolvedValue(undefined),
     };
 
     storageGateway = {
       getFileMetadata: vi.fn().mockResolvedValue({ name: 'test-video.mp4' }),
       downloadFile: vi.fn().mockResolvedValue(Buffer.from('')),
+      downloadFileAsStream: vi.fn().mockResolvedValue(null),
       uploadFile: vi.fn().mockResolvedValue({ id: 'file-id', name: 'test.txt' }),
+      createFolder: vi.fn().mockResolvedValue({ id: 'folder-id', name: 'test-folder' }),
       findOrCreateFolder: vi.fn().mockResolvedValue({ id: 'folder-id', name: 'test-folder' }),
-      listFiles: vi.fn().mockResolvedValue([]),
     };
 
     aiGateway = {
@@ -137,9 +137,9 @@ describe('RefineTranscriptUseCase', () => {
   it('should pass segments to AI gateway in prompt', async () => {
     await useCase.execute('video-1');
 
-    const generateCall = vi.mocked(aiGateway.generate).mock.calls[0][0];
-    expect(generateCall).toContain('[0] どうも');
-    expect(generateCall).toContain('[1] こんにちは');
+    const generateCall = vi.mocked(aiGateway.generate).mock.calls[0]?.[0];
+    expect(generateCall).toContain('[0] [0.08-0.20] どうも');
+    expect(generateCall).toContain('[1] [0.22-0.60] こんにちは');
     expect(generateCall).toContain('チーム未来 → チームみらい');
   });
 
@@ -180,12 +180,12 @@ describe('RefineTranscriptUseCase', () => {
   it('should save refined transcription with correct data', async () => {
     await useCase.execute('video-1');
 
-    const saveCall = vi.mocked(refinedTranscriptionRepository.save).mock.calls[0][0];
-    expect(saveCall.id).toBe('id-1');
-    expect(saveCall.transcriptionId).toBe('trans-1');
-    expect(saveCall.sentences).toHaveLength(2);
-    expect(saveCall.sentences[0].text).toBe('どうも、こんにちは。');
-    expect(saveCall.sentences[1].text).toBe('チームみらい党首の安野たかひろです。');
-    expect(saveCall.dictionaryVersion).toBe('1.0.0');
+    const saveCall = vi.mocked(refinedTranscriptionRepository.save).mock.calls[0]?.[0];
+    expect(saveCall?.id).toBe('id-1');
+    expect(saveCall?.transcriptionId).toBe('trans-1');
+    expect(saveCall?.sentences).toHaveLength(2);
+    expect(saveCall?.sentences[0]?.text).toBe('どうも、こんにちは。');
+    expect(saveCall?.sentences[1]?.text).toBe('チームみらい党首の安野たかひろです。');
+    expect(saveCall?.dictionaryVersion).toBe('1.0.0');
   });
 });

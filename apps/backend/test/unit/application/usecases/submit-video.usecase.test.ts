@@ -19,6 +19,7 @@ describe('SubmitVideoUseCase', () => {
       findById: vi.fn().mockResolvedValue(null),
       findByGoogleDriveFileId: vi.fn().mockResolvedValue(null),
       findMany: vi.fn().mockResolvedValue({ videos: [], total: 0 }),
+      delete: vi.fn().mockResolvedValue(undefined),
     };
 
     storageGateway = {
@@ -30,6 +31,7 @@ describe('SubmitVideoUseCase', () => {
         webViewLink: 'https://drive.google.com/file/d/abc123/view',
       }),
       downloadFile: vi.fn().mockResolvedValue(Buffer.from('video content')),
+      downloadFileAsStream: vi.fn().mockResolvedValue(null),
       uploadFile: vi.fn().mockResolvedValue({ id: 'uploaded-id', webViewLink: 'http://link' }),
       createFolder: vi.fn().mockResolvedValue({ id: 'folder-id', name: 'folder' }),
       findOrCreateFolder: vi.fn().mockResolvedValue({ id: 'folder-id', name: 'folder' }),
@@ -75,7 +77,10 @@ describe('SubmitVideoUseCase', () => {
       durationSeconds: null,
       fileSizeBytes: null,
       status: 'pending',
+      transcriptionPhase: null,
       errorMessage: null,
+      gcsUri: null,
+      gcsExpiresAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     });

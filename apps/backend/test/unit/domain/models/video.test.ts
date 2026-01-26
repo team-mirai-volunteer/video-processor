@@ -83,8 +83,8 @@ describe('Video', () => {
       expect(videoResult.success).toBe(true);
       if (!videoResult.success) return;
 
-      const updated = videoResult.value.withStatus('processing');
-      expect(updated.status).toBe('processing');
+      const updated = videoResult.value.withStatus('transcribing');
+      expect(updated.status).toBe('transcribing');
     });
 
     it('should update status with error message', () => {
