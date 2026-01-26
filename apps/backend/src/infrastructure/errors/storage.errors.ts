@@ -5,7 +5,7 @@
 /**
  * Base error for storage operations
  */
-export class StorageError extends Error {
+class StorageError extends Error {
   constructor(message: string) {
     super(message);
     this.name = this.constructor.name;

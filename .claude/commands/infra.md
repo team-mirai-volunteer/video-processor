@@ -3,6 +3,27 @@ allowed-tools: Read, Glob, Grep
 description: インフラ構成のクイックリファレンス
 ---
 
+## プロジェクト情報
+
+| 項目 | 値 |
+|------|-----|
+| GCPプロジェクトID | `mirai-video-processor` |
+| サービスアカウント（stg） | `video-processor-stg-sa@mirai-video-processor.iam.gserviceaccount.com` |
+| Cloud Runサービス名 | `video-processor-stg-api` |
+| リージョン | `asia-northeast1` |
+
+### ログ確認
+
+```bash
+# Cloud Runログ
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="video-processor-stg-api"' \
+  --project mirai-video-processor --limit 50 --format="value(timestamp,textPayload)"
+```
+
+GCPコンソール: https://console.cloud.google.com/run/detail/asia-northeast1/video-processor-stg-api/logs?project=mirai-video-processor
+
+---
+
 ## Terraform構成概要
 
 このプロジェクトのインフラはTerraformで管理されています。
