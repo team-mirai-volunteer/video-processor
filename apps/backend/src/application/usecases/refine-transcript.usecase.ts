@@ -8,6 +8,7 @@ import {
   RefinedTranscription,
 } from '../../domain/models/refined-transcription.js';
 import {
+  CHUNK_OVERLAP,
   type ProperNounDictionary,
   type SegmentChunk,
   TranscriptRefinementPromptService,
@@ -137,7 +138,7 @@ export class RefineTranscriptUseCase {
 
   /**
    * Process all chunks and merge results
-   * Handles overlap between chunks to avoid duplicate sentences
+   * Handles overlap between chunks to avoid duplicate or incomplete sentences
    */
   private async processChunks(
     chunks: SegmentChunk[],
@@ -177,17 +178,27 @@ export class RefineTranscriptUseCase {
         sentenceCount: parsedResponse.sentences.length,
       });
 
-      // Filter sentences to avoid overlap
-      // Only include sentences that start after the last processed segment
+      // Determine cutoff index for this chunk
+      // For non-last chunks, only accept sentences that end before the overlap region
+      // This ensures sentences spanning the overlap are handled by the next chunk
+      const isLastChunk = chunk.chunkIndex === chunk.totalChunks - 1;
+      const cutoffIndex = isLastChunk ? chunk.endIndex : chunk.endIndex - CHUNK_OVERLAP;
+
+      // Filter sentences:
+      // 1. Sentence must start after the last processed segment (avoid duplicates)
+      // 2. Sentence must end before the cutoff (avoid incomplete sentences at boundary)
       const newSentences = parsedResponse.sentences.filter((sentence) => {
         const minSegmentIndex = Math.min(...sentence.originalSegmentIndices);
-        return minSegmentIndex > lastProcessedSegmentIndex;
+        const maxSegmentIndex = Math.max(...sentence.originalSegmentIndices);
+        return minSegmentIndex > lastProcessedSegmentIndex && maxSegmentIndex <= cutoffIndex;
       });
 
       this.log('Filtered sentences for overlap', {
         chunkIndex: chunk.chunkIndex,
         originalCount: parsedResponse.sentences.length,
         filteredCount: newSentences.length,
+        cutoffIndex,
+        lastProcessedSegmentIndex,
       });
 
       // Add new sentences

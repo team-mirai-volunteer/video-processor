@@ -34,12 +34,12 @@ export interface SegmentChunk {
  * Default number of segments per chunk
  * This value is chosen to stay well within LLM output token limits
  */
-const DEFAULT_CHUNK_SIZE = 300;
+export const DEFAULT_CHUNK_SIZE = 300;
 
 /**
  * Number of segments to overlap between chunks for context continuity
  */
-const CHUNK_OVERLAP = 10;
+export const CHUNK_OVERLAP = 10;
 
 /**
  * Service for building prompts for transcript refinement
