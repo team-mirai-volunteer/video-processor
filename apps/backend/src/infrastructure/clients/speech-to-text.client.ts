@@ -249,7 +249,7 @@ export class SpeechToTextClient implements TranscriptionGateway {
   async transcribeLongAudioFromGcsUri(
     params: TranscribeFromGcsParams
   ): Promise<TranscriptionResult> {
-    const { gcsUri, languageCode } = params;
+    const { gcsUri, languageCode, onProgress } = params;
 
     // Configure Batch Recognize request with Chirp 2 model
     const config: google.cloud.speech.v2.IRecognitionConfig = {
@@ -277,7 +277,31 @@ export class SpeechToTextClient implements TranscriptionGateway {
     // Call Batch Recognize API (returns a long-running operation)
     const [operation] = await this.client.batchRecognize(request);
 
-    // Wait for operation to complete
+    // Listen for progress events if callback provided
+    // Note: Progress updates are not guaranteed - progressPercent may stay at 0 until completion
+    // See: https://github.com/googleapis/nodejs-speech/issues/586
+    if (onProgress) {
+      const startTime = Date.now();
+
+      // Listen for progress events from the operation
+      operation.on('progress', (metadata: { progressPercent?: number }) => {
+        const percent = metadata?.progressPercent ?? 0;
+        log.debug('Transcription progress event', { percent });
+        if (percent > 0) {
+          onProgress(percent);
+        } else {
+          // If no progress info, show elapsed time
+          const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+          onProgress(-elapsedSeconds);
+        }
+      });
+
+      const [response] = await operation.promise();
+      onProgress(100);
+      return this.parseBatchResponse(response);
+    }
+
+    // Wait for operation to complete (no progress tracking)
     const [response] = await operation.promise();
 
     // Parse the inline response

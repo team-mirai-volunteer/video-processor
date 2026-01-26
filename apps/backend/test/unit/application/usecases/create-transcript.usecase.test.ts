@@ -85,10 +85,16 @@ describe('CreateTranscriptUseCase', () => {
     expect(videoRepository.findById).toHaveBeenCalledWith('video-1');
     expect(cacheVideoUseCase.execute).toHaveBeenCalledWith('video-1');
     expect(extractAudioUseCase.execute).toHaveBeenCalledWith('video-1', 'flac');
-    expect(transcribeAudioUseCase.execute).toHaveBeenCalledWith({
-      videoId: 'video-1',
-      audioGcsUri: 'gs://bucket/videos/video-1/audio.flac',
-    });
+    expect(transcribeAudioUseCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        videoId: 'video-1',
+        audioGcsUri: 'gs://bucket/videos/video-1/audio.flac',
+      })
+    );
+    // onProgress callback should also be passed
+    const callArg = vi.mocked(transcribeAudioUseCase.execute).mock.calls[0]?.[0];
+    expect(callArg).toHaveProperty('onProgress');
+    expect(typeof callArg?.onProgress).toBe('function');
 
     // Verify video status was updated to transcribed
     const saveCallArgs = vi.mocked(videoRepository.save).mock.calls;
