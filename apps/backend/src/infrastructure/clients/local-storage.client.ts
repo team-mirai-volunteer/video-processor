@@ -74,6 +74,16 @@ export class LocalStorageClient implements StorageGateway {
     return fs.promises.readFile(dataPath);
   }
 
+  async downloadFileAsStream(fileId: string): Promise<NodeJS.ReadableStream> {
+    const dataPath = this.getDataPath(fileId);
+
+    if (!fs.existsSync(dataPath)) {
+      throw new Error(`File not found: ${fileId}`);
+    }
+
+    return fs.createReadStream(dataPath);
+  }
+
   async uploadFile(params: UploadFileParams): Promise<FileMetadata> {
     await fs.promises.mkdir(this.baseDir, { recursive: true });
 

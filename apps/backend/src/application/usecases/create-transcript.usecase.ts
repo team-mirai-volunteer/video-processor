@@ -1,21 +1,15 @@
-import type { StorageGateway } from '../../domain/gateways/storage.gateway.js';
-import type { TempStorageGateway } from '../../domain/gateways/temp-storage.gateway.js';
-import type { TranscriptionRepositoryGateway } from '../../domain/gateways/transcription-repository.gateway.js';
-import type { TranscriptionGateway } from '../../domain/gateways/transcription.gateway.js';
-import type { VideoProcessingGateway } from '../../domain/gateways/video-processing.gateway.js';
 import type { VideoRepositoryGateway } from '../../domain/gateways/video-repository.gateway.js';
-import { Transcription } from '../../domain/models/transcription.js';
 import { NotFoundError } from '../errors.js';
+import type { CacheVideoUseCase } from './cache-video.usecase.js';
+import type { ExtractAudioUseCase } from './extract-audio.usecase.js';
 import type { RefineTranscriptUseCase } from './refine-transcript.usecase.js';
+import type { TranscribeAudioUseCase } from './transcribe-audio.usecase.js';
 
 export interface CreateTranscriptUseCaseDeps {
   videoRepository: VideoRepositoryGateway;
-  transcriptionRepository: TranscriptionRepositoryGateway;
-  storageGateway: StorageGateway;
-  tempStorageGateway: TempStorageGateway;
-  transcriptionGateway: TranscriptionGateway;
-  videoProcessingGateway: VideoProcessingGateway;
-  generateId: () => string;
+  cacheVideoUseCase: CacheVideoUseCase;
+  extractAudioUseCase: ExtractAudioUseCase;
+  transcribeAudioUseCase: TranscribeAudioUseCase;
   refineTranscriptUseCase?: RefineTranscriptUseCase;
 }
 
@@ -24,24 +18,27 @@ export interface CreateTranscriptResult {
   transcriptionId: string;
 }
 
+/**
+ * Orchestrator UseCase that combines all transcription steps:
+ * 1. Cache video (Drive -> GCS)
+ * 2. Extract audio (GCS -> audio buffer)
+ * 3. Transcribe audio (audio -> text)
+ * 4. Refine transcript (optional)
+ *
+ * Each step can also be executed independently via individual UseCases.
+ */
 export class CreateTranscriptUseCase {
   private readonly videoRepository: VideoRepositoryGateway;
-  private readonly transcriptionRepository: TranscriptionRepositoryGateway;
-  private readonly storageGateway: StorageGateway;
-  private readonly tempStorageGateway: TempStorageGateway;
-  private readonly transcriptionGateway: TranscriptionGateway;
-  private readonly videoProcessingGateway: VideoProcessingGateway;
-  private readonly generateId: () => string;
+  private readonly cacheVideoUseCase: CacheVideoUseCase;
+  private readonly extractAudioUseCase: ExtractAudioUseCase;
+  private readonly transcribeAudioUseCase: TranscribeAudioUseCase;
   private readonly refineTranscriptUseCase?: RefineTranscriptUseCase;
 
   constructor(deps: CreateTranscriptUseCaseDeps) {
     this.videoRepository = deps.videoRepository;
-    this.transcriptionRepository = deps.transcriptionRepository;
-    this.storageGateway = deps.storageGateway;
-    this.tempStorageGateway = deps.tempStorageGateway;
-    this.transcriptionGateway = deps.transcriptionGateway;
-    this.videoProcessingGateway = deps.videoProcessingGateway;
-    this.generateId = deps.generateId;
+    this.cacheVideoUseCase = deps.cacheVideoUseCase;
+    this.extractAudioUseCase = deps.extractAudioUseCase;
+    this.transcribeAudioUseCase = deps.transcribeAudioUseCase;
     this.refineTranscriptUseCase = deps.refineTranscriptUseCase;
   }
 
@@ -70,64 +67,46 @@ export class CreateTranscriptUseCase {
       await this.videoRepository.save(currentVideo);
       this.log('Status updated to transcribing, phase: downloading');
 
-      // Get video buffer (from GCS if available, otherwise download from Google Drive)
-      const videoBuffer = await this.getVideoBuffer(currentVideo);
-      this.log('Video buffer ready', { sizeBytes: videoBuffer.length });
+      // Step 1: Cache video (Drive -> GCS via stream)
+      const cacheResult = await this.cacheVideoUseCase.execute(videoId);
+      this.log('Video cached', {
+        gcsUri: cacheResult.gcsUri,
+        cached: cacheResult.cached,
+      });
+
+      // Re-fetch video to get updated gcsUri from CacheVideoUseCase
+      const cachedVideo = await this.videoRepository.findById(videoId);
+      if (!cachedVideo) {
+        throw new NotFoundError('Video', videoId);
+      }
+      currentVideo = cachedVideo;
 
       // Update phase to extracting_audio
       currentVideo = currentVideo.withTranscriptionPhase('extracting_audio');
       await this.videoRepository.save(currentVideo);
       this.log('Phase updated to extracting_audio');
 
-      // Extract audio from video (FLAC is smaller than WAV)
-      this.log('Extracting audio from video...');
-      const audioBuffer = await this.videoProcessingGateway.extractAudio(videoBuffer, 'flac');
-      this.log('Audio extracted', { sizeBytes: audioBuffer.length });
+      // Step 2: Extract audio
+      const audioResult = await this.extractAudioUseCase.execute(videoId, 'flac');
+      this.log('Audio extracted', { sizeBytes: audioResult.audioBuffer.length });
 
       // Update phase to transcribing
       currentVideo = currentVideo.withTranscriptionPhase('transcribing');
       await this.videoRepository.save(currentVideo);
       this.log('Phase updated to transcribing');
 
-      // Transcribe audio using Speech-to-Text (Batch API for long audio support)
-      this.log('Starting transcription (Batch API)...');
-      const transcriptionResult = await this.transcriptionGateway.transcribeLongAudio({
-        audioBuffer,
+      // Step 3: Transcribe audio
+      const transcribeResult = await this.transcribeAudioUseCase.execute({
+        videoId,
+        audioBuffer: audioResult.audioBuffer,
         mimeType: 'audio/flac',
       });
       this.log('Transcription completed', {
-        fullTextLength: transcriptionResult.fullText.length,
-        segmentsCount: transcriptionResult.segments.length,
-        durationSeconds: transcriptionResult.durationSeconds,
+        transcriptionId: transcribeResult.transcriptionId,
+        segmentsCount: transcribeResult.segmentsCount,
       });
 
-      // Update phase to saving
-      currentVideo = currentVideo.withTranscriptionPhase('saving');
-      await this.videoRepository.save(currentVideo);
-      this.log('Phase updated to saving');
-
-      // Create Transcription domain object
-      const transcriptionDomain = Transcription.create(
-        {
-          videoId: currentVideo.id,
-          fullText: transcriptionResult.fullText,
-          segments: transcriptionResult.segments,
-          languageCode: transcriptionResult.languageCode,
-          durationSeconds: transcriptionResult.durationSeconds,
-        },
-        this.generateId
-      );
-
-      if (!transcriptionDomain.success) {
-        throw new Error(transcriptionDomain.error.message);
-      }
-
-      // Save transcription to database
-      await this.transcriptionRepository.save(transcriptionDomain.value);
-      this.log('Transcription saved', { transcriptionId: transcriptionDomain.value.id });
-
-      // Refine transcript if refineTranscriptUseCase is provided
-      // Note: refined transcript will be uploaded to Google Drive by RefineTranscriptUseCase
+      // Step 4: Refine transcript (optional)
       if (this.refineTranscriptUseCase) {
         // Update phase to refining
         currentVideo = currentVideo.withTranscriptionPhase('refining');
@@ -136,7 +115,7 @@ export class CreateTranscriptUseCase {
 
         this.log('Starting transcript refinement...');
         try {
-          await this.refineTranscriptUseCase.execute(currentVideo.id);
+          await this.refineTranscriptUseCase.execute(videoId);
           this.log('Transcript refinement completed');
         } catch (refineError) {
           // Log but don't fail - refinement is optional
@@ -153,7 +132,7 @@ export class CreateTranscriptUseCase {
 
       return {
         videoId: currentVideo.id,
-        transcriptionId: transcriptionDomain.value.id,
+        transcriptionId: transcribeResult.transcriptionId,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -164,50 +143,5 @@ export class CreateTranscriptUseCase {
 
       throw error;
     }
-  }
-
-  /**
-   * Get video buffer from GCS if available, otherwise download from Google Drive and cache to GCS
-   */
-  private async getVideoBuffer(
-    video: ReturnType<typeof this.videoRepository.findById> extends Promise<infer T>
-      ? NonNullable<T>
-      : never
-  ): Promise<Buffer> {
-    // 1. Check if GCS has the video and it's not expired
-    if (video.gcsUri && video.gcsExpiresAt && video.gcsExpiresAt > new Date()) {
-      this.log('Checking GCS for cached video...', { gcsUri: video.gcsUri });
-      const exists = await this.tempStorageGateway.exists(video.gcsUri);
-      if (exists) {
-        this.log('Found video in GCS, downloading...');
-        return this.tempStorageGateway.download(video.gcsUri);
-      }
-    }
-
-    // 2. Download from Google Drive
-    this.log('Downloading video from Google Drive...');
-    const buffer = await this.storageGateway.downloadFile(video.googleDriveFileId);
-    this.log('Video downloaded', { sizeBytes: buffer.length });
-
-    // 3. Upload to GCS for caching (don't fail if this fails)
-    try {
-      this.log('Uploading video to GCS for caching...');
-      const { gcsUri, expiresAt } = await this.tempStorageGateway.upload({
-        videoId: video.id,
-        content: buffer,
-      });
-      this.log('Video cached in GCS', { gcsUri, expiresAt });
-
-      // 4. Update video with GCS info
-      const updatedVideo = video.withGcsInfo(gcsUri, expiresAt);
-      await this.videoRepository.save(updatedVideo);
-    } catch (cacheError) {
-      // Log but don't fail - caching is optional
-      this.log('Warning: Failed to cache video in GCS', {
-        error: cacheError instanceof Error ? cacheError.message : 'Unknown error',
-      });
-    }
-
-    return buffer;
   }
 }

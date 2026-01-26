@@ -1,6 +1,8 @@
+import { pipeline } from 'node:stream/promises';
 import { Storage } from '@google-cloud/storage';
 import type {
   TempStorageGateway,
+  TempStorageStreamUploadParams,
   TempStorageUploadParams,
   TempStorageUploadResult,
 } from '../../domain/gateways/temp-storage.gateway.js';
@@ -82,6 +84,33 @@ export class GcsClient implements TempStorageGateway {
   }
 
   /**
+   * Upload video to temporary storage from a stream
+   */
+  async uploadFromStream(
+    params: TempStorageStreamUploadParams,
+    source: NodeJS.ReadableStream
+  ): Promise<TempStorageUploadResult> {
+    const gcsPath = `videos/${params.videoId}/original.mp4`;
+    const gcsUri = `gs://${this.bucketName}/${gcsPath}`;
+
+    const bucket = this.storage.bucket(this.bucketName);
+    const file = bucket.file(gcsPath);
+    const writeStream = file.createWriteStream({
+      contentType: params.contentType ?? 'video/mp4',
+    });
+
+    await pipeline(source, writeStream);
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + this.expirationDays);
+
+    return {
+      gcsUri,
+      expiresAt,
+    };
+  }
+
+  /**
    * Download video from temporary storage
    */
   async download(gcsUri: string): Promise<Buffer> {
@@ -91,6 +120,17 @@ export class GcsClient implements TempStorageGateway {
 
     const [contents] = await file.download();
     return contents;
+  }
+
+  /**
+   * Download video as a stream from temporary storage
+   */
+  downloadAsStream(gcsUri: string): NodeJS.ReadableStream {
+    const { bucketName, filePath } = this.parseGcsUri(gcsUri);
+    const bucket = this.storage.bucket(bucketName);
+    const file = bucket.file(filePath);
+
+    return file.createReadStream();
   }
 
   /**

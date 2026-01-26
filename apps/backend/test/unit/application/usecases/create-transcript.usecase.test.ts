@@ -1,26 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotFoundError } from '../../../../src/application/errors.js';
+import type { CacheVideoUseCase } from '../../../../src/application/usecases/cache-video.usecase.js';
 import { CreateTranscriptUseCase } from '../../../../src/application/usecases/create-transcript.usecase.js';
-import type { StorageGateway } from '../../../../src/domain/gateways/storage.gateway.js';
-import type { TempStorageGateway } from '../../../../src/domain/gateways/temp-storage.gateway.js';
-import type { TranscriptionRepositoryGateway } from '../../../../src/domain/gateways/transcription-repository.gateway.js';
-import type {
-  TranscriptionGateway,
-  TranscriptionResult,
-} from '../../../../src/domain/gateways/transcription.gateway.js';
-import type { VideoProcessingGateway } from '../../../../src/domain/gateways/video-processing.gateway.js';
+import type { ExtractAudioUseCase } from '../../../../src/application/usecases/extract-audio.usecase.js';
+import type { TranscribeAudioUseCase } from '../../../../src/application/usecases/transcribe-audio.usecase.js';
 import type { VideoRepositoryGateway } from '../../../../src/domain/gateways/video-repository.gateway.js';
 import { Video } from '../../../../src/domain/models/video.js';
 
 describe('CreateTranscriptUseCase', () => {
   let useCase: CreateTranscriptUseCase;
   let videoRepository: VideoRepositoryGateway;
-  let transcriptionRepository: TranscriptionRepositoryGateway;
-  let storageGateway: StorageGateway;
-  let tempStorageGateway: TempStorageGateway;
-  let transcriptionGateway: TranscriptionGateway;
-  let videoProcessingGateway: VideoProcessingGateway;
-  let idCounter: number;
+  let cacheVideoUseCase: CacheVideoUseCase;
+  let extractAudioUseCase: ExtractAudioUseCase;
+  let transcribeAudioUseCase: TranscribeAudioUseCase;
 
   const mockVideo = Video.fromProps({
     id: 'video-1',
@@ -38,70 +30,47 @@ describe('CreateTranscriptUseCase', () => {
     updatedAt: new Date(),
   });
 
-  const mockTranscriptionResult: TranscriptionResult = {
-    fullText: 'This is a test transcription.',
-    segments: [
-      { text: 'This', startTimeSeconds: 0, endTimeSeconds: 0.5, confidence: 0.95 },
-      { text: 'is', startTimeSeconds: 0.5, endTimeSeconds: 0.8, confidence: 0.92 },
-      { text: 'a', startTimeSeconds: 0.8, endTimeSeconds: 1.0, confidence: 0.98 },
-      { text: 'test', startTimeSeconds: 1.0, endTimeSeconds: 1.5, confidence: 0.9 },
-      { text: 'transcription', startTimeSeconds: 1.5, endTimeSeconds: 2.5, confidence: 0.88 },
-    ],
-    languageCode: 'en-US',
-    durationSeconds: 2.5,
-  };
-
   beforeEach(() => {
-    idCounter = 0;
-
     videoRepository = {
       save: vi.fn().mockResolvedValue(undefined),
       findById: vi.fn().mockResolvedValue(mockVideo),
       findByGoogleDriveFileId: vi.fn().mockResolvedValue(null),
       findMany: vi.fn().mockResolvedValue({ videos: [], total: 0 }),
+      delete: vi.fn().mockResolvedValue(undefined),
     };
 
-    transcriptionRepository = {
-      save: vi.fn().mockResolvedValue(undefined),
-      findById: vi.fn().mockResolvedValue(null),
-      findByVideoId: vi.fn().mockResolvedValue(null),
-      deleteByVideoId: vi.fn().mockResolvedValue(undefined),
-    };
-
-    storageGateway = {
-      downloadFile: vi.fn().mockResolvedValue(Buffer.from('video content')),
-      uploadFile: vi.fn().mockResolvedValue({ id: 'uploaded-id', webViewLink: 'http://link' }),
-      getFileMetadata: vi.fn().mockResolvedValue({ name: 'Test Video', size: 1000, parents: [] }),
-      findOrCreateFolder: vi.fn().mockResolvedValue({ id: 'folder-id', name: 'folder' }),
-    };
-
-    tempStorageGateway = {
-      upload: vi.fn().mockResolvedValue({
+    cacheVideoUseCase = {
+      execute: vi.fn().mockResolvedValue({
+        videoId: 'video-1',
         gcsUri: 'gs://bucket/videos/video-1/original.mp4',
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        cached: false,
       }),
-      download: vi.fn().mockResolvedValue(Buffer.from('video content')),
-      exists: vi.fn().mockResolvedValue(false),
-    };
+    } as unknown as CacheVideoUseCase;
 
-    transcriptionGateway = {
-      transcribe: vi.fn().mockResolvedValue(mockTranscriptionResult),
-      transcribeLongAudio: vi.fn().mockResolvedValue(mockTranscriptionResult),
-    };
+    extractAudioUseCase = {
+      execute: vi.fn().mockResolvedValue({
+        videoId: 'video-1',
+        audioBuffer: Buffer.from('audio content'),
+        format: 'flac',
+      }),
+    } as unknown as ExtractAudioUseCase;
 
-    videoProcessingGateway = {
-      extractAudio: vi.fn().mockResolvedValue(Buffer.from('audio content')),
-      extractClip: vi.fn().mockResolvedValue(Buffer.from('clip content')),
-    };
+    transcribeAudioUseCase = {
+      execute: vi.fn().mockResolvedValue({
+        videoId: 'video-1',
+        transcriptionId: 'transcription-1',
+        fullText: 'This is a test transcription.',
+        segmentsCount: 5,
+        durationSeconds: 2.5,
+      }),
+    } as unknown as TranscribeAudioUseCase;
 
     useCase = new CreateTranscriptUseCase({
       videoRepository,
-      transcriptionRepository,
-      storageGateway,
-      tempStorageGateway,
-      transcriptionGateway,
-      videoProcessingGateway,
-      generateId: () => `id-${++idCounter}`,
+      cacheVideoUseCase,
+      extractAudioUseCase,
+      transcribeAudioUseCase,
     });
   });
 
@@ -109,13 +78,16 @@ describe('CreateTranscriptUseCase', () => {
     const result = await useCase.execute('video-1');
 
     expect(result.videoId).toBe('video-1');
-    expect(result.transcriptionId).toBe('id-1');
+    expect(result.transcriptionId).toBe('transcription-1');
 
     expect(videoRepository.findById).toHaveBeenCalledWith('video-1');
-    expect(storageGateway.downloadFile).toHaveBeenCalledWith('abc123');
-    expect(videoProcessingGateway.extractAudio).toHaveBeenCalled();
-    expect(transcriptionGateway.transcribeLongAudio).toHaveBeenCalled();
-    expect(transcriptionRepository.save).toHaveBeenCalled();
+    expect(cacheVideoUseCase.execute).toHaveBeenCalledWith('video-1');
+    expect(extractAudioUseCase.execute).toHaveBeenCalledWith('video-1', 'flac');
+    expect(transcribeAudioUseCase.execute).toHaveBeenCalledWith({
+      videoId: 'video-1',
+      audioBuffer: Buffer.from('audio content'),
+      mimeType: 'audio/flac',
+    });
 
     // Verify video status was updated to transcribed
     const saveCallArgs = vi.mocked(videoRepository.save).mock.calls;
@@ -127,39 +99,25 @@ describe('CreateTranscriptUseCase', () => {
     vi.mocked(videoRepository.findById).mockResolvedValue(null);
 
     await expect(useCase.execute('nonexistent-video')).rejects.toThrow(NotFoundError);
-    expect(transcriptionRepository.save).not.toHaveBeenCalled();
+    expect(cacheVideoUseCase.execute).not.toHaveBeenCalled();
   });
 
-  it('should use cached video from GCS if available', async () => {
-    const videoWithGcs = Video.fromProps({
-      ...mockVideo.toProps(),
+  it('should use cached video if already cached', async () => {
+    vi.mocked(cacheVideoUseCase.execute).mockResolvedValue({
+      videoId: 'video-1',
       gcsUri: 'gs://bucket/videos/video-1/original.mp4',
-      gcsExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      cached: true, // Already cached
     });
-    vi.mocked(videoRepository.findById).mockResolvedValue(videoWithGcs);
-    vi.mocked(tempStorageGateway.exists).mockResolvedValue(true);
 
     await useCase.execute('video-1');
 
-    expect(tempStorageGateway.download).toHaveBeenCalledWith(
-      'gs://bucket/videos/video-1/original.mp4'
-    );
-    expect(storageGateway.downloadFile).not.toHaveBeenCalled();
-  });
-
-  it('should download from Google Drive and cache to GCS if not cached', async () => {
-    vi.mocked(tempStorageGateway.exists).mockResolvedValue(false);
-
-    await useCase.execute('video-1');
-
-    expect(storageGateway.downloadFile).toHaveBeenCalledWith('abc123');
-    expect(tempStorageGateway.upload).toHaveBeenCalled();
+    expect(cacheVideoUseCase.execute).toHaveBeenCalledWith('video-1');
+    expect(extractAudioUseCase.execute).toHaveBeenCalled();
   });
 
   it('should update video status to failed on error', async () => {
-    vi.mocked(transcriptionGateway.transcribeLongAudio).mockRejectedValue(
-      new Error('Transcription failed')
-    );
+    vi.mocked(transcribeAudioUseCase.execute).mockRejectedValue(new Error('Transcription failed'));
 
     await expect(useCase.execute('video-1')).rejects.toThrow('Transcription failed');
 
@@ -167,5 +125,19 @@ describe('CreateTranscriptUseCase', () => {
     const lastSaveCall = saveCallArgs[saveCallArgs.length - 1][0];
     expect(lastSaveCall.status).toBe('failed');
     expect(lastSaveCall.errorMessage).toBe('Transcription failed');
+  });
+
+  it('should update phases in order during execution', async () => {
+    await useCase.execute('video-1');
+
+    const saveCallArgs = vi.mocked(videoRepository.save).mock.calls;
+    const phases = saveCallArgs.map((call) => call[0].transcriptionPhase);
+
+    // Check phase progression: downloading -> extracting_audio -> transcribing -> null (completed)
+    expect(phases[0]).toBe('downloading');
+    expect(phases[1]).toBe('extracting_audio');
+    expect(phases[2]).toBe('transcribing');
+    // Final save clears phase (status becomes 'transcribed')
+    expect(phases[phases.length - 1]).toBeNull();
   });
 });

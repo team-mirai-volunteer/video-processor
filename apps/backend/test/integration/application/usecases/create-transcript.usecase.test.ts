@@ -5,14 +5,17 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { v4 as uuidv4 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { CacheVideoUseCase } from '../../../../src/application/usecases/cache-video.usecase.js';
 import {
   CreateTranscriptUseCase,
   type CreateTranscriptUseCaseDeps,
 } from '../../../../src/application/usecases/create-transcript.usecase.js';
+import { ExtractAudioUseCase } from '../../../../src/application/usecases/extract-audio.usecase.js';
 import {
   RefineTranscriptUseCase,
   type RefineTranscriptUseCaseDeps,
 } from '../../../../src/application/usecases/refine-transcript.usecase.js';
+import { TranscribeAudioUseCase } from '../../../../src/application/usecases/transcribe-audio.usecase.js';
 import type { RefinedTranscriptionRepositoryGateway } from '../../../../src/domain/gateways/refined-transcription-repository.gateway.js';
 import type { TranscriptionRepositoryGateway } from '../../../../src/domain/gateways/transcription-repository.gateway.js';
 import type { VideoRepositoryGateway } from '../../../../src/domain/gateways/video-repository.gateway.js';
@@ -77,6 +80,10 @@ class InMemoryVideoRepository implements VideoRepositoryGateway {
 
   async findMany() {
     return { videos: [], total: 0 };
+  }
+
+  async delete(id: string): Promise<void> {
+    this.videos.delete(id);
   }
 }
 
@@ -179,15 +186,32 @@ describe.skipIf(!runIntegrationTests)('CreateTranscriptUseCase Integration', () 
     videoRepository = new InMemoryVideoRepository();
     transcriptionRepository = new InMemoryTranscriptionRepository();
 
-    // Create use case with real dependencies
-    const deps: CreateTranscriptUseCaseDeps = {
+    // Create sub-usecases
+    const cacheVideoUseCase = new CacheVideoUseCase({
       videoRepository,
-      transcriptionRepository,
       storageGateway: localStorageClient,
       tempStorageGateway: localTempStorageClient,
-      transcriptionGateway: speechToTextClient,
+    });
+
+    const extractAudioUseCase = new ExtractAudioUseCase({
+      videoRepository,
+      tempStorageGateway: localTempStorageClient,
       videoProcessingGateway: ffmpegClient,
+    });
+
+    const transcribeAudioUseCase = new TranscribeAudioUseCase({
+      videoRepository,
+      transcriptionRepository,
+      transcriptionGateway: speechToTextClient,
       generateId: () => uuidv4(),
+    });
+
+    // Create orchestrator use case
+    const deps: CreateTranscriptUseCaseDeps = {
+      videoRepository,
+      cacheVideoUseCase,
+      extractAudioUseCase,
+      transcribeAudioUseCase,
     };
 
     useCase = new CreateTranscriptUseCase(deps);
@@ -196,8 +220,7 @@ describe.skipIf(!runIntegrationTests)('CreateTranscriptUseCase Integration', () 
   afterAll(async () => {
     // Cleanup temp directories
     if (tempDir) {
-      await localStorageClient.clear();
-      await localTempStorageClient.clear();
+      // Just remove the entire temp directory recursively
       await fs.promises.rm(tempDir, { recursive: true, force: true });
     }
   });
