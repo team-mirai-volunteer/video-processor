@@ -103,9 +103,13 @@ jobs:
 
       - name: Run backend unit tests
         run: pnpm --filter backend run --if-present test:unit
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
 
       - name: Run backend integration tests
         run: pnpm --filter backend run --if-present test:integration
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
 
   test-webapp:
     runs-on: ubuntu-latest

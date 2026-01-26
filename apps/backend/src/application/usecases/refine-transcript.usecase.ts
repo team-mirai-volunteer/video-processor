@@ -199,8 +199,8 @@ export class RefineTranscriptUseCase {
 
       allSentences.push(...newSentences);
 
-      if (newSentences.length > 0) {
-        const lastSentence = newSentences[newSentences.length - 1];
+      const lastSentence = newSentences[newSentences.length - 1];
+      if (lastSentence) {
         lastProcessedSegmentIndex = Math.max(...lastSentence.originalSegmentIndices);
       }
     }
