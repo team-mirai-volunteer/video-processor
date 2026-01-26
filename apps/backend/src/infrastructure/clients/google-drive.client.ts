@@ -5,6 +5,11 @@ import type {
   StorageGateway,
   UploadFileParams,
 } from '../../domain/gateways/storage.gateway.js';
+import {
+  AccessDeniedError,
+  DownloadForbiddenError,
+  FileNotFoundError,
+} from '../errors/storage.errors.js';
 
 interface GoogleDriveClientConfig {
   serviceAccountEmail: string;
@@ -107,6 +112,34 @@ export class GoogleDriveClient implements StorageGateway {
 
       return Buffer.from(response.data as ArrayBuffer);
     } catch (error) {
+      // Parse error response for specific error types
+      const gaxiosError = error as {
+        response?: { status?: number; data?: { error?: { message?: string } } };
+        code?: string;
+      };
+
+      if (gaxiosError.response) {
+        const { status, data } = gaxiosError.response;
+        const errorMessage = data?.error?.message ?? '';
+
+        console.error(`[GoogleDriveClient] Download failed for ${fileId}:`, {
+          status,
+          message: errorMessage,
+        });
+
+        // Handle specific error cases
+        if (status === 403) {
+          if (errorMessage.includes('cannot be downloaded')) {
+            throw new DownloadForbiddenError(fileId);
+          }
+          throw new AccessDeniedError(fileId);
+        }
+
+        if (status === 404) {
+          throw new FileNotFoundError(fileId);
+        }
+      }
+
       if (error instanceof Error) {
         throw new Error(`Failed to download file ${fileId}: ${error.message}`);
       }

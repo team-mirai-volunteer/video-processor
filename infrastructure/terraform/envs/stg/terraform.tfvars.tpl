@@ -11,6 +11,7 @@ openai_api_key          = "${OPENAI_API_KEY}"
 google_credentials_json = <<-EOF
 ${GOOGLE_CREDENTIALS_JSON}
 EOF
+webapp_api_key = "${WEBAPP_API_KEY}"
 
 # Application
 container_image               = "${CONTAINER_IMAGE}"
