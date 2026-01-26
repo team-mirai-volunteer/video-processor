@@ -3,14 +3,16 @@
 import { RefinedTranscriptView } from '@/components/features/transcript/refined-transcript-view';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { downloadSrt } from '@/server/presentation/actions/downloadSrt';
 import type {
   GetRefinedTranscriptionResponse,
   GetTranscriptionResponse,
 } from '@video-processor/shared';
-import { Check, Copy, Loader2, Sparkles } from 'lucide-react';
+import { Check, Copy, Download, Loader2, Sparkles } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 interface TranscriptViewerProps {
+  videoId: string;
   rawTranscription: GetTranscriptionResponse | null;
   refinedTranscription: GetRefinedTranscriptionResponse | null;
   onRefine: () => void;
@@ -19,6 +21,7 @@ interface TranscriptViewerProps {
 }
 
 export function TranscriptViewer({
+  videoId,
   rawTranscription,
   refinedTranscription,
   onRefine,
@@ -26,6 +29,7 @@ export function TranscriptViewer({
   isLoadingRefined,
 }: TranscriptViewerProps) {
   const [copiedTab, setCopiedTab] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const rawJson = useMemo(() => {
     if (!rawTranscription) return '';
@@ -54,6 +58,26 @@ export function TranscriptViewer({
     setTimeout(() => setCopiedTab(null), 2000);
   };
 
+  const handleDownloadSrt = async () => {
+    setIsDownloading(true);
+    try {
+      const srtContent = await downloadSrt(videoId);
+      const blob = new Blob([srtContent], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `transcription-${videoId}.srt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('SRTダウンロードエラー:', error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   if (!rawTranscription) {
     return null;
   }
@@ -78,19 +102,30 @@ export function TranscriptViewer({
           <TabsTrigger value="raw-json">文字起こし（校正前）</TabsTrigger>
         </TabsList>
 
-        {!hasRefined && !isRefining && !isLoadingRefined && (
-          <Button onClick={onRefine} variant="outline" size="sm">
-            <Sparkles className="mr-2 h-4 w-4" />
-            AIで校正する
+        <div className="flex items-center gap-2">
+          <Button onClick={handleDownloadSrt} variant="outline" size="sm" disabled={isDownloading}>
+            {isDownloading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            SRTダウンロード
           </Button>
-        )}
 
-        {isRefining && (
-          <Button variant="outline" size="sm" disabled>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            校正中...
-          </Button>
-        )}
+          {!hasRefined && !isRefining && !isLoadingRefined && (
+            <Button onClick={onRefine} variant="outline" size="sm">
+              <Sparkles className="mr-2 h-4 w-4" />
+              AIで校正する
+            </Button>
+          )}
+
+          {isRefining && (
+            <Button variant="outline" size="sm" disabled>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              校正中...
+            </Button>
+          )}
+        </div>
       </div>
 
       <TabsContent value="timeline">

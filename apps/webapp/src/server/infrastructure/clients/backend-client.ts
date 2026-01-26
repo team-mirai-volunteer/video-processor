@@ -155,6 +155,23 @@ export const backendClient = {
       method: 'POST',
     });
   },
+
+  async getTranscriptionSrt(videoId: string): Promise<string> {
+    const url = `${BACKEND_URL}/api/videos/${videoId}/transcription/srt`;
+    const response = await fetch(url, {
+      cache: 'no-store',
+      headers: {
+        'X-API-Key': BACKEND_API_KEY,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new BackendApiError(response.status, error.error || 'Request failed');
+    }
+
+    return response.text();
+  },
 };
 
 export { BackendApiError };

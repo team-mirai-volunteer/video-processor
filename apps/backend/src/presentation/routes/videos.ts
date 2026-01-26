@@ -28,6 +28,10 @@ import { RefineTranscriptUseCase } from '../../application/usecases/refine-trans
 import { SubmitVideoUseCase } from '../../application/usecases/submit-video.usecase.js';
 import { TranscribeAudioUseCase } from '../../application/usecases/transcribe-audio.usecase.js';
 import type { TempStorageGateway } from '../../domain/gateways/temp-storage.gateway.js';
+import {
+  refinedTranscriptionToSrt,
+  transcriptionToSrt,
+} from '../../domain/services/srt-converter.service.js';
 import type { ProperNounDictionary } from '../../domain/services/transcript-refinement-prompt.service.js';
 import { FFmpegClient } from '../../infrastructure/clients/ffmpeg.client.js';
 import { GcsClient } from '../../infrastructure/clients/gcs.client.js';
@@ -413,6 +417,44 @@ router.get('/:videoId/transcription/refined', async (req, res, next) => {
       updatedAt: refinedTranscription.updatedAt,
     };
     res.json(response);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/videos/:videoId/transcription/srt
+ * Download transcription as SRT file
+ * Uses refined transcription if available, otherwise raw transcription
+ */
+router.get('/:videoId/transcription/srt', async (req, res, next) => {
+  try {
+    const { videoId } = req.params;
+
+    // First get raw transcription
+    const transcription = await transcriptionRepository.findByVideoId(videoId ?? '');
+    if (!transcription) {
+      throw new NotFoundError('Transcription', videoId ?? '');
+    }
+
+    // Try to get refined transcription
+    const refinedTranscription = await refinedTranscriptionRepository.findByTranscriptionId(
+      transcription.id
+    );
+
+    // Generate SRT content
+    let srtContent: string;
+    if (refinedTranscription) {
+      srtContent = refinedTranscriptionToSrt(refinedTranscription.sentences);
+    } else {
+      srtContent = transcriptionToSrt(transcription.segments);
+    }
+
+    // Set headers for file download
+    const filename = `transcription-${videoId}.srt`;
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(srtContent);
   } catch (error) {
     next(error);
   }
