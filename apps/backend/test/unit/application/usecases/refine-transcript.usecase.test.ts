@@ -53,15 +53,13 @@ describe('RefineTranscriptUseCase', () => {
     sentences: [
       {
         text: 'どうも、こんにちは。',
-        startTimeSeconds: 0.08,
-        endTimeSeconds: 0.6,
-        originalSegmentIndices: [0, 1],
+        start: 0,
+        end: 1,
       },
       {
         text: 'チームみらい党首の安野たかひろです。',
-        startTimeSeconds: 0.65,
-        endTimeSeconds: 2.3,
-        originalSegmentIndices: [2, 3, 4, 5, 6],
+        start: 2,
+        end: 6,
       },
     ],
   });
@@ -140,8 +138,8 @@ describe('RefineTranscriptUseCase', () => {
     await useCase.execute('video-1');
 
     const generateCall = vi.mocked(aiGateway.generate).mock.calls[0][0];
-    expect(generateCall).toContain('[0] [0.08-0.20] どうも');
-    expect(generateCall).toContain('[1] [0.22-0.60] こんにちは');
+    expect(generateCall).toContain('[0] どうも');
+    expect(generateCall).toContain('[1] こんにちは');
     expect(generateCall).toContain('チーム未来 → チームみらい');
   });
 
@@ -176,7 +174,7 @@ describe('RefineTranscriptUseCase', () => {
     });
     vi.mocked(aiGateway.generate).mockResolvedValue(invalidResponse);
 
-    await expect(useCase.execute('video-1')).rejects.toThrow('missing startTimeSeconds');
+    await expect(useCase.execute('video-1')).rejects.toThrow('missing start');
   });
 
   it('should save refined transcription with correct data', async () => {
