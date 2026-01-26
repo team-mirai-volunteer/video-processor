@@ -52,6 +52,10 @@ async function fetchBackend<T>(endpoint: string, options?: FetchOptions): Promis
     throw new BackendApiError(response.status, error.error || 'Request failed');
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return response.json();
 }
 
