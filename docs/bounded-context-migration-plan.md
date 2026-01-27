@@ -17,26 +17,28 @@ apps/backend/src/
 │   │   ├── domain/                    # Domain models, services, gateways
 │   │   │   ├── models/
 │   │   │   ├── services/
-│   │   │   ├── gateways/
-│   │   │   └── types/
-│   │   ├── infrastructure/            # Context固有のrepositories
-│   │   │   └── repositories/
-│   │   └── presentation/              # Routes, middleware
-│   │       ├── routes/
-│   │       └── middleware/
+│   │   │   └── gateways/              # Context固有のGatewayインターフェース
+│   │   ├── infrastructure/            # Context固有のrepositories, data
+│   │   │   ├── repositories/
+│   │   │   └── data/                  # proper-noun-dictionary.json など
+│   │   └── presentation/              # Routes
+│   │       └── routes/
 │   │
-│   └── shared/                        # Shared Context (複数コンテキストで共有)
+│   └── shared/                        # Shared (複数コンテキストで共有)
+│       ├── domain/
+│       │   └── types/                 # Result<T,E> など共通型
 │       ├── infrastructure/
-│       │   ├── clients/               # 外部サービスクライアント
+│       │   ├── clients/               # 外部サービスクライアント（複数Gatewayを実装）
 │       │   │   ├── google-drive.client.ts
 │       │   │   ├── gcs.client.ts
 │       │   │   ├── speech-to-text.client.ts
 │       │   │   ├── ffmpeg.client.ts
 │       │   │   ├── openai.client.ts
 │       │   │   └── local-*.client.ts
-│       │   ├── database/              # Prisma connection
+│       │   ├── database/              # Prisma connection & schema
 │       │   └── logging/               # Logger
-│       └── types/                     # 共通型定義
+│       └── presentation/
+│           └── middleware/            # error-handler, api-key-auth, logger
 │
 ├── index.ts                           # Express app entry point
 └── bootstrap.ts                       # DI container / context 初期化
@@ -70,18 +72,19 @@ apps/backend/src/
 |-----------|--------|------|
 | `domain/models/*` | `contexts/clip-video/domain/models/` | 全て clip-video 固有 |
 | `domain/services/*` | `contexts/clip-video/domain/services/` | 全て clip-video 固有 |
-| `domain/gateways/*-repository.gateway.ts` | `contexts/clip-video/domain/gateways/` | Repository gateway は context 固有 |
-| `domain/gateways/{ai,storage,temp-storage,transcription,video-processing}.gateway.ts` | `contexts/shared/domain/gateways/` または `contexts/clip-video/domain/gateways/` | 要検討 |
-| `domain/types/` | `contexts/clip-video/domain/types/` | Result型は共通化も可 |
+| `domain/gateways/*` | `contexts/clip-video/domain/gateways/` | **全て clip-video 固有** (DDDの原則に従う) |
+| `domain/types/result.ts` | `contexts/shared/domain/types/` | 共通型として shared へ |
 | `application/usecases/*` | `contexts/clip-video/application/usecases/` | 全て clip-video 固有 |
 | `application/errors/*` | `contexts/clip-video/application/errors/` | |
 | `infrastructure/repositories/*` | `contexts/clip-video/infrastructure/repositories/` | Context 固有 |
-| `infrastructure/clients/*` | `contexts/shared/infrastructure/clients/` | 共有リソース |
+| `infrastructure/clients/*` | `contexts/shared/infrastructure/clients/` | **共有Client** (複数Gatewayを実装可能) |
 | `infrastructure/database/*` | `contexts/shared/infrastructure/database/` | 共有リソース |
 | `infrastructure/logging/*` | `contexts/shared/infrastructure/logging/` | Cross-cutting concern |
-| `infrastructure/data/*` | `contexts/clip-video/infrastructure/data/` または shared | 要検討 |
-| `presentation/routes/*` | `contexts/clip-video/presentation/routes/` | Context 固有 |
-| `presentation/middleware/*` | `contexts/shared/presentation/middleware/` または context 固有 | 要検討 |
+| `infrastructure/data/*` | `contexts/clip-video/infrastructure/data/` | clip-video 固有データ |
+| `presentation/routes/videos.ts` | `contexts/clip-video/presentation/routes/` | Context 固有 |
+| `presentation/routes/clips.ts` | `contexts/clip-video/presentation/routes/` | Context 固有 |
+| `presentation/routes/health.ts` | `contexts/shared/presentation/routes/` | 共有 |
+| `presentation/middleware/*` | `contexts/shared/presentation/middleware/` | 共有 (cross-cutting) |
 
 ---
 
@@ -259,9 +262,9 @@ export * from './clients/google-drive.client.js';
 #### 3.1 Domain 層の移行
 
 移行順序:
-1. `domain/types/` → `contexts/clip-video/domain/types/`
+1. `domain/types/result.ts` → `contexts/shared/domain/types/` (共通型)
 2. `domain/models/` → `contexts/clip-video/domain/models/`
-3. `domain/gateways/` → `contexts/clip-video/domain/gateways/`
+3. `domain/gateways/` → `contexts/clip-video/domain/gateways/` (全て clip-video 固有)
 4. `domain/services/` → `contexts/clip-video/domain/services/`
 
 #### 3.2 Application 層の移行
@@ -359,45 +362,149 @@ pnpm --filter backend lint
 
 ---
 
-## 検討事項・質問
+## 設計方針（決定事項）
 
-### Q1: Gateway インターフェースの配置
+### 1. Gateway インターフェースの配置
 
-外部サービス用の Gateway インターフェース（`AiGateway`, `StorageGateway` など）は:
-- **Option A**: `contexts/shared/domain/gateways/` に配置（複数コンテキストで共有可能）
-- **Option B**: `contexts/clip-video/domain/gateways/` に配置し、他のコンテキストは独自定義
+**方針: 各Contextで独自定義 + 共有Client**
 
-→ **推奨: Option A** - 外部サービスの抽象化は共有する方が一貫性がある
+DDDの原則「Gateway（Port）はドメイン層に属し、ドメインの言葉（ユビキタス言語）で定義される」に従う。
 
-### Q2: Result 型の配置
+| レイヤー | 配置 | 理由 |
+|----------|------|------|
+| **Gateway インターフェース** | 各Context の `domain/gateways/` | ドメインの言葉で定義、Context固有 |
+| **Client 実装** | `shared/infrastructure/clients/` | 技術的実装は共有可能 |
 
-- **Option A**: `contexts/shared/domain/types/result.ts`
-- **Option B**: 各コンテキストで独自定義
+#### 具体例: FFmpeg を複数Contextで使う場合
 
-→ **推奨: Option A** - 基本的な型は共有
+```
+contexts/
+├── clip-video/
+│   └── domain/gateways/
+│       └── video-processing.gateway.ts   # extractClip(), getDuration()
+│
+├── short-video-gen/  (将来の新Context)
+│   └── domain/gateways/
+│       └── video-composition.gateway.ts  # composeFromImages(), addAudioTrack()
+│
+└── shared/
+    └── infrastructure/clients/
+        └── ffmpeg.client.ts              # 両方のgatewayを実装
+```
 
-### Q3: Middleware の配置
+#### 実装パターン: 単一Clientが複数Gatewayを実装
 
-- `error-handler`, `api-key-auth`, `request-logger` は shared に置くか？
-- Context 固有の middleware が出てきた場合は context 内に配置
+TypeScriptでは1つのクラスが複数のインターフェースを実装できる：
 
-→ **推奨**: 現状は全て shared。将来 context 固有が出たら分離
+```typescript
+// clip-video context のドメイン層
+interface VideoProcessingGateway {
+  extractClip(source: string, start: number, end: number): Promise<string>;
+  getDuration(path: string): Promise<number>;
+}
 
-### Q4: Prisma Schema の配置
+// short-video-gen context のドメイン層（将来追加）
+interface VideoCompositionGateway {
+  composeFromImages(images: ImageFrame[], fps: number): Promise<string>;
+  addAudioTrack(video: string, audio: string): Promise<string>;
+}
 
-現在 `infrastructure/database/prisma/schema.prisma` にある。
-- **Option A**: `contexts/shared/infrastructure/database/prisma/`
-- **Option B**: ルートレベル `apps/backend/prisma/`
+// shared infrastructure - 両方を実装
+class FFmpegClient implements VideoProcessingGateway, VideoCompositionGateway {
+  // VideoProcessingGateway の実装
+  async extractClip(source: string, start: number, end: number): Promise<string> { /* ... */ }
+  async getDuration(path: string): Promise<number> { /* ... */ }
 
-→ **推奨: Option A** - 既存構造を維持しつつ shared に移動
+  // VideoCompositionGateway の実装
+  async composeFromImages(images: ImageFrame[], fps: number): Promise<string> { /* ... */ }
+  async addAudioTrack(video: string, audio: string): Promise<string> { /* ... */ }
+}
+```
 
-### Q5: infrastructure/data/ の配置
+各Contextでは自分のGateway型としてのみ認識：
 
-`proper-noun-dictionary.json` など設定データ:
-- clip-video 固有なら `contexts/clip-video/infrastructure/data/`
-- 共通なら `contexts/shared/infrastructure/data/`
+```typescript
+// clip-video の usecase - VideoProcessingGateway だけ見える
+class ExtractClipsUseCase {
+  constructor(private videoProcessing: VideoProcessingGateway) {}
+}
 
-→ **要確認**: 現在の使用箇所を確認
+// short-video-gen の usecase - VideoCompositionGateway だけ見える
+class GenerateVideoUseCase {
+  constructor(private videoComposition: VideoCompositionGateway) {}
+}
+```
+
+**メリット:**
+- **ユビキタス言語の保護**: 各Contextが独自の言葉でインターフェースを定義
+- **インターフェース分離の原則**: 各Contextは必要なメソッドだけを知る
+- **Context間の疎結合**: 一方のGateway変更が他方に影響しない
+- **依存性逆転**: ドメインが外部サービスに依存せず、外部サービスがドメインに適合
+
+#### 共有予定のClient一覧
+
+将来の short-video-gen context でも使用予定：
+
+| Client | clip-video Gateway | short-video-gen Gateway (予定) |
+|--------|-------------------|-------------------------------|
+| `FFmpegClient` | `VideoProcessingGateway` | `VideoCompositionGateway` |
+| `OpenAIClient` | `AiGateway` | `ImageGenerationGateway` |
+| `GoogleDriveClient` | `StorageGateway` | `AssetStorageGateway` |
+
+### 2. Result 型の配置
+
+**方針: `contexts/shared/domain/types/result.ts`**
+
+- `Result<T, E>` は DDD における汎用的なパターン
+- 全 Context で同じセマンティクスを持つべき
+- 各 Context で独自定義すると型の互換性問題が発生
+
+### 3. Middleware の配置
+
+**方針: `contexts/shared/presentation/middleware/`**
+
+```
+contexts/shared/presentation/middleware/
+├── error-handler.ts
+├── api-key-auth.ts
+└── request-logger.ts
+```
+
+- 現状の middleware は全てアプリケーション横断的（cross-cutting）
+- 認証・エラーハンドリング・ログは全 Context で共通
+- 将来 Context 固有の middleware が必要になったら各 Context 内に配置
+
+### 4. Prisma Schema の配置
+
+**方針: `contexts/shared/infrastructure/database/prisma/`**
+
+```
+contexts/shared/infrastructure/database/
+├── prisma/
+│   └── schema.prisma
+└── connection.ts
+```
+
+- 単一データベースを複数 Context で共有する設計
+- Prisma Client は 1 つの schema から生成される
+
+**注意**: `package.json` の prisma コマンドのパスも更新が必要：
+```json
+"db:generate": "prisma generate --schema=src/contexts/shared/infrastructure/database/prisma/schema.prisma"
+```
+
+### 5. infrastructure/data/ の配置
+
+**方針: `contexts/clip-video/infrastructure/data/`**
+
+```
+contexts/clip-video/infrastructure/data/
+└── proper-noun-dictionary.json
+```
+
+- `proper-noun-dictionary.json` は文字起こし精度向上のための辞書
+- clip-video context の `TranscriptRefinementPromptService` で使用
+- 他の Context では使用しない clip-video 固有のデータ
 
 ---
 
@@ -419,13 +526,14 @@ pnpm --filter backend lint
 - [ ] barrel file (index.ts) 作成
 
 ### Phase 3: Clip-Video Context
-- [ ] domain/types 移行
+- [ ] domain/types → shared/domain/types (Result型)
 - [ ] domain/models 移行
-- [ ] domain/gateways 移行
+- [ ] domain/gateways 移行 (全て clip-video 固有)
 - [ ] domain/services 移行
 - [ ] application/errors 移行
 - [ ] application/usecases 移行
 - [ ] infrastructure/repositories 移行
+- [ ] infrastructure/data 移行
 - [ ] presentation/routes 移行
 
 ### Phase 4: Import パス更新
@@ -462,3 +570,4 @@ pnpm --filter backend lint
 | 日付 | 内容 |
 |------|------|
 | 2026-01-27 | 初版作成 |
+| 2026-01-27 | 設計方針を決定事項として確定。Gateway設計パターン（各Context独自定義 + 共有Client）を詳細化 |
