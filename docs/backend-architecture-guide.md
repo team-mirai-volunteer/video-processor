@@ -19,22 +19,29 @@ contexts/
 ```
 apps/backend/src/
 ├── contexts/
-│   ├── clip-video/
-│   │   ├── application/usecases/
-│   │   ├── application/errors/
-│   │   ├── domain/models/
-│   │   ├── domain/services/
-│   │   ├── domain/gateways/           # Context固有のGateway
-│   │   ├── infrastructure/repositories/
-│   │   ├── infrastructure/data/
-│   │   └── presentation/routes/
+│   ├── clip-video/                    # Clip Video Bounded Context
+│   │   ├── application/               # Use cases
+│   │   │   ├── usecases/
+│   │   │   └── errors/
+│   │   ├── domain/                    # Domain models, services, gateways
+│   │   │   ├── models/
+│   │   │   ├── services/
+│   │   │   └── gateways/              # Context固有のGateway
+│   │   ├── infrastructure/            # Context固有のrepositories, data
+│   │   │   ├── repositories/
+│   │   │   └── data/
+│   │   └── presentation/              # Routes
+│   │       └── routes/
 │   │
-│   └── shared/
-│       ├── domain/types/              # Result<T,E>
-│       ├── infrastructure/clients/    # 外部サービスClient
-│       ├── infrastructure/database/   # Prisma
-│       ├── infrastructure/logging/
-│       └── presentation/middleware/
+│   └── shared/                        # Shared (複数コンテキストで共有)
+│       ├── domain/
+│       │   └── types/                 # Result<T,E>
+│       ├── infrastructure/
+│       │   ├── clients/               # 外部サービスClient
+│       │   ├── database/              # Prisma
+│       │   └── logging/
+│       └── presentation/
+│           └── middleware/
 │
 └── index.ts
 ```
