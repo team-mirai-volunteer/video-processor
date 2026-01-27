@@ -1,8 +1,5 @@
 import { ApplicationError } from '@shared/application/errors/errors.js';
 
-// Re-export for convenience
-export { ApplicationError };
-
 /**
  * Validation error (400 Bad Request)
  */
