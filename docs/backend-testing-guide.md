@@ -27,9 +27,6 @@ apps/backend/test/
 │       └── shared/
 │           └── infrastructure/clients/  # 外部サービス接続テスト
 │
-├── e2e/
-│   └── api.test.ts                      # HTTP API テスト
-│
 └── fixtures/                            # テスト用データ
 ```
 
@@ -41,7 +38,6 @@ apps/backend/test/
 |------|------|----------|----------|
 | unit | domain, application | 常時 | `pnpm --filter backend test:unit` |
 | integration | infrastructure, application (一部) | 環境変数 | `pnpm --filter backend test:integration` |
-| e2e | HTTP API | サーバー起動 | `pnpm --filter backend test:e2e` |
 
 ---
 
