@@ -4,16 +4,6 @@ video-processor バックエンドの設計ルール。
 
 ---
 
-## 目次
-
-1. [ディレクトリ構造](#ディレクトリ構造)
-2. [Gateway と Client の関係](#gateway-と-client-の関係)
-3. [依存関係ルール](#依存関係ルール)
-4. [エラーハンドリング](#エラーハンドリング)
-5. [チェックリスト](#チェックリスト)
-
----
-
 ## ディレクトリ構造
 
 ### Context の構成
@@ -21,7 +11,6 @@ video-processor バックエンドの設計ルール。
 ```
 contexts/
 ├── clip-video/          # 動画からクリップを抽出する機能
-├── short-video-gen/     # (将来) 画像から動画を生成する機能
 └── shared/              # 複数Contextで共有するインフラ
 ```
 
@@ -30,40 +19,31 @@ contexts/
 ```
 apps/backend/src/
 ├── contexts/
-│   ├── clip-video/                    # Clip Video Bounded Context
-│   │   ├── application/               # Use cases
-│   │   │   ├── usecases/
-│   │   │   └── errors/
-│   │   ├── domain/                    # Domain models, services, gateways
-│   │   │   ├── models/
-│   │   │   ├── services/
-│   │   │   └── gateways/              # Context固有のGatewayインターフェース
-│   │   ├── infrastructure/            # Context固有のrepositories, data
-│   │   │   ├── repositories/
-│   │   │   └── data/
-│   │   └── presentation/              # Routes
-│   │       └── routes/
+│   ├── clip-video/
+│   │   ├── application/usecases/
+│   │   ├── application/errors/
+│   │   ├── domain/models/
+│   │   ├── domain/services/
+│   │   ├── domain/gateways/           # Context固有のGateway
+│   │   ├── infrastructure/repositories/
+│   │   ├── infrastructure/data/
+│   │   └── presentation/routes/
 │   │
-│   └── shared/                        # Shared (複数コンテキストで共有)
-│       ├── domain/
-│       │   └── types/                 # Result<T,E> など共通型
-│       ├── infrastructure/
-│       │   ├── clients/               # 外部サービスクライアント（複数Gatewayを実装）
-│       │   ├── database/              # Prisma connection & schema
-│       │   └── logging/               # Logger
-│       └── presentation/
-│           └── middleware/            # error-handler, api-key-auth, logger
+│   └── shared/
+│       ├── domain/types/              # Result<T,E>
+│       ├── infrastructure/clients/    # 外部サービスClient
+│       ├── infrastructure/database/   # Prisma
+│       ├── infrastructure/logging/
+│       └── presentation/middleware/
 │
-└── index.ts                           # Express app entry point
+└── index.ts
 ```
 
 ---
 
 ## Gateway と Client の関係
 
-**原則: Gateway はドメイン層、Client はインフラ層**
-
-ドメインが外部サービスに依存するのではなく、外部サービスがドメインに適合する。
+**Gateway はドメイン層、Client はインフラ層**
 
 | 種類 | 配置 | 説明 |
 |------|------|------|
@@ -78,45 +58,20 @@ apps/backend/src/
 // clip-video/domain/gateways/video-processing.gateway.ts
 interface VideoProcessingGateway {
   extractClip(source: string, start: number, end: number): Promise<string>;
-  getDuration(path: string): Promise<number>;
-}
-
-// short-video-gen/domain/gateways/video-composition.gateway.ts (将来)
-interface VideoCompositionGateway {
-  composeFromImages(images: ImageFrame[], fps: number): Promise<string>;
-  addAudioTrack(video: string, audio: string): Promise<string>;
 }
 
 // shared/infrastructure/clients/ffmpeg.client.ts
-class FFmpegClient implements VideoProcessingGateway, VideoCompositionGateway {
+class FFmpegClient implements VideoProcessingGateway {
   async extractClip(...) { /* ... */ }
-  async getDuration(...) { /* ... */ }
-  async composeFromImages(...) { /* ... */ }
-  async addAudioTrack(...) { /* ... */ }
 }
-```
 
-各 Context では自分の Gateway 型としてのみ認識:
-
-```typescript
-// clip-video の usecase
+// clip-video/application/usecases/extract-clips.usecase.ts
 class ExtractClipsUseCase {
   constructor(private videoProcessing: VideoProcessingGateway) {}
 }
-
-// short-video-gen の usecase
-class GenerateVideoUseCase {
-  constructor(private videoComposition: VideoCompositionGateway) {}
-}
 ```
 
-### 共有 Client 一覧
-
-| Client | clip-video Gateway | short-video-gen Gateway (予定) |
-|--------|-------------------|-------------------------------|
-| `FFmpegClient` | `VideoProcessingGateway` | `VideoCompositionGateway` |
-| `OpenAIClient` | `AiGateway` | `ImageGenerationGateway` |
-| `GoogleDriveClient` | `StorageGateway` | `AssetStorageGateway` |
+新しい Context を追加する場合、その Context 用の Gateway を定義し、既存の Client に実装を追加する。
 
 ---
 
@@ -134,18 +89,18 @@ class GenerateVideoUseCase {
 | Context A | Context B | ✗ | Context 間は独立 |
 | shared | 特定の Context | ✗ | shared は汎用 |
 
-これらのルールは `.dependency-cruiser.cjs` で自動検証される。
+`.dependency-cruiser.cjs` で自動検証される。
 
 ---
 
 ## エラーハンドリング
 
-| 層 | 方式 | 理由 |
-|----|------|------|
-| domain | `Result<T, E>` 型を返す | 明示的にエラーを表現 |
-| application | throw `ApplicationError` | HTTP ステータスと対応 |
-| infrastructure | throw | 技術的エラー |
-| presentation | catch → HTTP response | 全エラーをここで変換 |
+| 層 | 方式 |
+|----|------|
+| domain | `Result<T, E>` 型を返す |
+| application | throw `ApplicationError` |
+| infrastructure | throw |
+| presentation | catch → HTTP response |
 
 ```typescript
 // Domain層
