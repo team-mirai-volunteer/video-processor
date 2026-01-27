@@ -5,7 +5,7 @@ import type {
   FileMetadata,
   StorageGateway,
   UploadFileParams,
-} from '@clip-video/domain/gateways/storage.gateway.js';
+} from '@shared/domain/gateways/storage.gateway.js';
 
 interface FileInfo {
   name: string;

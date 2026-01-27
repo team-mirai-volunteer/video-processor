@@ -1,16 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { v2 } from '@google-cloud/speech';
+import type { google } from '@google-cloud/speech/build/protos/protos.js';
+import { Storage } from '@google-cloud/storage';
 import type {
   TranscribeFromGcsParams,
   TranscribeParams,
   TranscriptionGateway,
   TranscriptionResult,
   TranscriptionSegment,
-} from '@clip-video/domain/gateways/transcription.gateway.js';
-import { v2 } from '@google-cloud/speech';
-import type { google } from '@google-cloud/speech/build/protos/protos.js';
-import { Storage } from '@google-cloud/storage';
+} from '@shared/domain/gateways/transcription.gateway.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createLogger } from '../logging/logger.js';
 

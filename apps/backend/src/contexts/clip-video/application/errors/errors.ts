@@ -1,15 +1,7 @@
-/**
- * Base error class for application errors
- */
-export abstract class ApplicationError extends Error {
-  abstract readonly statusCode: number;
+import { ApplicationError } from '@shared/application/errors/errors.js';
 
-  constructor(message: string) {
-    super(message);
-    this.name = this.constructor.name;
-    Error.captureStackTrace(this, this.constructor);
-  }
-}
+// Re-export for convenience
+export { ApplicationError };
 
 /**
  * Validation error (400 Bad Request)

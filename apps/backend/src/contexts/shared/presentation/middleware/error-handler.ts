@@ -1,4 +1,4 @@
-import { ApplicationError } from '@clip-video/application/errors/errors.js';
+import { ApplicationError } from '@shared/application/errors/errors.js';
 import type { NextFunction, Request, Response } from 'express';
 import { logger } from '../../infrastructure/logging/logger.js';
 

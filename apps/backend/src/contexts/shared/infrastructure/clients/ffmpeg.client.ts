@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import type { VideoProcessingGateway } from '@clip-video/domain/gateways/video-processing.gateway.js';
+import type { VideoProcessingGateway } from '@shared/domain/gateways/video-processing.gateway.js';
 import ffmpeg from 'fluent-ffmpeg';
 
 /**

@@ -7,7 +7,7 @@ import type {
   TempStorageStreamUploadParams,
   TempStorageUploadParams,
   TempStorageUploadResult,
-} from '@clip-video/domain/gateways/temp-storage.gateway.js';
+} from '@shared/domain/gateways/temp-storage.gateway.js';
 
 /**
  * Local file system implementation of TempStorageGateway for local development and testing.

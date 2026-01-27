@@ -1,12 +1,12 @@
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { Storage } from '@google-cloud/storage';
 import type {
   TempStorageGateway,
   TempStorageStreamUploadParams,
   TempStorageUploadParams,
   TempStorageUploadResult,
-} from '@clip-video/domain/gateways/temp-storage.gateway.js';
-import { Storage } from '@google-cloud/storage';
+} from '@shared/domain/gateways/temp-storage.gateway.js';
 
 /**
  * Google Cloud Storage client for temporary video storage

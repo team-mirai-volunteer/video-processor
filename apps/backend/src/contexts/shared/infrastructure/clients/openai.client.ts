@@ -1,4 +1,4 @@
-import type { AiGateway } from '@clip-video/domain/gateways/ai.gateway.js';
+import type { AiGateway } from '@shared/domain/gateways/ai.gateway.js';
 import OpenAI from 'openai';
 
 /**
