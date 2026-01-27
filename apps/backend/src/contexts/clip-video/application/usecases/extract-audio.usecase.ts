@@ -1,0 +1,131 @@
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { pipeline } from 'node:stream/promises';
+import type { TempStorageGateway } from '@clip-video/domain/gateways/temp-storage.gateway.js';
+import type { VideoProcessingGateway } from '@clip-video/domain/gateways/video-processing.gateway.js';
+import type { VideoRepositoryGateway } from '@clip-video/domain/gateways/video-repository.gateway.js';
+import { createLogger } from '@shared/infrastructure/logging/logger.js';
+import { NotFoundError } from '../errors/errors.js';
+
+const log = createLogger('ExtractAudioUseCase');
+
+export interface ExtractAudioUseCaseDeps {
+  videoRepository: VideoRepositoryGateway;
+  tempStorageGateway: TempStorageGateway;
+  videoProcessingGateway: VideoProcessingGateway;
+}
+
+/**
+ * Result of audio extraction
+ * Audio is uploaded to GCS instead of returned as buffer
+ */
+export interface ExtractAudioResult {
+  videoId: string;
+  audioGcsUri: string;
+  format: 'wav' | 'flac';
+}
+
+/**
+ * UseCase for extracting audio from a cached video.
+ * Requires video to be already cached in GCS.
+ *
+ * Can be used:
+ * - Standalone: to extract audio for other purposes
+ * - As part of CreateTranscriptUseCase: to get audio for transcription
+ */
+export class ExtractAudioUseCase {
+  private readonly videoRepository: VideoRepositoryGateway;
+  private readonly tempStorageGateway: TempStorageGateway;
+  private readonly videoProcessingGateway: VideoProcessingGateway;
+
+  constructor(deps: ExtractAudioUseCaseDeps) {
+    this.videoRepository = deps.videoRepository;
+    this.tempStorageGateway = deps.tempStorageGateway;
+    this.videoProcessingGateway = deps.videoProcessingGateway;
+  }
+
+  /**
+   * Extract audio and upload directly to GCS
+   * Memory efficient: suitable for large videos (1GB+)
+   *
+   * Flow:
+   * 1. Stream download from GCS to temp file
+   * 2. FFmpeg file-to-file conversion
+   * 3. Stream upload from temp file to GCS
+   */
+  async execute(videoId: string, format: 'wav' | 'flac' = 'flac'): Promise<ExtractAudioResult> {
+    log.info('Starting stream execution', { videoId, format });
+
+    // Get video
+    const video = await this.videoRepository.findById(videoId);
+    if (!video) {
+      throw new NotFoundError('Video', videoId);
+    }
+    log.info('Found video', { videoId: video.id });
+
+    // Check if video is cached
+    if (!video.gcsUri) {
+      throw new Error(`Video ${videoId} is not cached in GCS. Run CacheVideoUseCase first.`);
+    }
+
+    // Check if cache exists
+    const exists = await this.tempStorageGateway.exists(video.gcsUri);
+    if (!exists) {
+      throw new Error(
+        `Video cache not found at ${video.gcsUri}. Cache may have expired. Run CacheVideoUseCase again.`
+      );
+    }
+
+    // Create temp directory for processing
+    const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'extract-audio-'));
+    const inputPath = path.join(tempDir, 'input.mp4');
+    const outputPath = path.join(tempDir, `output.${format}`);
+
+    try {
+      // 1. Stream download from GCS to temp file (no memory buffer)
+      log.info('Downloading video from GCS to temp file...', { gcsUri: video.gcsUri });
+      const downloadStream = this.tempStorageGateway.downloadAsStream(video.gcsUri);
+      await pipeline(downloadStream, fs.createWriteStream(inputPath));
+      const inputStats = await fs.promises.stat(inputPath);
+      log.info('Video downloaded to temp file', { sizeBytes: inputStats.size });
+
+      // 2. FFmpeg file-to-file conversion (no buffer loading)
+      log.info('Extracting audio from file to file...', { format });
+      await this.videoProcessingGateway.extractAudioFromFile(inputPath, outputPath, format);
+      const outputStats = await fs.promises.stat(outputPath);
+      log.info('Audio extracted to temp file', { sizeBytes: outputStats.size });
+
+      // 3. Stream upload to GCS
+      log.info('Uploading audio to GCS...');
+      const uploadStream = fs.createReadStream(outputPath);
+      const contentType = format === 'wav' ? 'audio/wav' : 'audio/flac';
+      const { gcsUri: audioGcsUri } = await this.tempStorageGateway.uploadFromStream(
+        { videoId, contentType, path: `audio.${format}` },
+        uploadStream
+      );
+      log.info('Audio uploaded to GCS', { audioGcsUri });
+
+      return {
+        videoId: video.id,
+        audioGcsUri,
+        format,
+      };
+    } finally {
+      // Cleanup temp directory
+      await this.cleanup(tempDir);
+    }
+  }
+
+  /**
+   * Cleanup temporary directory and its contents
+   */
+  private async cleanup(tempDir: string): Promise<void> {
+    try {
+      await fs.promises.rm(tempDir, { recursive: true, force: true });
+      log.debug('Temp directory cleaned up', { tempDir });
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
+}

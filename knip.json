@@ -3,10 +3,11 @@
   "workspaces": {
     "apps/backend": {
       "project": ["src/**/*.ts"],
+      "entry": ["src/index.ts", "src/contexts/*/presentation/routes/*.ts"],
       "ignore": [
         "src/**/*.test.ts",
         "test/**/*.ts",
-        "src/infrastructure/clients/local-storage.client.ts"
+        "src/contexts/shared/infrastructure/clients/local-storage.client.ts"
       ],
       "ignoreDependencies": ["dotenv"],
       "vitest": false

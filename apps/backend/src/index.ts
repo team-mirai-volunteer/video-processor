@@ -1,10 +1,10 @@
+import { disconnectDatabase } from '@shared/infrastructure/database/connection.js';
+import { logger } from '@shared/infrastructure/logging/logger.js';
+import { apiKeyAuth } from '@shared/presentation/middleware/api-key-auth.js';
+import { errorHandler } from '@shared/presentation/middleware/error-handler.js';
+import { requestLogger } from '@shared/presentation/middleware/logger.js';
+import routes from '@shared/presentation/routes/index.js';
 import express, { type Express } from 'express';
-import { disconnectDatabase } from './infrastructure/database/connection.js';
-import { logger } from './infrastructure/logging/logger.js';
-import { apiKeyAuth } from './presentation/middleware/api-key-auth.js';
-import { errorHandler } from './presentation/middleware/error-handler.js';
-import { requestLogger } from './presentation/middleware/logger.js';
-import routes from './presentation/routes/index.js';
 
 const app: Express = express();
 
