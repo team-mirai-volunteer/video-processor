@@ -176,6 +176,38 @@ describe.skipIf(!runIntegrationTests)('ExtractClipsUseCase Integration', () => {
 
 ---
 
+## Fixtures
+
+テスト用の静的データを `test/fixtures/` に配置する。
+
+```
+test/fixtures/
+├── sample.mp4          # 動画処理テスト用
+├── sample.wav          # 音声処理テスト用
+└── output/             # テスト出力先（gitignore）
+```
+
+### 使用方法
+
+```typescript
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const SAMPLE_VIDEO_PATH = path.resolve(__dirname, '../../../fixtures/sample.mp4');
+const OUTPUT_DIR = path.resolve(__dirname, '../../../fixtures/output');
+```
+
+### ルール
+
+| ルール | 理由 |
+|--------|------|
+| 小さいファイルを使用 | CI の速度を維持 |
+| output/ は gitignore | 生成物をリポジトリに含めない |
+| 実データは使用しない | 著作権・プライバシー |
+
+---
+
 ## 実行方法
 
 ### ローカル開発
