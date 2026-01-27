@@ -16,6 +16,17 @@ video-processor バックエンドの設計ルール。
 
 ## ディレクトリ構造
 
+### Context の構成
+
+```
+contexts/
+├── clip-video/          # 動画からクリップを抽出する機能
+├── short-video-gen/     # (将来) 画像から動画を生成する機能
+└── shared/              # 複数Contextで共有するインフラ
+```
+
+### 詳細構造
+
 ```
 apps/backend/src/
 ├── contexts/
