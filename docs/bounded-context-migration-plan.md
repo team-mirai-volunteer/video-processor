@@ -40,8 +40,7 @@ apps/backend/src/
 │       └── presentation/
 │           └── middleware/            # error-handler, api-key-auth, logger
 │
-├── index.ts                           # Express app entry point
-└── bootstrap.ts                       # DI container / context 初期化
+└── index.ts                           # Express app entry point
 ```
 
 ## 現状分析
