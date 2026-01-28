@@ -24,12 +24,16 @@ export type {
   GenerateSubtitleResponse,
   GenerateVoiceRequest,
   GenerateVoiceResponse,
-  Scene,
   SceneAsset,
   SceneAssetItemProps,
   SceneAssetState,
-  VisualType,
 } from './asset-generation';
+// Asset-specific Scene and VisualType (for asset generation UI)
+export type {
+  Scene as AssetScene,
+  VisualType as AssetVisualType,
+} from './asset-generation';
+
 // Script generation components
 export {
   SceneCard,
