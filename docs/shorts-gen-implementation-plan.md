@@ -1,5 +1,21 @@
 # shorts-gen 実装計画
 
+## テストポリシー
+
+本実装計画のテストに関しては、以下のガイドラインに従ってください：
+
+- [Backend Architecture Guide](https://github.com/team-mirai-volunteer/video-processor/blob/develop/docs/backend-architecture-guide.md)
+- [Backend Testing Guide](https://github.com/team-mirai-volunteer/video-processor/blob/develop/docs/backend-testing-guide.md)
+
+### 全タスク共通の注意事項
+
+> ⚠️ **PR作成前チェック**: 各タスク完了後、PRを作成する前に以下がローカルで通ることを確認してください：
+> - `pnpm typecheck` - 型チェック
+> - `pnpm lint` - Lint
+> - `pnpm test` - テスト
+
+---
+
 ## 並列実行ガイド（Claude Code Web用）
 
 ### Wave全体像
@@ -95,6 +111,8 @@ apps/backend/src/contexts/shorts-gen/domain/models/
 └── index.ts
 ```
 
+> ⚠️ **テスト必須**: 各モデルに対してユニットテストを作成してください。
+
 #### A3: Gateway interfaces定義
 
 ```
@@ -160,6 +178,8 @@ apps/backend/src/contexts/shorts-gen/domain/gateways/
 ### Phase C: Application層（9並列）
 
 各UseCaseは依存するGateway/Repositoryを注入。
+
+> ⚠️ **テスト必須**: 各UseCaseに対してユニットテストを作成してください。Gateway/Repositoryはモックを使用します。
 
 ---
 
