@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Asset Registry",
+  "description": "素材管理レジストリ - ありもの動画とBGMの対応表",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "videos": {
+      "type": "object",
+      "description": "ストック動画の定義",
+      "additionalProperties": {
+        "$ref": "#/definitions/VideoAsset"
+      }
+    },
+    "bgm": {
+      "type": "object",
+      "description": "BGMの定義",
+      "additionalProperties": {
+        "$ref": "#/definitions/BgmAsset"
+      }
+    }
+  },
+  "required": ["videos", "bgm"],
+  "definitions": {
+    "VideoAsset": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "assetsディレクトリからの相対パス"
+        },
+        "description": {
+          "type": "string",
+          "description": "素材の説明"
+        },
+        "durationMs": {
+          "type": "integer",
+          "description": "動画の長さ（ミリ秒）",
+          "minimum": 0
+        }
+      },
+      "required": ["path", "description", "durationMs"]
+    },
+    "BgmAsset": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "assetsディレクトリからの相対パス"
+        },
+        "description": {
+          "type": "string",
+          "description": "BGMの説明"
+        }
+      },
+      "required": ["path", "description"]
+    }
+  }
+}

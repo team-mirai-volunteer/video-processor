@@ -8,7 +8,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@clip-video/*": ["./src/contexts/clip-video/*"],
-      "@shared/*": ["./src/contexts/shared/*"]
+      "@shared/*": ["./src/contexts/shared/*"],
+      "@shorts-gen/*": ["./src/contexts/shorts-gen/*"]
     }
   },
   "include": ["src/**/*"],
