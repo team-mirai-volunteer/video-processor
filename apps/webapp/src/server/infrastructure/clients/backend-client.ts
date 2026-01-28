@@ -1,10 +1,16 @@
 import type {
   CacheVideoResponse,
+  CreateShortsProjectRequest,
+  CreateShortsProjectResponse,
+  DeleteShortsProjectResponse,
   ExtractAudioResponse,
   ExtractClipsRequest,
   ExtractClipsResponse,
   GetClipsResponse,
   GetRefinedTranscriptionResponse,
+  GetShortsProjectResponse,
+  GetShortsProjectsQuery,
+  GetShortsProjectsResponse,
   GetTranscriptionResponse,
   GetVideoResponse,
   GetVideosQuery,
@@ -14,6 +20,8 @@ import type {
   SubmitVideoResponse,
   TranscribeAudioResponse,
   TranscribeVideoResponse,
+  UpdateShortsProjectRequest,
+  UpdateShortsProjectResponse,
 } from '@video-processor/shared';
 
 const BACKEND_URL = process.env.BACKEND_URL || '';
@@ -171,6 +179,50 @@ export const backendClient = {
     }
 
     return response.text();
+  },
+
+  // Shorts Generation
+  async getShortsProjects(query?: GetShortsProjectsQuery): Promise<GetShortsProjectsResponse> {
+    const params = new URLSearchParams();
+    if (query?.page) params.set('page', query.page.toString());
+    if (query?.limit) params.set('limit', query.limit.toString());
+
+    const queryString = params.toString();
+    return fetchBackend<GetShortsProjectsResponse>(
+      `/api/shorts-gen/projects${queryString ? `?${queryString}` : ''}`
+    );
+  },
+
+  async getShortsProject(
+    id: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetShortsProjectResponse> {
+    return fetchBackend<GetShortsProjectResponse>(`/api/shorts-gen/projects/${id}`, options);
+  },
+
+  async createShortsProject(
+    request: CreateShortsProjectRequest
+  ): Promise<CreateShortsProjectResponse> {
+    return fetchBackend<CreateShortsProjectResponse>('/api/shorts-gen/projects', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async updateShortsProject(
+    id: string,
+    request: UpdateShortsProjectRequest
+  ): Promise<UpdateShortsProjectResponse> {
+    return fetchBackend<UpdateShortsProjectResponse>(`/api/shorts-gen/projects/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async deleteShortsProject(id: string): Promise<DeleteShortsProjectResponse> {
+    return fetchBackend<DeleteShortsProjectResponse>(`/api/shorts-gen/projects/${id}`, {
+      method: 'DELETE',
+    });
   },
 };
 

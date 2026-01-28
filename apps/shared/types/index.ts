@@ -28,6 +28,9 @@ export type {
 // API types
 export type {
   CacheVideoResponse,
+  CreateShortsProjectRequest,
+  CreateShortsProjectResponse,
+  DeleteShortsProjectResponse,
   ErrorResponse,
   ExtractAudioResponse,
   ExtractClipsRequest,
@@ -35,6 +38,9 @@ export type {
   GetClipResponse,
   GetClipsResponse,
   GetRefinedTranscriptionResponse,
+  GetShortsProjectResponse,
+  GetShortsProjectsQuery,
+  GetShortsProjectsResponse,
   GetTranscriptionResponse,
   GetVideoResponse,
   GetVideosQuery,
@@ -48,4 +54,21 @@ export type {
   SubmitVideoResponse,
   TranscribeAudioResponse,
   TranscribeVideoResponse,
+  UpdateShortsProjectRequest,
+  UpdateShortsProjectResponse,
 } from './api.js';
+
+// Shorts Generation types
+export type {
+  SceneAssetType,
+  ShortsComposedVideo,
+  ShortsPlanning,
+  ShortsProject,
+  ShortsProjectStatus,
+  ShortsProjectSummary,
+  ShortsPublishText,
+  ShortsScene,
+  ShortsSceneAsset,
+  ShortsScript,
+  VisualType,
+} from './shorts-project.js';

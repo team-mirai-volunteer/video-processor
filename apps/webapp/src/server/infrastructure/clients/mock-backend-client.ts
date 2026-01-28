@@ -1,18 +1,27 @@
 import type {
   CacheVideoResponse,
+  CreateShortsProjectRequest,
+  CreateShortsProjectResponse,
+  DeleteShortsProjectResponse,
   ExtractAudioResponse,
   ExtractClipsRequest,
   ExtractClipsResponse,
   GetRefinedTranscriptionResponse,
+  GetShortsProjectResponse,
+  GetShortsProjectsQuery,
+  GetShortsProjectsResponse,
   GetTranscriptionResponse,
   GetVideoResponse,
   GetVideosQuery,
   GetVideosResponse,
   RefineTranscriptResponse,
+  ShortsProjectSummary,
   SubmitVideoRequest,
   SubmitVideoResponse,
   TranscribeAudioResponse,
   TranscribeVideoResponse,
+  UpdateShortsProjectRequest,
+  UpdateShortsProjectResponse,
   VideoSummary,
 } from '@video-processor/shared';
 
@@ -55,6 +64,30 @@ const mockVideoSummaries: VideoSummary[] = mockVideos.map((v) => ({
   clipCount: v.clips.length,
   createdAt: v.createdAt,
 }));
+
+// Mock Shorts Projects
+const mockShortsProjects: ShortsProjectSummary[] = [
+  {
+    id: 'shorts-1',
+    title: 'AIについて解説するショート動画',
+    aspectRatio: '9:16',
+    resolutionWidth: 1080,
+    resolutionHeight: 1920,
+    status: 'created',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'shorts-2',
+    title: '政策説明ショート動画',
+    aspectRatio: '9:16',
+    resolutionWidth: 1080,
+    resolutionHeight: 1920,
+    status: 'script_completed',
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    updatedAt: new Date(Date.now() - 3600000).toISOString(),
+  },
+];
 
 export const mockBackendClient = {
   // Videos
@@ -161,6 +194,72 @@ Mock transcription subtitle 1
 2
 00:00:05,000 --> 00:00:10,000
 Mock transcription subtitle 2`;
+  },
+
+  // Shorts Generation
+  async getShortsProjects(_query?: GetShortsProjectsQuery): Promise<GetShortsProjectsResponse> {
+    return {
+      data: mockShortsProjects,
+      pagination: {
+        total: mockShortsProjects.length,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      },
+    };
+  },
+
+  async getShortsProject(id: string): Promise<GetShortsProjectResponse> {
+    const project = mockShortsProjects.find((p) => p.id === id);
+    if (!project) {
+      throw new MockBackendApiError(404, `Shorts project not found: ${id}`);
+    }
+    return {
+      ...project,
+      planning: null,
+      script: null,
+      composedVideo: null,
+      publishText: null,
+    };
+  },
+
+  async createShortsProject(
+    request: CreateShortsProjectRequest
+  ): Promise<CreateShortsProjectResponse> {
+    const now = new Date().toISOString();
+    return {
+      id: `shorts-${Date.now()}`,
+      title: request.title,
+      aspectRatio: request.aspectRatio ?? '9:16',
+      resolutionWidth: request.resolutionWidth ?? 1080,
+      resolutionHeight: request.resolutionHeight ?? 1920,
+      createdAt: now,
+      updatedAt: now,
+    };
+  },
+
+  async updateShortsProject(
+    id: string,
+    request: UpdateShortsProjectRequest
+  ): Promise<UpdateShortsProjectResponse> {
+    const project = mockShortsProjects.find((p) => p.id === id);
+    if (!project) {
+      throw new MockBackendApiError(404, `Shorts project not found: ${id}`);
+    }
+    const now = new Date().toISOString();
+    return {
+      id,
+      title: request.title ?? project.title,
+      aspectRatio: request.aspectRatio ?? project.aspectRatio,
+      resolutionWidth: request.resolutionWidth ?? project.resolutionWidth,
+      resolutionHeight: request.resolutionHeight ?? project.resolutionHeight,
+      createdAt: project.createdAt,
+      updatedAt: now,
+    };
+  },
+
+  async deleteShortsProject(_id: string): Promise<DeleteShortsProjectResponse> {
+    return { success: true };
   },
 };
 

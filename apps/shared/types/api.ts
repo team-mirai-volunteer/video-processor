@@ -227,3 +227,72 @@ export interface TranscribeAudioResponse {
   segmentsCount: number;
   durationSeconds: number;
 }
+
+// ============================================================================
+// Shorts Generation API
+// ============================================================================
+
+/**
+ * GET /api/shorts-gen/projects query parameters
+ */
+export interface GetShortsProjectsQuery {
+  page?: number;
+  limit?: number;
+}
+
+/**
+ * GET /api/shorts-gen/projects response
+ */
+export type GetShortsProjectsResponse = PaginatedResponse<
+  import('./shorts-project.js').ShortsProjectSummary
+>;
+
+/**
+ * GET /api/shorts-gen/projects/:id response
+ */
+export type GetShortsProjectResponse = import('./shorts-project.js').ShortsProject;
+
+/**
+ * POST /api/shorts-gen/projects request body
+ */
+export interface CreateShortsProjectRequest {
+  title: string;
+  aspectRatio?: string;
+  resolutionWidth?: number;
+  resolutionHeight?: number;
+}
+
+/**
+ * POST /api/shorts-gen/projects response
+ */
+export interface CreateShortsProjectResponse {
+  id: string;
+  title: string;
+  aspectRatio: string;
+  resolutionWidth: number;
+  resolutionHeight: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * PUT /api/shorts-gen/projects/:id request body
+ */
+export interface UpdateShortsProjectRequest {
+  title?: string;
+  aspectRatio?: string;
+  resolutionWidth?: number;
+  resolutionHeight?: number;
+}
+
+/**
+ * PUT /api/shorts-gen/projects/:id response
+ */
+export type UpdateShortsProjectResponse = CreateShortsProjectResponse;
+
+/**
+ * DELETE /api/shorts-gen/projects/:id response
+ */
+export interface DeleteShortsProjectResponse {
+  success: boolean;
+}
