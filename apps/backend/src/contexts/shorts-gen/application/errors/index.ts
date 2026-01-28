@@ -1,3 +1,4 @@
+export * from './errors.js';
 export {
   GENERATE_SUBTITLES_ERROR_CODES,
   GenerateSubtitlesError,

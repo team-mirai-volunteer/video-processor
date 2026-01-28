@@ -1,3 +1,4 @@
+export * from './generate-images.usecase.js';
 export {
   GenerateSubtitlesUseCase,
   type GenerateSubtitlesInput,
