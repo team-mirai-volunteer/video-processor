@@ -8,6 +8,7 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "typecheck": "pnpm -r run typecheck",
+    "db:generate": "pnpm --filter backend db:generate",
     "knip": "knip",
     "postinstall": "simple-git-hooks",
     "build:stg": "cd infrastructure/terraform && ./deploy.sh stg build",
