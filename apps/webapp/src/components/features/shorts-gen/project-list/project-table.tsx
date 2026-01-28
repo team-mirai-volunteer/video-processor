@@ -1,16 +1,3 @@
-'use client';
-
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,11 +9,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatDate } from '@/lib/utils';
-import { deleteShortsProject } from '@/server/presentation/actions/deleteShortsProject';
 import type { ShortsProjectSummary } from '@video-processor/shared';
-import { CheckCircle2, Circle, Trash2 } from 'lucide-react';
+import { CheckCircle2, Circle } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { DeleteProjectButton } from './delete-project-button';
 
 interface ProjectTableProps {
   projects: ShortsProjectSummary[];
@@ -46,17 +32,6 @@ function ProgressIndicator({ completed, label }: { completed: boolean; label: st
 }
 
 export function ProjectTable({ projects }: ProjectTableProps) {
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const handleDelete = async (projectId: string) => {
-    setDeletingId(projectId);
-    try {
-      await deleteShortsProject(projectId);
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
   if (projects.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -100,32 +75,7 @@ export function ProjectTable({ projects }: ProjectTableProps) {
                 <Button variant="outline" size="sm" asChild>
                   <Link href={`/shorts-gen/${project.id}`}>編集</Link>
                 </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" disabled={deletingId === project.id}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>プロジェクトを削除しますか？</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        「{project.title}」を削除します。
-                        関連する企画書、台本、生成された動画もすべて削除されます。
-                        この操作は取り消せません。
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleDelete(project.id)}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        削除
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <DeleteProjectButton projectId={project.id} projectTitle={project.title} />
               </div>
             </TableCell>
           </TableRow>

@@ -24,7 +24,7 @@ export default async function ShortsGenPage() {
           <CardDescription>作成したショート動画生成プロジェクトの一覧です</CardDescription>
         </CardHeader>
         <CardContent>
-          <ProjectTable projects={response.data} />
+          <ProjectTable projects={response.data ?? []} />
         </CardContent>
       </Card>
     </div>
