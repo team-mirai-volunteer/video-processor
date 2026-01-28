@@ -1,3 +1,4 @@
+export * from './compose-video.usecase.js';
 export * from './generate-images.usecase.js';
 export {
   GenerateSubtitlesUseCase,
