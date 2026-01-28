@@ -86,7 +86,7 @@ router.post('/:projectId/planning/generate', async (req, res, next) => {
         if (chunk.type === 'tool_call' && 'savedPlanning' in chunk && chunk.savedPlanning) {
           log.info('Planning saved', {
             projectId,
-            planningId: chunk.savedPlanning.id,
+            planningId: chunk.savedPlanning.planning.id,
           });
         }
       }
