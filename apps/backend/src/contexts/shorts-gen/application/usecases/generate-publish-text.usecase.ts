@@ -123,7 +123,7 @@ ${sceneSummaries}
       log.error('AI generation failed', new Error(errorMessage), {
         errorType: error.type,
       });
-      throw new AiGenerationError(`Failed to generate publish text: ${error.type}`, error);
+      throw new AiGenerationError(`Failed to generate publish text: ${error.type}`, errorMessage);
     }
 
     // Parse AI response
@@ -140,7 +140,9 @@ ${sceneSummaries}
       parsedResponse = JSON.parse(jsonMatch[0]);
     } catch (parseError) {
       log.error('Failed to parse AI response', parseError as Error, { content: aiContent });
-      throw new AiGenerationError('Failed to parse AI response as JSON', parseError);
+      const parseErrorMessage =
+        parseError instanceof Error ? parseError.message : String(parseError);
+      throw new AiGenerationError('Failed to parse AI response as JSON', parseErrorMessage);
     }
 
     if (!parsedResponse.title || !parsedResponse.description) {
