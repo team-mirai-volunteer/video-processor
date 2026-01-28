@@ -102,3 +102,141 @@ model RefinedTranscription {
 
   @@map("refined_transcriptions")
 }
+
+// ===========================================
+// shorts-gen Bounded Context
+// ===========================================
+
+// ① 企画ルート - プロジェクト全体のメタデータ
+model ShortsProject {
+  id               String   @id @default(uuid())
+  title            String   // 企画タイトル（最終タイトルとは別）
+  aspectRatio      String   @default("9:16") @map("aspect_ratio") // 縦横比
+  resolutionWidth  Int      @default(1080) @map("resolution_width") // 解像度幅
+  resolutionHeight Int      @default(1920) @map("resolution_height") // 解像度高さ
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  plannings      ShortsPlanning[]
+  scripts        ShortsScript[]
+  composedVideos ShortsComposedVideo[]
+  publishTexts   ShortsPublishText[]
+
+  @@index([createdAt(sort: Desc)])
+  @@map("shorts_projects")
+}
+
+// ② 企画書 - マークダウン形式の企画書
+model ShortsPlanning {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  content   String   // 企画書マークダウン
+  version   Int      @default(1) // 編集バージョン
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  project ShortsProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scripts ShortsScript[]
+
+  @@index([projectId])
+  @@map("shorts_plannings")
+}
+
+// ③ 台本 - シーンの集合
+model ShortsScript {
+  id         String   @id @default(uuid())
+  projectId  String   @map("project_id")
+  planningId String   @map("planning_id")
+  version    Int      @default(1) // 編集バージョン
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  project        ShortsProject         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  planning       ShortsPlanning        @relation(fields: [planningId], references: [id], onDelete: Cascade)
+  scenes         ShortsScene[]
+  composedVideos ShortsComposedVideo[]
+
+  @@index([projectId])
+  @@index([planningId])
+  @@map("shorts_scripts")
+}
+
+// ③ シーン - 台本内の各シーン
+// visualType: 'image_gen' | 'stock_video' | 'solid_color'
+model ShortsScene {
+  id                String   @id @default(uuid())
+  scriptId          String   @map("script_id")
+  order             Int      // シーンの順番（0始まり）
+  summary           String   // シーン概要
+  visualType        String   @map("visual_type") // シーン映像タイプ
+  voiceText         String?  @map("voice_text") // 読み上げ音声文（nullable）
+  subtitles         Json     @default("[]") // 字幕文の配列 (string[])
+  silenceDurationMs Int?     @map("silence_duration_ms") // 無音の場合のシーン長さ（nullable）
+  stockVideoKey     String?  @map("stock_video_key") // ありもの動画のキー（セレクタ）
+  solidColor        String?  @map("solid_color") // 塗りつぶし色（#RRGGBB）
+  imagePrompt       String?  @map("image_prompt") // ⑥ 画像プロンプト（編集可能）
+  imageStyleHint    String?  @map("image_style_hint") // スタイル指定文章
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  script ShortsScript       @relation(fields: [scriptId], references: [id], onDelete: Cascade)
+  assets ShortsSceneAsset[]
+
+  @@index([scriptId])
+  @@map("shorts_scenes")
+}
+
+// ④⑤⑦ シーンアセット - 生成された音声/字幕画像/背景画像
+// assetType: 'voice' | 'subtitle_image' | 'background_image'
+model ShortsSceneAsset {
+  id         String   @id @default(uuid())
+  sceneId    String   @map("scene_id")
+  assetType  String   @map("asset_type") // アセットタイプ
+  fileUrl    String   @map("file_url") // GCSのURL
+  durationMs Int?     @map("duration_ms") // 音声の場合の長さ（nullable）
+  metadata   Json?    // その他のメタデータ（字幕のインデックス等）
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  scene ShortsScene @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+
+  @@index([sceneId])
+  @@index([assetType])
+  @@map("shorts_scene_assets")
+}
+
+// ⑧ 合成動画 - FFmpegで合成された最終動画
+model ShortsComposedVideo {
+  id              String   @id @default(uuid())
+  projectId       String   @map("project_id")
+  scriptId        String   @map("script_id")
+  fileUrl         String?  @map("file_url") // GCSのURL
+  durationSeconds Decimal? @map("duration_seconds") @db.Decimal(10, 3)
+  status          String   @default("pending") // pending | processing | completed | failed
+  errorMessage    String?  @map("error_message")
+  bgmKey          String?  @map("bgm_key") // 使用したBGMのキー
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  project ShortsProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  script  ShortsScript  @relation(fields: [scriptId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([scriptId])
+  @@index([status])
+  @@map("shorts_composed_videos")
+}
+
+// ⑨ 公開テキスト - YouTube等への公開用タイトル・説明
+model ShortsPublishText {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  title       String   // 動画タイトル
+  description String   // ディスクリプション
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  project ShortsProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("shorts_publish_texts")
+}
