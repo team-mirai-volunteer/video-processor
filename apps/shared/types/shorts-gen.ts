@@ -54,3 +54,84 @@ export interface UpdateShortsProjectResponse {
 export interface DeleteShortsProjectResponse {
   success: boolean;
 }
+
+// ComposedVideo types
+export type ComposedVideoStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface ComposedVideo {
+  id: string;
+  projectId: string;
+  scriptId: string;
+  fileUrl: string | null;
+  durationSeconds: number | null;
+  status: ComposedVideoStatus;
+  errorMessage: string | null;
+  bgmKey: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ComposeVideoRequest {
+  projectId: string;
+  scriptId: string;
+  bgmKey?: string | null;
+}
+
+export interface ComposeVideoResponse {
+  composedVideoId: string;
+  fileUrl: string;
+  durationSeconds: number;
+}
+
+export interface ComposeVideoAcceptedResponse {
+  message: string;
+  projectId: string;
+  scriptId: string;
+}
+
+export interface GetComposedVideoResponse {
+  id: string;
+  projectId: string;
+  scriptId: string;
+  fileUrl: string | null;
+  durationSeconds: number | null;
+  status: string;
+  errorMessage: string | null;
+  bgmKey: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// PublishText types
+export interface PublishText {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GeneratePublishTextRequest {
+  projectId: string;
+}
+
+export interface GeneratePublishTextResponse {
+  publishTextId: string;
+  title: string;
+  description: string;
+}
+
+export interface UpdatePublishTextRequest {
+  title?: string;
+  description?: string;
+}
+
+export interface GetPublishTextResponse {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}

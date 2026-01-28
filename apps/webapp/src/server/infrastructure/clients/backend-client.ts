@@ -1,11 +1,18 @@
 import type {
   CacheVideoResponse,
+  ComposeVideoAcceptedResponse,
+  ComposeVideoRequest,
+  ComposeVideoResponse,
   CreateShortsProjectRequest,
   CreateShortsProjectResponse,
   ExtractAudioResponse,
   ExtractClipsRequest,
   ExtractClipsResponse,
+  GeneratePublishTextRequest,
+  GeneratePublishTextResponse,
   GetClipsResponse,
+  GetComposedVideoResponse,
+  GetPublishTextResponse,
   GetRefinedTranscriptionResponse,
   GetShortsProjectResponse,
   GetShortsProjectsResponse,
@@ -18,6 +25,7 @@ import type {
   SubmitVideoResponse,
   TranscribeAudioResponse,
   TranscribeVideoResponse,
+  UpdatePublishTextRequest,
 } from '@video-processor/shared';
 
 const BACKEND_URL = process.env.BACKEND_URL || '';
@@ -202,6 +210,115 @@ export const backendClient = {
 
   async deleteShortsProject(id: string): Promise<void> {
     await fetchBackend(`/api/shorts-gen/projects/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Shorts Gen - Compose
+  async composeVideo(request: ComposeVideoRequest): Promise<ComposeVideoAcceptedResponse> {
+    return fetchBackend<ComposeVideoAcceptedResponse>('/api/shorts-gen/compose', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async composeVideoSync(request: ComposeVideoRequest): Promise<ComposeVideoResponse> {
+    return fetchBackend<ComposeVideoResponse>('/api/shorts-gen/compose/sync', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async getComposedVideoByProject(
+    projectId: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetComposedVideoResponse | null> {
+    try {
+      return await fetchBackend<GetComposedVideoResponse>(
+        `/api/shorts-gen/compose/project/${projectId}`,
+        options
+      );
+    } catch (error) {
+      if (error instanceof BackendApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  async getComposedVideo(
+    id: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetComposedVideoResponse | null> {
+    try {
+      return await fetchBackend<GetComposedVideoResponse>(`/api/shorts-gen/compose/${id}`, options);
+    } catch (error) {
+      if (error instanceof BackendApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  async deleteComposedVideo(id: string): Promise<void> {
+    await fetchBackend(`/api/shorts-gen/compose/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Shorts Gen - Publish Text
+  async generatePublishText(
+    request: GeneratePublishTextRequest
+  ): Promise<GeneratePublishTextResponse> {
+    return fetchBackend<GeneratePublishTextResponse>('/api/shorts-gen/publish', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async getPublishTextByProject(
+    projectId: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetPublishTextResponse | null> {
+    try {
+      return await fetchBackend<GetPublishTextResponse>(
+        `/api/shorts-gen/publish/project/${projectId}`,
+        options
+      );
+    } catch (error) {
+      if (error instanceof BackendApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  async getPublishText(
+    id: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetPublishTextResponse | null> {
+    try {
+      return await fetchBackend<GetPublishTextResponse>(`/api/shorts-gen/publish/${id}`, options);
+    } catch (error) {
+      if (error instanceof BackendApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  async updatePublishText(
+    id: string,
+    request: UpdatePublishTextRequest
+  ): Promise<GetPublishTextResponse> {
+    return fetchBackend<GetPublishTextResponse>(`/api/shorts-gen/publish/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async deletePublishText(id: string): Promise<void> {
+    await fetchBackend(`/api/shorts-gen/publish/${id}`, {
       method: 'DELETE',
     });
   },

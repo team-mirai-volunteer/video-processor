@@ -53,3 +53,24 @@ export type {
   UpdateSceneParams,
   VisualType,
 } from './script';
+
+// Compose (E7)
+export { ComposeStep, VideoPreview, BgmSelector, useCompose } from './compose';
+export type {
+  BgmOption,
+  BgmSelectorProps,
+  ComposeState,
+  ComposeStatus,
+  ComposeStepProps,
+  VideoPreviewProps,
+} from './compose';
+
+// Publish Text (E7)
+export { PublishTextStep, PublishTextEditor, PublishTextDisplay, usePublishText } from './publish';
+export type {
+  PublishTextDisplayProps,
+  PublishTextEditorProps,
+  PublishTextState,
+  PublishTextStatus,
+  PublishTextStepProps,
+} from './publish';
