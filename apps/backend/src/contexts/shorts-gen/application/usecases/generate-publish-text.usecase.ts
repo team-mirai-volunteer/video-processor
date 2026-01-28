@@ -140,9 +140,10 @@ ${sceneSummaries}
       parsedResponse = JSON.parse(jsonMatch[0]);
     } catch (parseError) {
       log.error('Failed to parse AI response', parseError as Error, { content: aiContent });
-      const parseErrorMessage =
-        parseError instanceof Error ? parseError.message : String(parseError);
-      throw new AiGenerationError('Failed to parse AI response as JSON', parseErrorMessage);
+      throw new AiGenerationError(
+        'Failed to parse AI response as JSON',
+        parseError instanceof Error ? parseError.message : String(parseError)
+      );
     }
 
     if (!parsedResponse.title || !parsedResponse.description) {

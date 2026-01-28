@@ -6,3 +6,12 @@ export {
   type GenerateSubtitlesUseCaseDeps,
   type SceneSubtitleResult,
 } from './generate-subtitles.usecase.js';
+export {
+  SynthesizeVoiceUseCase,
+  SynthesizeVoiceError,
+  type SynthesizeVoiceUseCaseDeps,
+  type SynthesizeVoiceInput,
+  type SynthesizeVoiceOutput,
+  type SceneVoiceSynthesisResult,
+  type SceneSynthesisError,
+} from './synthesize-voice.usecase.js';
