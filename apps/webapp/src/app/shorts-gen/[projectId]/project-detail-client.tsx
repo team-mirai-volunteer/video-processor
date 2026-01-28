@@ -1,13 +1,22 @@
 'use client';
 
-import { StepCard, type StepStatus } from '@/components/features/shorts-gen';
+import {
+  ComposeStep,
+  PublishTextStep,
+  StepCard,
+  type StepStatus,
+} from '@/components/features/shorts-gen';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { ShortsProject } from '@video-processor/shared';
+import type {
+  GetComposedVideoResponse,
+  GetPublishTextResponse,
+  ShortsProject,
+} from '@video-processor/shared';
 import { ArrowLeft, Settings } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 interface ProjectDetailClientProps {
   project: ShortsProject;
@@ -33,6 +42,9 @@ const INITIAL_STEPS: StepsState = {
 
 export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
   const [steps, setSteps] = useState<StepsState>(INITIAL_STEPS);
+  const [scriptId] = useState<string | null>(null);
+  const [isAssetsComplete] = useState(false);
+  const [isComposeComplete, setIsComposeComplete] = useState(false);
 
   const toggleStep = (stepId: StepId) => {
     setSteps((prev) => ({
@@ -40,6 +52,29 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
       [stepId]: { status: prev[stepId].status, isExpanded: !prev[stepId].isExpanded },
     }));
   };
+
+  const updateStepStatus = useCallback((stepId: StepId, status: StepStatus) => {
+    setSteps((prev) => ({
+      ...prev,
+      [stepId]: { ...prev[stepId], status },
+    }));
+  }, []);
+
+  const handleComposeComplete = useCallback(
+    (_composedVideo: GetComposedVideoResponse) => {
+      setIsComposeComplete(true);
+      updateStepStatus('compose', 'completed');
+      updateStepStatus('publish', 'ready');
+    },
+    [updateStepStatus]
+  );
+
+  const handlePublishTextComplete = useCallback(
+    (_publishText: GetPublishTextResponse) => {
+      updateStepStatus('publish', 'completed');
+    },
+    [updateStepStatus]
+  );
 
   return (
     <div className="space-y-6">
@@ -166,10 +201,12 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
           onToggle={() => toggleStep('compose')}
           canRegenerate
         >
-          <div className="text-center py-8 text-muted-foreground">
-            <p>Compose UIはE7タスクで実装されます</p>
-            <p className="text-sm mt-1">生成された素材から最終動画を作成します</p>
-          </div>
+          <ComposeStep
+            projectId={project.id}
+            scriptId={scriptId}
+            isEnabled={isAssetsComplete}
+            onComposeComplete={handleComposeComplete}
+          />
         </StepCard>
 
         {/* Step 9: Publish Text */}
@@ -183,10 +220,11 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
           canRegenerate
           canEdit
         >
-          <div className="text-center py-8 text-muted-foreground">
-            <p>公開テキストUIはE7タスクで実装されます</p>
-            <p className="text-sm mt-1">動画のタイトルと説明文を生成・編集できます</p>
-          </div>
+          <PublishTextStep
+            projectId={project.id}
+            isEnabled={isComposeComplete}
+            onPublishTextComplete={handlePublishTextComplete}
+          />
         </StepCard>
       </div>
     </div>
