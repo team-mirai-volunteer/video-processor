@@ -4,6 +4,7 @@ import {
   type CreateProjectInput,
   CreateProjectUseCase,
 } from '@shorts-gen/application/usecases/create-project.usecase.js';
+import { ShortsComposedVideoRepository } from '@shorts-gen/infrastructure/repositories/composed-video.repository.js';
 import { ShortsPlanningRepository } from '@shorts-gen/infrastructure/repositories/planning.repository.js';
 import { ShortsProjectRepository } from '@shorts-gen/infrastructure/repositories/project.repository.js';
 import { ShortsSceneRepository } from '@shorts-gen/infrastructure/repositories/scene.repository.js';
@@ -18,6 +19,7 @@ const projectRepository = new ShortsProjectRepository(prisma);
 const planningRepository = new ShortsPlanningRepository(prisma);
 const scriptRepository = new ShortsScriptRepository(prisma);
 const sceneRepository = new ShortsSceneRepository(prisma);
+const composedVideoRepository = new ShortsComposedVideoRepository(prisma);
 
 // Initialize use cases
 const createProjectUseCase = new CreateProjectUseCase({
@@ -74,7 +76,7 @@ router.post('/', async (req, res, next) => {
     };
 
     const result = await createProjectUseCase.execute(input);
-    res.status(201).json(result);
+    res.status(201).json({ data: result });
   } catch (error) {
     next(error);
   }
@@ -82,7 +84,8 @@ router.post('/', async (req, res, next) => {
 
 /**
  * GET /api/shorts-gen/projects
- * Get paginated list of projects
+ * Get list of projects with summary info
+ * Response format: { data: ShortsProjectSummary[] }
  */
 router.get('/', async (req, res, next) => {
   try {
@@ -101,21 +104,29 @@ router.get('/', async (req, res, next) => {
       titleFilter,
     });
 
-    res.json({
-      projects: result.projects.map((p) => ({
-        id: p.id,
-        title: p.title,
-        aspectRatio: p.aspectRatio,
-        resolutionWidth: p.resolutionWidth,
-        resolutionHeight: p.resolutionHeight,
-        createdAt: p.createdAt,
-        updatedAt: p.updatedAt,
-      })),
-      total: result.total,
-      page,
-      limit,
-      totalPages: Math.ceil(result.total / limit),
-    });
+    // Get related data existence for each project
+    const projectSummaries = await Promise.all(
+      result.projects.map(async (p) => {
+        const [planning, script, composedVideo] = await Promise.all([
+          planningRepository.findByProjectId(p.id),
+          scriptRepository.findByProjectId(p.id),
+          composedVideoRepository.findByProjectId(p.id),
+        ]);
+
+        return {
+          id: p.id,
+          title: p.title,
+          aspectRatio: p.aspectRatio,
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+          hasPlan: planning !== null,
+          hasScript: script !== null,
+          hasComposedVideo: composedVideo !== null,
+        };
+      })
+    );
+
+    res.json({ data: projectSummaries });
   } catch (error) {
     next(error);
   }
@@ -167,32 +178,34 @@ router.get('/:projectId', async (req, res, next) => {
     }
 
     res.json({
-      id: project.id,
-      title: project.title,
-      aspectRatio: project.aspectRatio,
-      resolutionWidth: project.resolutionWidth,
-      resolutionHeight: project.resolutionHeight,
-      createdAt: project.createdAt,
-      updatedAt: project.updatedAt,
-      planning: planning
-        ? {
-            id: planning.id,
-            content: planning.content,
-            version: planning.version,
-            createdAt: planning.createdAt,
-            updatedAt: planning.updatedAt,
-          }
-        : null,
-      script: script
-        ? {
-            id: script.id,
-            planningId: script.planningId,
-            version: script.version,
-            createdAt: script.createdAt,
-            updatedAt: script.updatedAt,
-            scenes,
-          }
-        : null,
+      data: {
+        id: project.id,
+        title: project.title,
+        aspectRatio: project.aspectRatio,
+        resolutionWidth: project.resolutionWidth,
+        resolutionHeight: project.resolutionHeight,
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt,
+        planning: planning
+          ? {
+              id: planning.id,
+              content: planning.content,
+              version: planning.version,
+              createdAt: planning.createdAt,
+              updatedAt: planning.updatedAt,
+            }
+          : null,
+        script: script
+          ? {
+              id: script.id,
+              planningId: script.planningId,
+              version: script.version,
+              createdAt: script.createdAt,
+              updatedAt: script.updatedAt,
+              scenes,
+            }
+          : null,
+      },
     });
   } catch (error) {
     next(error);
@@ -249,13 +262,15 @@ router.patch('/:projectId', async (req, res, next) => {
     await projectRepository.save(updatedProject);
 
     res.json({
-      id: updatedProject.id,
-      title: updatedProject.title,
-      aspectRatio: updatedProject.aspectRatio,
-      resolutionWidth: updatedProject.resolutionWidth,
-      resolutionHeight: updatedProject.resolutionHeight,
-      createdAt: updatedProject.createdAt,
-      updatedAt: updatedProject.updatedAt,
+      data: {
+        id: updatedProject.id,
+        title: updatedProject.title,
+        aspectRatio: updatedProject.aspectRatio,
+        resolutionWidth: updatedProject.resolutionWidth,
+        resolutionHeight: updatedProject.resolutionHeight,
+        createdAt: updatedProject.createdAt,
+        updatedAt: updatedProject.updatedAt,
+      },
     });
   } catch (error) {
     next(error);
