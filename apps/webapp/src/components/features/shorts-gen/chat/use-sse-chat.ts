@@ -139,6 +139,17 @@ export function useSSEChat(options: UseSSEChatOptions): UseSSEChatReturn {
                 continue;
               }
 
+              // Handle both frontend format (content_delta) and backend format (text_delta)
+              // Backend sends: { type: 'text_delta', textDelta: '...' }
+              // Frontend expects: { type: 'content_delta', data: { content: '...' } }
+              const backendEvent = event as unknown as {
+                type: string;
+                textDelta?: string;
+                toolCall?: { id: string; name: string; arguments: Record<string, unknown> };
+                savedPlanning?: unknown;
+                error?: string;
+              };
+
               switch (event.type) {
                 case 'content_delta':
                   if (event.data?.content) {
@@ -153,12 +164,38 @@ export function useSSEChat(options: UseSSEChatOptions): UseSSEChatReturn {
                   }
                   break;
 
+                // Backend format: text_delta
+                case 'text_delta':
+                  if (backendEvent.textDelta) {
+                    const deltaContent = backendEvent.textDelta;
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantMessageId
+                          ? { ...m, content: m.content + deltaContent }
+                          : m
+                      )
+                    );
+                  }
+                  break;
+
                 case 'tool_call':
+                  // Frontend format: { data: { toolName, toolArgs } }
                   if (event.data?.toolName) {
                     const toolCall: ToolCall = {
                       name: event.data.toolName,
                       args: event.data.toolArgs || {},
                       status: 'running',
+                    };
+                    setToolCalls((prev) => [...prev, toolCall]);
+                    onToolCall?.(toolCall);
+                  }
+                  // Backend format: { toolCall: { name, arguments }, savedPlanning? }
+                  else if (backendEvent.toolCall) {
+                    const toolCall: ToolCall = {
+                      name: backendEvent.toolCall.name,
+                      args: backendEvent.toolCall.arguments || {},
+                      result: backendEvent.savedPlanning,
+                      status: backendEvent.savedPlanning ? 'completed' : 'running',
                     };
                     setToolCalls((prev) => [...prev, toolCall]);
                     onToolCall?.(toolCall);
@@ -180,9 +217,9 @@ export function useSSEChat(options: UseSSEChatOptions): UseSSEChatReturn {
                   break;
 
                 case 'error':
-                  setError(event.data?.error || 'Unknown error');
+                  setError(event.data?.error || backendEvent.error || 'Unknown error');
                   setStatus('error');
-                  onError?.(event.data?.error || 'Unknown error');
+                  onError?.(event.data?.error || backendEvent.error || 'Unknown error');
                   break;
 
                 case 'done':

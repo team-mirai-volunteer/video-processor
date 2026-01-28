@@ -61,6 +61,9 @@ export type {
   UpdateShortsProjectRequest,
   UpdateShortsProjectResponse,
   DeleteShortsProjectResponse,
+  // Planning types
+  ShortsPlanning,
+  GetShortsPlanningResponse,
   // ComposedVideo types
   ComposedVideo,
   ComposedVideoStatus,
@@ -74,4 +77,9 @@ export type {
   GeneratePublishTextResponse,
   UpdatePublishTextRequest,
   GetPublishTextResponse,
+  // Script types
+  VisualType,
+  ShortsScene,
+  ShortsScript,
+  GetShortsScriptResponse,
 } from './shorts-gen.js';

@@ -14,8 +14,10 @@ import type {
   GetComposedVideoResponse,
   GetPublishTextResponse,
   GetRefinedTranscriptionResponse,
+  GetShortsPlanningResponse,
   GetShortsProjectResponse,
   GetShortsProjectsResponse,
+  GetShortsScriptResponse,
   GetTranscriptionResponse,
   GetVideoResponse,
   GetVideosQuery,
@@ -212,6 +214,42 @@ export const backendClient = {
     await fetchBackend(`/api/shorts-gen/projects/${id}`, {
       method: 'DELETE',
     });
+  },
+
+  // Shorts Gen - Planning
+  async getShortsPlanning(
+    projectId: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetShortsPlanningResponse | null> {
+    try {
+      return await fetchBackend<GetShortsPlanningResponse>(
+        `/api/shorts-gen/projects/${projectId}/planning`,
+        options
+      );
+    } catch (error) {
+      if (error instanceof BackendApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  // Shorts Gen - Script
+  async getShortsScript(
+    projectId: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetShortsScriptResponse | null> {
+    try {
+      return await fetchBackend<GetShortsScriptResponse>(
+        `/api/shorts-gen/projects/${projectId}/script`,
+        options
+      );
+    } catch (error) {
+      if (error instanceof BackendApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   // Shorts Gen - Compose

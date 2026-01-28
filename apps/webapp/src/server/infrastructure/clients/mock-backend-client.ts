@@ -6,8 +6,10 @@ import type {
   ExtractClipsRequest,
   ExtractClipsResponse,
   GetRefinedTranscriptionResponse,
+  GetShortsPlanningResponse,
   GetShortsProjectResponse,
   GetShortsProjectsResponse,
+  GetShortsScriptResponse,
   GetTranscriptionResponse,
   GetVideoResponse,
   GetVideosQuery,
@@ -252,6 +254,16 @@ Mock transcription subtitle 2`;
     if (summaryIndex !== -1) {
       mockShortsProjectSummaries.splice(summaryIndex, 1);
     }
+  },
+
+  // Shorts Gen - Planning
+  async getShortsPlanning(_projectId: string): Promise<GetShortsPlanningResponse | null> {
+    return null;
+  },
+
+  // Shorts Gen - Script
+  async getShortsScript(_projectId: string): Promise<GetShortsScriptResponse | null> {
+    return null;
   },
 };
 

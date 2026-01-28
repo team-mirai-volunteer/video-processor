@@ -16,6 +16,8 @@ const PLANNING_SYSTEM_PROMPT = `あなたはショート動画の企画書を作
 
 ユーザーから提供された情報（マニフェスト、URL、テキストなど）を元に、魅力的なショート動画の企画書をマークダウン形式で作成してください。
 
+**URLが提供された場合は、必ず fetch_url ツールを使用してURLの内容を取得してから企画書を作成してください。**
+
 企画書には以下の要素を含めてください：
 - タイトル案
 - 動画の目的・コンセプト
@@ -26,6 +28,25 @@ const PLANNING_SYSTEM_PROMPT = `あなたはショート動画の企画書を作
 
 企画書が完成したら、必ず save_planning ツールを使用して保存してください。
 ユーザーからのフィードバックに応じて企画書を修正し、再度保存することも可能です。`;
+
+/**
+ * fetch_url ツールの定義
+ */
+const FETCH_URL_TOOL: ToolDefinition = {
+  name: 'fetch_url',
+  description:
+    'URLからWebページの内容を取得します。ユーザーがURLを提供した場合は、このツールを使用して内容を取得してください。',
+  parameters: {
+    type: 'object',
+    properties: {
+      url: {
+        type: 'string',
+        description: '取得するURL',
+      },
+    },
+    required: ['url'],
+  },
+};
 
 /**
  * save_planning ツールの定義
@@ -45,6 +66,38 @@ const SAVE_PLANNING_TOOL: ToolDefinition = {
     required: ['content'],
   },
 };
+
+/**
+ * URLからコンテンツを取得する（Jina Reader API使用）
+ * https://jina.ai/reader/ - URLをMarkdown形式で取得できる無料API
+ */
+async function fetchUrlContent(url: string): Promise<string> {
+  try {
+    // Jina Reader APIを使用してURLの内容をMarkdown形式で取得
+    const jinaUrl = `https://r.jina.ai/${url}`;
+    const response = await fetch(jinaUrl, {
+      headers: {
+        Accept: 'text/plain',
+      },
+    });
+
+    if (!response.ok) {
+      return `Error: Failed to fetch URL via Jina Reader (status: ${response.status})`;
+    }
+
+    const text = await response.text();
+
+    // Limit content length to avoid token limits
+    const maxLength = 15000;
+    if (text.length > maxLength) {
+      return `${text.substring(0, maxLength)}\n\n... (truncated)`;
+    }
+
+    return text;
+  } catch (error) {
+    return `Error: Failed to fetch URL - ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
 
 /**
  * GeneratePlanningUseCase の依存関係
@@ -82,8 +135,8 @@ export interface GeneratePlanningResult {
  * ストリーミングチャンク（拡張版）
  */
 export interface PlanningStreamChunk extends StreamChunk {
-  /** 保存された企画書（tool_callで保存された場合） */
-  savedPlanning?: ShortsPlanning;
+  /** 保存された企画書（tool_callで保存された場合、UIが期待する形式） */
+  savedPlanning?: { planning: ShortsPlanning };
 }
 
 /**
@@ -130,7 +183,7 @@ export class GeneratePlanningUseCase {
     // AIに生成を依頼
     const chatResult = await this.agenticAiGateway.chat({
       messages,
-      tools: [SAVE_PLANNING_TOOL],
+      tools: [FETCH_URL_TOOL, SAVE_PLANNING_TOOL],
       systemPrompt: PLANNING_SYSTEM_PROMPT,
     });
 
@@ -160,6 +213,7 @@ export class GeneratePlanningUseCase {
   /**
    * 企画書を生成する（ストリーミング）
    * SSE対応で、チャンクを逐次返します。
+   * ツールコールがある場合は実行後、結果をAIに渡して継続します。
    */
   async *executeStream(input: GeneratePlanningInput): AsyncGenerator<PlanningStreamChunk> {
     // 入力バリデーション
@@ -177,38 +231,116 @@ export class GeneratePlanningUseCase {
       { role: 'user', content: input.userMessage },
     ];
 
-    // AIにストリーミング生成を依頼
-    const streamResult = await this.agenticAiGateway.chatStream({
-      messages,
-      tools: [SAVE_PLANNING_TOOL],
-      systemPrompt: PLANNING_SYSTEM_PROMPT,
-    });
+    // ツールコールのループ処理（最大10回まで）
+    const maxIterations = 10;
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
+      // AIにストリーミング生成を依頼
+      const streamResult = await this.agenticAiGateway.chatStream({
+        messages,
+        tools: [FETCH_URL_TOOL, SAVE_PLANNING_TOOL],
+        systemPrompt: PLANNING_SYSTEM_PROMPT,
+      });
 
-    if (!streamResult.success) {
-      const errorMessage =
-        'message' in streamResult.error ? streamResult.error.message : streamResult.error.type;
-      yield {
-        type: 'error',
-        error: errorMessage,
-      };
-      return;
-    }
-
-    // ストリームを処理
-    for await (const chunk of streamResult.value) {
-      // tool_callの場合、企画書を保存
-      if (chunk.type === 'tool_call' && chunk.toolCall?.name === 'save_planning') {
-        const content = chunk.toolCall.arguments.content as string;
-        const savedPlanning = await this.savePlanning(input.projectId, content);
-
+      if (!streamResult.success) {
+        const errorMessage =
+          'message' in streamResult.error ? streamResult.error.message : streamResult.error.type;
         yield {
-          ...chunk,
-          savedPlanning,
+          type: 'error',
+          error: errorMessage,
         };
-      } else {
-        yield chunk;
+        return;
       }
+
+      // このイテレーションで収集するデータ
+      let accumulatedText = '';
+      const toolCalls: Array<{ id: string; name: string; arguments: Record<string, unknown> }> = [];
+      // ストリームを処理
+      for await (const chunk of streamResult.value) {
+        if (chunk.type === 'text_delta' && chunk.textDelta) {
+          accumulatedText += chunk.textDelta;
+          yield chunk;
+        } else if (chunk.type === 'tool_call' && chunk.toolCall) {
+          toolCalls.push(chunk.toolCall);
+          // ツールコールをクライアントに通知
+          yield {
+            type: 'tool_call',
+            toolCall: chunk.toolCall,
+          };
+        } else if (chunk.type === 'error') {
+          yield chunk;
+          return;
+        }
+      }
+
+      // ツールコールがなければ完了
+      if (toolCalls.length === 0) {
+        yield { type: 'done', finishReason: 'stop' };
+        return;
+      }
+
+      // アシスタントメッセージを履歴に追加（tool-call情報を含める）
+      messages.push({
+        role: 'assistant',
+        content: accumulatedText,
+        toolCalls: toolCalls,
+      });
+
+      // 各ツールコールを実行して結果を履歴に追加
+      for (const toolCall of toolCalls) {
+        let toolResult: string;
+        let savedPlanning: ShortsPlanning | undefined;
+
+        if (toolCall.name === 'fetch_url') {
+          const url = toolCall.arguments.url as string;
+          yield {
+            type: 'text_delta',
+            textDelta: `\n\n[URLを取得中: ${url}...]\n\n`,
+          };
+          toolResult = await fetchUrlContent(url);
+          yield {
+            type: 'text_delta',
+            textDelta: '[URL取得完了]\n\n',
+          };
+        } else if (toolCall.name === 'save_planning') {
+          const content = toolCall.arguments.content as string;
+          savedPlanning = await this.savePlanning(input.projectId, content);
+          toolResult = `企画書を保存しました (ID: ${savedPlanning.id})`;
+          // 保存完了を通知（UIが { planning: Planning } 形式を期待）
+          yield {
+            type: 'tool_call',
+            toolCall: {
+              ...toolCall,
+              arguments: { ...toolCall.arguments, result: toolResult },
+            },
+            savedPlanning: { planning: savedPlanning },
+          };
+        } else {
+          toolResult = `Unknown tool: ${toolCall.name}`;
+        }
+
+        // ツール結果をメッセージ履歴に追加
+        messages.push({
+          role: 'tool',
+          content: toolResult,
+          toolCallId: toolCall.id,
+          toolName: toolCall.name,
+        });
+      }
+
+      // save_planningが呼ばれた場合は完了とみなす
+      if (toolCalls.some((tc) => tc.name === 'save_planning')) {
+        yield { type: 'done', finishReason: 'stop' };
+        return;
+      }
+
+      // 次のイテレーションでAIが継続
     }
+
+    // 最大イテレーション数に達した場合
+    yield {
+      type: 'error',
+      error: 'Maximum tool call iterations exceeded',
+    };
   }
 
   /**

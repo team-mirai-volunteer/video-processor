@@ -74,3 +74,17 @@ export type {
   PublishTextStatus,
   PublishTextStepProps,
 } from './publish';
+
+// Planning (E4)
+export { PlanningDisplay, PlanningEditor, PlanningGenerationStep } from './planning';
+export type { Planning, PlanningGenerationStatus, UpdatePlanningParams } from './planning';
+
+// Chat UI (E2)
+export { ChatUI } from './chat';
+export type {
+  ChatMessageType,
+  ChatRole,
+  ChatStatus,
+  ChatUIProps,
+  ToolCall,
+} from './chat';
