@@ -7,6 +7,13 @@
 - [Backend Architecture Guide](https://github.com/team-mirai-volunteer/video-processor/blob/develop/docs/backend-architecture-guide.md)
 - [Backend Testing Guide](https://github.com/team-mirai-volunteer/video-processor/blob/develop/docs/backend-testing-guide.md)
 
+### 全タスク共通の注意事項
+
+> ⚠️ **PR作成前チェック**: 各タスク完了後、PRを作成する前に以下がローカルで通ることを確認してください：
+> - `pnpm typecheck` - 型チェック
+> - `pnpm lint` - Lint
+> - `pnpm test` - テスト
+
 ---
 
 ## 並列実行ガイド（Claude Code Web用）
