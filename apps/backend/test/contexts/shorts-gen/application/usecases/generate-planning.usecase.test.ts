@@ -270,13 +270,16 @@ describe('GeneratePlanningUseCase', () => {
         chunks.push(chunk);
       }
 
-      expect(chunks).toHaveLength(4);
+      // 新しいフロー: text_delta x2, tool_call (通知), tool_call (保存完了), done
+      expect(chunks).toHaveLength(5);
       expect(chunks[0]).toEqual({ type: 'text_delta', textDelta: '企画書を' });
       expect(chunks[1]).toEqual({ type: 'text_delta', textDelta: '作成中...' });
       expect(chunks[2]?.type).toBe('tool_call');
-      expect(chunks[2]?.savedPlanning).toBeDefined();
-      expect(chunks[2]?.savedPlanning?.content).toBe(planningContent);
-      expect(chunks[3]).toEqual({ type: 'done', finishReason: 'tool_calls' });
+      // チャンク[3]が保存完了通知（savedPlanningを含む）
+      expect(chunks[3]?.type).toBe('tool_call');
+      expect(chunks[3]?.savedPlanning).toBeDefined();
+      expect(chunks[3]?.savedPlanning?.planning?.content).toBe(planningContent);
+      expect(chunks[4]).toEqual({ type: 'done', finishReason: 'stop' });
 
       expect(planningRepository.save).toHaveBeenCalledTimes(1);
     });
