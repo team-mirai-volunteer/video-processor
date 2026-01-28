@@ -21,25 +21,18 @@ description: 設計ドキュメントを作成する (project)
    目的が明確でない場合は、必ずユーザーに質問して確認を取ること。設計ドキュメントの冒頭に「目的」セクションとして記載する。
 
 3. **関連コード・ドキュメントの調査**: 設計に必要な既存コードやドキュメントを読み込み、現状を理解する。設計対象に応じて以下を参照する。
-   - バックエンド（webapp/admin の server/contexts）関連の場合:
+   - バックエンド関連の場合:
      - [docs/backend-architecture-guide.md](docs/backend-architecture-guide.md): バックエンドのアーキテクチャルール
-   - admin の UI 関連の場合:
-     - [docs/admin-ui-guidelines.md](docs/admin-ui-guidelines.md): UIコンポーネントのガイドライン
-   - 政治資金収支報告書関連の場合:
-     - [docs/reference/report-format.md](docs/reference/report-format.md): 政治資金収支報告書XMLの仕様
-     - [docs/scope-by-2026Jan.md](docs/scope-by-2026Jan.md): 前提となる2026年1月までのスコープ
+     - [docs/backend-testing-guide.md](docs/backend-testing-guide.md): テストのガイドライン
+   - ショート動画生成機能関連の場合:
+     - [docs/shorts-gen-feature-spec.md](docs/shorts-gen-feature-spec.md): 機能仕様
+     - [docs/shorts-gen-implementation-plan.md](docs/shorts-gen-implementation-plan.md): 実装計画
 
-4. **エラーパターンの設計**（バックエンド関連の場合は必須）: [docs/backend-architecture-guide.md](docs/backend-architecture-guide.md) のセクション6.3「エラーハンドリング」に従い、以下を設計する。
-   - エラーコードの定義（`as const` で型安全に、大文字スネークケース）
-   - 拡張エラー型の定義（`path`, `code`, `message`, `severity` を含む）
-   - error と warning の使い分け
-   - リファレンス実装: `contexts/report/domain/types/validation.ts`
-
-5. **ファイル作成**: 設計ドキュメントを作成する。
-   - 保存場所: `docs/` 以下
+4. **ファイル作成**: 設計ドキュメントを作成する。
+   - 保存場所: `docs/tasks/` 以下
    - ファイル名: `YYYYMMDD_HHMM_{日本語の作業内容}.md`
    - 日時は `TZ=Asia/Tokyo date +%Y%m%d_%H%M` で取得する
-   - 例: `docs/20250815_1430_ユーザー認証システム設計.md`
+   - 例: `docs/tasks/20250815_1430_ユーザー認証システム設計.md`
 
 6. **整合性チェック**: バックエンド関連の設計の場合、作成したドキュメントが [docs/backend-architecture-guide.md](docs/backend-architecture-guide.md) のアーキテクチャルールと矛盾していないかダブルチェックする。矛盾があれば修正する。
 

@@ -35,7 +35,7 @@ domain/        → models, services, gateways (Result型で表現)
 infrastructure/→ repositories, clients (throw errors)
 ```
 
-詳細: [docs/implementation-plan.md](docs/implementation-plan.md)
+詳細: [docs/backend-architecture-guide.md](docs/backend-architecture-guide.md)
 
 ## Coding Standards
 
@@ -65,6 +65,9 @@ infrastructure/→ repositories, clients (throw errors)
 
 ## Key Files
 
-- [docs/implementation-plan.md](docs/implementation-plan.md) - 詳細設計・API仕様・DB schema
+- [docs/backend-architecture-guide.md](docs/backend-architecture-guide.md) - バックエンドアーキテクチャルール
+- [docs/backend-testing-guide.md](docs/backend-testing-guide.md) - テストガイドライン
+- [docs/shorts-gen-feature-spec.md](docs/shorts-gen-feature-spec.md) - ショート動画生成機能仕様
+- [docs/shorts-gen-implementation-plan.md](docs/shorts-gen-implementation-plan.md) - ショート動画生成実装計画
 - [apps/backend/src/infrastructure/database/prisma/schema.prisma](apps/backend/src/infrastructure/database/prisma/schema.prisma) - DB schema
 - [biome.json](biome.json) - lint/format設定
