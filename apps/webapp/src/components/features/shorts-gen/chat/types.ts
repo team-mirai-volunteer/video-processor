@@ -20,6 +20,7 @@ export interface ChatMessage {
 export type SSEEventType =
   | 'message_start'
   | 'content_delta'
+  | 'text_delta'
   | 'content_done'
   | 'tool_call'
   | 'tool_result'
