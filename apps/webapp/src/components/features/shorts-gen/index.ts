@@ -8,3 +8,23 @@ export type {
   ItemStatus,
   ParallelProgressProps,
 } from './progress-indicator';
+
+// Script generation components
+export {
+  SceneCard,
+  SceneEditor,
+  SceneList,
+  ScriptGenerationStep,
+  useScriptGeneration,
+  VISUAL_TYPE_COLORS,
+  VISUAL_TYPE_LABELS,
+} from './script';
+export type {
+  CreateSceneParams,
+  Scene,
+  Script,
+  ScriptGenerationResponse,
+  ScriptGenerationStatus,
+  UpdateSceneParams,
+  VisualType,
+} from './script';
