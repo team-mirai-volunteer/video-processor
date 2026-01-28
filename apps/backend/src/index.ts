@@ -5,6 +5,7 @@ import { apiKeyAuth } from '@shared/presentation/middleware/api-key-auth.js';
 import { errorHandler } from '@shared/presentation/middleware/error-handler.js';
 import { requestLogger } from '@shared/presentation/middleware/logger.js';
 import sharedRoutes from '@shared/presentation/routes/index.js';
+import shortsGenRoutes from '@shorts-gen/presentation/routes/index.js';
 import express, { type Express } from 'express';
 
 const app: Express = express();
@@ -33,6 +34,7 @@ app.use(apiKeyAuth);
 // Routes
 app.use(sharedRoutes);
 app.use(clipVideoRoutes);
+app.use(shortsGenRoutes);
 
 // Error handler (must be last)
 app.use(errorHandler);
