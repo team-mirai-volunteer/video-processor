@@ -33,7 +33,7 @@ export class AiGenerationError extends ApplicationError {
 
   constructor(
     message: string,
-    public readonly cause?: unknown
+    readonly originalError?: string
   ) {
     super(message);
   }
