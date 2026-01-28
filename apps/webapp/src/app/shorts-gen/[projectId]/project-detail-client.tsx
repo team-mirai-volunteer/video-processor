@@ -1,11 +1,13 @@
 'use client';
 
 import {
+  AssetGenerationStep,
   ComposeStep,
   type Planning,
   PlanningGenerationStep,
   PublishTextStep,
   type Scene,
+  type SceneAsset,
   type Script,
   ScriptGenerationStep,
   StepCard,
@@ -19,17 +21,27 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type {
   GetComposedVideoResponse,
   GetPublishTextResponse,
+  GetShortsImagesResponse,
+  GetShortsSubtitlesResponse,
+  GetShortsVoiceResponse,
   ShortsProject,
 } from '@video-processor/shared';
 import { ArrowLeft, Settings } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+
+interface InitialAssets {
+  voice: GetShortsVoiceResponse | null;
+  subtitles: GetShortsSubtitlesResponse | null;
+  images: GetShortsImagesResponse | null;
+}
 
 interface ProjectDetailClientProps {
   project: ShortsProject;
   initialPlanning: Planning | null;
   initialScript?: Script | null;
   initialScenes?: Scene[];
+  initialAssets?: InitialAssets | null;
 }
 
 interface StepState {
@@ -60,6 +72,7 @@ export function ProjectDetailClient({
   initialPlanning,
   initialScript = null,
   initialScenes = [],
+  initialAssets = null,
 }: ProjectDetailClientProps) {
   const [steps, setSteps] = useState<StepsState>(() =>
     getInitialSteps(!!initialPlanning, !!initialScript)
@@ -73,8 +86,68 @@ export function ProjectDetailClient({
   const [scenes, setScenes] = useState<Scene[]>(initialScenes);
 
   // Assets & Compose state
-  const [isAssetsComplete] = useState(false);
+  const [isAssetsComplete, setIsAssetsComplete] = useState(false);
   const [isComposeComplete, setIsComposeComplete] = useState(false);
+
+  // Convert initial assets from API response to SceneAsset format
+  const existingAssets = useMemo(() => {
+    if (!initialAssets) return undefined;
+
+    const voiceAssets: SceneAsset[] = [];
+    const subtitleAssets: SceneAsset[] = [];
+    const imageAssets: SceneAsset[] = [];
+
+    // Convert voice assets
+    if (initialAssets.voice?.sceneVoices) {
+      for (const sv of initialAssets.voice.sceneVoices) {
+        if (sv.asset) {
+          voiceAssets.push({
+            id: sv.asset.assetId,
+            sceneId: sv.sceneId,
+            assetType: 'voice',
+            fileUrl: sv.asset.fileUrl,
+            durationMs: sv.asset.durationMs,
+          });
+        }
+      }
+    }
+
+    // Convert subtitle assets
+    if (initialAssets.subtitles?.sceneSubtitles) {
+      for (const ss of initialAssets.subtitles.sceneSubtitles) {
+        for (const asset of ss.assets) {
+          subtitleAssets.push({
+            id: asset.assetId,
+            sceneId: ss.sceneId,
+            assetType: 'subtitle_image',
+            fileUrl: asset.fileUrl,
+            durationMs: null,
+          });
+        }
+      }
+    }
+
+    // Convert image assets
+    if (initialAssets.images?.sceneImages) {
+      for (const si of initialAssets.images.sceneImages) {
+        if (si.asset) {
+          imageAssets.push({
+            id: si.asset.assetId,
+            sceneId: si.sceneId,
+            assetType: 'background_image',
+            fileUrl: si.asset.fileUrl,
+            durationMs: null,
+          });
+        }
+      }
+    }
+
+    return {
+      voice: voiceAssets,
+      subtitle: subtitleAssets,
+      image: imageAssets,
+    };
+  }, [initialAssets]);
 
   const toggleStep = (stepId: StepId) => {
     setSteps((prev) => ({
@@ -89,6 +162,19 @@ export function ProjectDetailClient({
       [stepId]: { ...prev[stepId], status },
     }));
   }, []);
+
+  // Handle assets complete
+  const handleAssetsComplete = useCallback(() => {
+    setIsAssetsComplete(true);
+    updateStepStatus('assets', 'completed');
+    updateStepStatus('compose', 'ready');
+    // Expand compose step automatically
+    setSteps((prev) => ({
+      ...prev,
+      compose: { ...prev.compose, isExpanded: true },
+      assets: { ...prev.assets, isExpanded: false },
+    }));
+  }, [updateStepStatus]);
 
   const handleComposeComplete = useCallback(
     (_composedVideo: GetComposedVideoResponse) => {
@@ -302,20 +388,15 @@ export function ProjectDetailClient({
         </StepCard>
 
         {/* Step 4: Assets (4-5-6-7) */}
-        <StepCard
-          stepNumber={4}
-          title="素材生成"
-          description="音声・字幕・画像を並列で生成します"
-          status={steps.assets.status}
+        <AssetGenerationStep
+          projectId={project.id}
+          scenes={scenes}
           isExpanded={steps.assets.isExpanded}
           onToggle={() => toggleStep('assets')}
-          canRegenerate
-        >
-          <div className="text-center py-8 text-muted-foreground">
-            <p>素材生成UIはE6タスクで実装済みです</p>
-            <p className="text-sm mt-1">音声・字幕・画像を3列で並列生成できます</p>
-          </div>
-        </StepCard>
+          onComplete={handleAssetsComplete}
+          canStart={steps.assets.status === 'ready' || steps.assets.status === 'completed'}
+          existingAssets={existingAssets}
+        />
 
         {/* Step 8: Compose */}
         <StepCard

@@ -35,12 +35,28 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
         }
       : null;
 
+    // Fetch assets if script exists
+    let initialAssets = null;
+    if (scriptResponse) {
+      const [voiceResponse, subtitlesResponse, imagesResponse] = await Promise.all([
+        getBackendClient().getShortsVoice(scriptResponse.id, { revalidate: false }),
+        getBackendClient().getShortsSubtitles(scriptResponse.id, { revalidate: false }),
+        getBackendClient().getShortsImages(scriptResponse.id, { revalidate: false }),
+      ]);
+      initialAssets = {
+        voice: voiceResponse,
+        subtitles: subtitlesResponse,
+        images: imagesResponse,
+      };
+    }
+
     return (
       <ProjectDetailClient
         project={projectResponse.data}
         initialPlanning={initialPlanning}
         initialScript={initialScript}
         initialScenes={initialScenes}
+        initialAssets={initialAssets}
       />
     );
   } catch {

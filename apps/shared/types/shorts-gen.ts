@@ -192,3 +192,70 @@ export interface GetShortsScriptResponse {
   updatedAt: string;
   scenes: ShortsScene[];
 }
+
+// Asset types
+export interface SceneVoiceAsset {
+  sceneId: string;
+  sceneOrder: number;
+  hasVoice: boolean;
+  hasVoiceText: boolean;
+  asset: {
+    assetId: string;
+    fileUrl: string;
+    durationMs: number;
+  } | null;
+}
+
+export interface GetShortsVoiceResponse {
+  scriptId: string;
+  totalScenes: number;
+  scenesWithVoice: number;
+  sceneVoices: SceneVoiceAsset[];
+}
+
+export interface SceneSubtitleAsset {
+  assetId: string;
+  fileUrl: string;
+  subtitleIndex: number;
+  subtitleText: string;
+}
+
+export interface SceneSubtitles {
+  sceneId: string;
+  sceneOrder: number;
+  subtitleCount: number;
+  hasSubtitles: boolean;
+  assetsGenerated: number;
+  assets: SceneSubtitleAsset[];
+}
+
+export interface GetShortsSubtitlesResponse {
+  scriptId: string;
+  totalScenes: number;
+  scenesWithSubtitles: number;
+  totalAssetsGenerated: number;
+  sceneSubtitles: SceneSubtitles[];
+}
+
+export interface SceneImage {
+  sceneId: string;
+  sceneOrder: number;
+  visualType: VisualType;
+  hasImagePrompt: boolean;
+  imagePrompt: string | null;
+  imageStyleHint: string | null;
+  hasImage: boolean;
+  asset: {
+    assetId: string;
+    fileUrl: string;
+  } | null;
+}
+
+export interface GetShortsImagesResponse {
+  scriptId: string;
+  totalScenes: number;
+  imageGenScenes: number;
+  scenesWithPrompt: number;
+  scenesWithImage: number;
+  sceneImages: SceneImage[];
+}

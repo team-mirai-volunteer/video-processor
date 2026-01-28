@@ -6,10 +6,13 @@ import type {
   ExtractClipsRequest,
   ExtractClipsResponse,
   GetRefinedTranscriptionResponse,
+  GetShortsImagesResponse,
   GetShortsPlanningResponse,
   GetShortsProjectResponse,
   GetShortsProjectsResponse,
   GetShortsScriptResponse,
+  GetShortsSubtitlesResponse,
+  GetShortsVoiceResponse,
   GetTranscriptionResponse,
   GetVideoResponse,
   GetVideosQuery,
@@ -263,6 +266,19 @@ Mock transcription subtitle 2`;
 
   // Shorts Gen - Script
   async getShortsScript(_projectId: string): Promise<GetShortsScriptResponse | null> {
+    return null;
+  },
+
+  // Shorts Gen - Assets
+  async getShortsVoice(_scriptId: string): Promise<GetShortsVoiceResponse | null> {
+    return null;
+  },
+
+  async getShortsSubtitles(_scriptId: string): Promise<GetShortsSubtitlesResponse | null> {
+    return null;
+  },
+
+  async getShortsImages(_scriptId: string): Promise<GetShortsImagesResponse | null> {
     return null;
   },
 };
