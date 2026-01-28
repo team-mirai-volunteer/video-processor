@@ -6,6 +6,13 @@ export type {
   BgmAssetInfo,
 } from './asset-registry.gateway.js';
 
+// Asset Storage Gateway
+export type {
+  AssetStorageGateway,
+  AssetStorageUploadParams,
+  AssetStorageUploadResult,
+} from './asset-storage.gateway.js';
+
 // TTS Gateway
 export type {
   TtsGateway,

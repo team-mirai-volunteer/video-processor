@@ -9,6 +9,31 @@ export type {
   ParallelProgressProps,
 } from './progress-indicator';
 
+// Asset Generation (E6)
+export { AssetGenerationStep, SceneAssetItem, useAssetGeneration } from './asset-generation';
+export type {
+  AssetGenerationStepProps,
+  AssetColumnData,
+  AssetGenerationStatus,
+  AssetType,
+  GenerateAllAssetsRequest,
+  GenerateAllAssetsResponse,
+  GenerateImageRequest,
+  GenerateImageResponse,
+  GenerateSubtitleRequest,
+  GenerateSubtitleResponse,
+  GenerateVoiceRequest,
+  GenerateVoiceResponse,
+  SceneAsset,
+  SceneAssetItemProps,
+  SceneAssetState,
+} from './asset-generation';
+// Asset-specific Scene and VisualType (for asset generation UI)
+export type {
+  Scene as AssetScene,
+  VisualType as AssetVisualType,
+} from './asset-generation';
+
 // Script generation components
 export {
   SceneCard,

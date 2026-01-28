@@ -4,10 +4,12 @@
   "packageManager": "pnpm@9.15.4",
   "scripts": {
     "dev": "docker compose -f apps/backend/docker-compose.yml up -d && pnpm --filter backend db:push && pnpm --filter @video-processor/webapp --filter backend --parallel run dev",
+    "test": "pnpm --filter backend test:unit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "typecheck": "pnpm -r run typecheck",
+    "db:generate": "pnpm --filter backend db:generate",
     "knip": "knip",
     "postinstall": "simple-git-hooks",
     "build:stg": "cd infrastructure/terraform && ./deploy.sh stg build",
