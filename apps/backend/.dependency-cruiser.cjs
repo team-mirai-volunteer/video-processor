@@ -1,63 +1,84 @@
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
   forbidden: [
-    // Domain layer should not depend on any other layer
+    // === Bounded Context isolation rules ===
     {
-      name: 'domain-cannot-depend-on-application',
+      name: 'context-isolation',
       severity: 'error',
-      comment: 'Domain layer must not depend on application layer (DDD violation)',
-      from: { path: '^src/domain' },
-      to: { path: '^src/application' },
-    },
-    {
-      name: 'domain-cannot-depend-on-infrastructure',
-      severity: 'error',
-      comment: 'Domain layer must not depend on infrastructure layer (DDD violation)',
-      from: { path: '^src/domain' },
-      to: { path: '^src/infrastructure' },
-    },
-    {
-      name: 'domain-cannot-depend-on-presentation',
-      severity: 'error',
-      comment: 'Domain layer must not depend on presentation layer (DDD violation)',
-      from: { path: '^src/domain' },
-      to: { path: '^src/presentation' },
-    },
-
-    // Application layer should only depend on domain
-    // Exception: Logger is allowed as a cross-cutting concern (see docs/20260126_2227_GCP構造化ログ設計.md)
-    {
-      name: 'application-cannot-depend-on-infrastructure',
-      severity: 'error',
-      comment: 'Application layer must not depend on infrastructure layer (DDD violation)',
-      from: { path: '^src/application' },
+      comment: 'Bounded contexts should not depend on each other directly',
+      from: { path: '^src/contexts/clip-video' },
       to: {
-        path: '^src/infrastructure',
-        pathNot: '^src/infrastructure/logging/',
+        path: '^src/contexts/',
+        pathNot: ['^src/contexts/clip-video', '^src/contexts/shared'],
       },
     },
     {
-      name: 'application-cannot-depend-on-presentation',
+      name: 'shared-context-independence',
       severity: 'error',
-      comment: 'Application layer must not depend on presentation layer (DDD violation)',
-      from: { path: '^src/application' },
-      to: { path: '^src/presentation' },
+      comment: 'Shared context must not depend on specific bounded contexts',
+      from: { path: '^src/contexts/shared' },
+      to: {
+        path: '^src/contexts/',
+        pathNot: '^src/contexts/shared',
+      },
     },
 
-    // Infrastructure layer should only depend on domain
+    // === DDD layer rules for clip-video context ===
     {
-      name: 'infrastructure-cannot-depend-on-application',
+      name: 'clip-video-domain-isolation',
       severity: 'error',
-      comment: 'Infrastructure layer must not depend on application layer (DDD violation)',
-      from: { path: '^src/infrastructure' },
-      to: { path: '^src/application' },
+      comment: 'Domain layer must not depend on other layers',
+      from: { path: '^src/contexts/clip-video/domain' },
+      to: {
+        path: '^src/contexts/clip-video/(application|infrastructure|presentation)',
+      },
     },
     {
-      name: 'infrastructure-cannot-depend-on-presentation',
+      name: 'clip-video-application-cannot-depend-on-infra',
       severity: 'error',
-      comment: 'Infrastructure layer must not depend on presentation layer (DDD violation)',
-      from: { path: '^src/infrastructure' },
-      to: { path: '^src/presentation' },
+      comment: 'Application layer must not depend on infrastructure layer',
+      from: { path: '^src/contexts/clip-video/application' },
+      to: {
+        path: '^src/contexts/clip-video/infrastructure',
+      },
+    },
+    {
+      name: 'clip-video-application-cannot-depend-on-presentation',
+      severity: 'error',
+      comment: 'Application layer must not depend on presentation layer',
+      from: { path: '^src/contexts/clip-video/application' },
+      to: {
+        path: '^src/contexts/clip-video/presentation',
+      },
+    },
+    {
+      name: 'clip-video-infrastructure-cannot-depend-on-application',
+      severity: 'error',
+      comment: 'Infrastructure layer must not depend on application layer',
+      from: { path: '^src/contexts/clip-video/infrastructure' },
+      to: {
+        path: '^src/contexts/clip-video/application',
+      },
+    },
+    {
+      name: 'clip-video-infrastructure-cannot-depend-on-presentation',
+      severity: 'error',
+      comment: 'Infrastructure layer must not depend on presentation layer',
+      from: { path: '^src/contexts/clip-video/infrastructure' },
+      to: {
+        path: '^src/contexts/clip-video/presentation',
+      },
+    },
+
+    // === DDD layer rules for shared context ===
+    {
+      name: 'shared-domain-isolation',
+      severity: 'error',
+      comment: 'Shared domain must not depend on other layers',
+      from: { path: '^src/contexts/shared/domain' },
+      to: {
+        path: '^src/contexts/shared/(infrastructure|presentation)',
+      },
     },
 
     // Common anti-patterns

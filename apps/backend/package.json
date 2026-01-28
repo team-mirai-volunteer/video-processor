@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "postinstall": "prisma generate --schema=src/infrastructure/database/prisma/schema.prisma",
+    "postinstall": "prisma generate --schema=src/contexts/shared/infrastructure/database/prisma/schema.prisma",
     "dev": "NODE_OPTIONS='--max-old-space-size=8192' tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
@@ -12,13 +12,13 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "test": "vitest",
-    "test:unit": "vitest run test/unit",
-    "test:integration": "vitest run test/integration",
+    "test:unit": "vitest run test/contexts",
+    "test:integration": "vitest run test/contexts --testNamePattern=integration",
     "test:e2e": "vitest run test/e2e",
-    "db:generate": "prisma generate --schema=src/infrastructure/database/prisma/schema.prisma",
-    "db:push": "prisma db push --schema=src/infrastructure/database/prisma/schema.prisma",
-    "db:migrate": "prisma migrate dev --schema=src/infrastructure/database/prisma/schema.prisma",
-    "db:studio": "prisma studio --schema=src/infrastructure/database/prisma/schema.prisma",
+    "db:generate": "prisma generate --schema=src/contexts/shared/infrastructure/database/prisma/schema.prisma",
+    "db:push": "prisma db push --schema=src/contexts/shared/infrastructure/database/prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=src/contexts/shared/infrastructure/database/prisma/schema.prisma",
+    "db:studio": "prisma studio --schema=src/contexts/shared/infrastructure/database/prisma/schema.prisma",
     "dep-cruise": "depcruise src --config .dependency-cruiser.cjs"
   },
   "dependencies": {

@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { config } from 'dotenv';
 import { defineConfig } from 'vitest/config';
 
@@ -14,6 +15,11 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*.ts'],
       exclude: ['src/index.ts', 'src/**/*.d.ts'],
+    },
+    alias: {
+      '@clip-video': path.resolve(__dirname, './src/contexts/clip-video'),
+      '@shared': path.resolve(__dirname, './src/contexts/shared'),
+      '@': path.resolve(__dirname, './src'),
     },
   },
 });

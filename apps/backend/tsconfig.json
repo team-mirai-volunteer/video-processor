@@ -6,7 +6,9 @@
     "noEmit": false,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@clip-video/*": ["./src/contexts/clip-video/*"],
+      "@shared/*": ["./src/contexts/shared/*"]
     }
   },
   "include": ["src/**/*"],
