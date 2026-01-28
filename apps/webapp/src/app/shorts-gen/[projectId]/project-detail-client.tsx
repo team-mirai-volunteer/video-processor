@@ -3,6 +3,7 @@
 import {
   AssetGenerationStep,
   ComposeStep,
+  type GenerateAllAssetsResponse,
   type Planning,
   PlanningGenerationStep,
   PublishTextStep,
@@ -266,6 +267,80 @@ export function ProjectDetailClient({
     [project.id]
   );
 
+  // Asset generation handlers
+  const handleAllVoicesGenerate = useCallback(async (): Promise<GenerateAllAssetsResponse> => {
+    if (!script) throw new Error('Script not found');
+    const response = await fetch(`/api/shorts-gen/scripts/${script.id}/voice`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || 'Failed to generate voices');
+    }
+    const data = await response.json();
+    // Convert API response to GenerateAllAssetsResponse format
+    return {
+      success: true,
+      results:
+        data.results ||
+        scenes.map((s) => ({
+          sceneId: s.id,
+          success: true,
+          asset: data.sceneVoices?.find((sv: { sceneId: string }) => sv.sceneId === s.id)?.asset,
+        })),
+    };
+  }, [script, scenes]);
+
+  const handleAllSubtitlesGenerate = useCallback(async (): Promise<GenerateAllAssetsResponse> => {
+    if (!script) throw new Error('Script not found');
+    const response = await fetch(`/api/shorts-gen/scripts/${script.id}/subtitles`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || 'Failed to generate subtitles');
+    }
+    const data = await response.json();
+    return {
+      success: true,
+      results:
+        data.results ||
+        scenes.map((s) => ({
+          sceneId: s.id,
+          success: true,
+          assets: data.sceneSubtitles?.find((ss: { sceneId: string }) => ss.sceneId === s.id)
+            ?.assets,
+        })),
+    };
+  }, [script, scenes]);
+
+  const handleAllImagesGenerate = useCallback(async (): Promise<GenerateAllAssetsResponse> => {
+    if (!script) throw new Error('Script not found');
+    const response = await fetch(`/api/shorts-gen/scripts/${script.id}/images`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || 'Failed to generate images');
+    }
+    const data = await response.json();
+    return {
+      success: true,
+      results:
+        data.results ||
+        scenes
+          .filter((s) => s.visualType === 'image_gen')
+          .map((s) => ({
+            sceneId: s.id,
+            success: true,
+            asset: data.sceneImages?.find((si: { sceneId: string }) => si.sceneId === s.id)?.asset,
+          })),
+    };
+  }, [script, scenes]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -396,6 +471,9 @@ export function ProjectDetailClient({
           onComplete={handleAssetsComplete}
           canStart={steps.assets.status === 'ready' || steps.assets.status === 'completed'}
           existingAssets={existingAssets}
+          onAllVoicesGenerate={handleAllVoicesGenerate}
+          onAllSubtitlesGenerate={handleAllSubtitlesGenerate}
+          onAllImagesGenerate={handleAllImagesGenerate}
         />
 
         {/* Step 8: Compose */}
