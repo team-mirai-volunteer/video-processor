@@ -49,3 +49,16 @@ export type {
   TranscribeAudioResponse,
   TranscribeVideoResponse,
 } from './api.js';
+
+// Shorts-gen types
+export type {
+  ShortsProject,
+  ShortsProjectSummary,
+  CreateShortsProjectRequest,
+  CreateShortsProjectResponse,
+  GetShortsProjectsResponse,
+  GetShortsProjectResponse,
+  UpdateShortsProjectRequest,
+  UpdateShortsProjectResponse,
+  DeleteShortsProjectResponse,
+} from './shorts-gen.js';
