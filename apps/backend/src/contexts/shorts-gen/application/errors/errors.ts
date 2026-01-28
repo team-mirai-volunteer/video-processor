@@ -31,7 +31,10 @@ export class ConflictError extends ApplicationError {
 export class AiGenerationError extends ApplicationError {
   readonly statusCode = 500;
 
-  constructor(message: string) {
-    super(`AI generation failed: ${message}`);
+  constructor(
+    message: string,
+    readonly originalError?: string
+  ) {
+    super(message);
   }
 }
