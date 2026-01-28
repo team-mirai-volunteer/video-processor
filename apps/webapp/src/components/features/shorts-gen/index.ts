@@ -30,3 +30,22 @@ export type {
   SceneAssetState,
   VisualType,
 } from './asset-generation';
+// Script generation components
+export {
+  SceneCard,
+  SceneEditor,
+  SceneList,
+  ScriptGenerationStep,
+  useScriptGeneration,
+  VISUAL_TYPE_COLORS,
+  VISUAL_TYPE_LABELS,
+} from './script';
+export type {
+  CreateSceneParams,
+  Scene,
+  Script,
+  ScriptGenerationResponse,
+  ScriptGenerationStatus,
+  UpdateSceneParams,
+  VisualType,
+} from './script';
