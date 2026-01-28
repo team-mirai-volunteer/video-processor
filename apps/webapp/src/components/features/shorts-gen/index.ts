@@ -24,11 +24,9 @@ export type {
   GenerateSubtitleResponse,
   GenerateVoiceRequest,
   GenerateVoiceResponse,
-  Scene,
   SceneAsset,
   SceneAssetItemProps,
   SceneAssetState,
-  VisualType,
 } from './asset-generation';
 // Script generation components
 export {

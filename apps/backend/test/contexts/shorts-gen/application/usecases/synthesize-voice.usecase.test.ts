@@ -519,11 +519,12 @@ describe('SynthesizeVoiceUseCase', () => {
       const saveCall = vi.mocked(mockSceneAssetRepository.save).mock.calls[0];
       expect(saveCall).toBeDefined();
       const savedAsset = saveCall?.[0];
-      expect(savedAsset.sceneId).toBe('scene-1');
-      expect(savedAsset.assetType).toBe('voice');
-      expect(savedAsset.fileUrl).toBe('gs://bucket/test.mp3');
-      expect(savedAsset.durationMs).toBe(2500);
-      expect(savedAsset.id).toBe('generated-id-1');
+      expect(savedAsset).toBeDefined();
+      expect(savedAsset?.sceneId).toBe('scene-1');
+      expect(savedAsset?.assetType).toBe('voice');
+      expect(savedAsset?.fileUrl).toBe('gs://bucket/test.mp3');
+      expect(savedAsset?.durationMs).toBe(2500);
+      expect(savedAsset?.id).toBe('generated-id-1');
 
       // Verify result contains correct asset info
       const firstResult = result.results[0];
