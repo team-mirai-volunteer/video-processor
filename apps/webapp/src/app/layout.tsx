@@ -23,6 +23,9 @@ function Header() {
           <Link href="/submit" className="text-sm font-medium hover:text-primary">
             動画登録
           </Link>
+          <Link href="/shorts-gen" className="text-sm font-medium hover:text-primary">
+            ショート動画生成
+          </Link>
         </nav>
       </div>
     </header>

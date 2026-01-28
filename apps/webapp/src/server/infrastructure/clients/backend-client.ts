@@ -1,10 +1,14 @@
 import type {
   CacheVideoResponse,
+  CreateShortsProjectRequest,
+  CreateShortsProjectResponse,
   ExtractAudioResponse,
   ExtractClipsRequest,
   ExtractClipsResponse,
   GetClipsResponse,
   GetRefinedTranscriptionResponse,
+  GetShortsProjectResponse,
+  GetShortsProjectsResponse,
   GetTranscriptionResponse,
   GetVideoResponse,
   GetVideosQuery,
@@ -171,6 +175,35 @@ export const backendClient = {
     }
 
     return response.text();
+  },
+
+  // Shorts Gen - Projects
+  async getShortsProjects(): Promise<GetShortsProjectsResponse> {
+    return fetchBackend<GetShortsProjectsResponse>('/api/shorts-gen/projects', {
+      revalidate: false,
+    });
+  },
+
+  async getShortsProject(
+    id: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetShortsProjectResponse> {
+    return fetchBackend<GetShortsProjectResponse>(`/api/shorts-gen/projects/${id}`, options);
+  },
+
+  async createShortsProject(
+    request: CreateShortsProjectRequest
+  ): Promise<CreateShortsProjectResponse> {
+    return fetchBackend<CreateShortsProjectResponse>('/api/shorts-gen/projects', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async deleteShortsProject(id: string): Promise<void> {
+    await fetchBackend(`/api/shorts-gen/projects/${id}`, {
+      method: 'DELETE',
+    });
   },
 };
 
