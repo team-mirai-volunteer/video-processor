@@ -1,0 +1,20 @@
+{
+  "$schema": "./asset-registry.schema.json",
+  "videos": {
+    "speech_placeholder": {
+      "path": "videos/speech-placeholder.mp4",
+      "description": "党首演説プレースホルダー動画",
+      "durationMs": 10000
+    }
+  },
+  "bgm": {
+    "upbeat_corporate": {
+      "path": "bgm/upbeat-corporate.mp3",
+      "description": "アップビートな企業向けBGM"
+    },
+    "calm_ambient": {
+      "path": "bgm/calm-ambient.mp3",
+      "description": "穏やかなアンビエントBGM"
+    }
+  }
+}

@@ -19,6 +19,7 @@ export default defineConfig({
     alias: {
       '@clip-video': path.resolve(__dirname, './src/contexts/clip-video'),
       '@shared': path.resolve(__dirname, './src/contexts/shared'),
+      '@shorts-gen': path.resolve(__dirname, './src/contexts/shorts-gen'),
       '@': path.resolve(__dirname, './src'),
     },
   },
