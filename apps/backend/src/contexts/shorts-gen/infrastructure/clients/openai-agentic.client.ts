@@ -164,10 +164,38 @@ export class OpenAiAgenticClient implements AgenticAiGateway {
           content: msg.content,
         });
       } else if (msg.role === 'assistant') {
-        messages.push({
-          role: 'assistant',
-          content: msg.content,
-        });
+        // tool-callがある場合はcontent配列形式で構築
+        if (msg.toolCalls && msg.toolCalls.length > 0) {
+          const contentParts: Array<
+            | { type: 'text'; text: string }
+            | { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }
+          > = [];
+
+          // テキスト部分があれば追加
+          if (msg.content) {
+            contentParts.push({ type: 'text', text: msg.content });
+          }
+
+          // tool-call部分を追加
+          for (const tc of msg.toolCalls) {
+            contentParts.push({
+              type: 'tool-call',
+              toolCallId: tc.id,
+              toolName: tc.name,
+              input: tc.arguments,
+            });
+          }
+
+          messages.push({
+            role: 'assistant',
+            content: contentParts,
+          });
+        } else {
+          messages.push({
+            role: 'assistant',
+            content: msg.content,
+          });
+        }
       } else if (msg.role === 'tool' && msg.toolCallId && msg.toolName) {
         messages.push({
           role: 'tool',
@@ -212,24 +240,7 @@ export class OpenAiAgenticClient implements AgenticAiGateway {
     const required = params.required ?? [];
 
     for (const [key, prop] of Object.entries(params.properties)) {
-      let zodType: z.ZodTypeAny;
-
-      switch (prop.type) {
-        case 'string':
-          zodType = prop.enum ? z.enum(prop.enum as [string, ...string[]]) : z.string();
-          break;
-        case 'number':
-          zodType = z.number();
-          break;
-        case 'boolean':
-          zodType = z.boolean();
-          break;
-        case 'array':
-          zodType = z.array(prop.items?.type === 'number' ? z.number() : z.string());
-          break;
-        default:
-          zodType = z.unknown();
-      }
+      let zodType = this.convertPropertyToZod(prop);
 
       if (prop.description) {
         zodType = zodType.describe(prop.description);
@@ -243,6 +254,64 @@ export class OpenAiAgenticClient implements AgenticAiGateway {
     }
 
     return z.object(shape);
+  }
+
+  /**
+   * 単一のプロパティスキーマをZod型に変換する（再帰対応）
+   */
+  private convertPropertyToZod(prop: {
+    type: string;
+    description?: string;
+    enum?: string[];
+    items?: {
+      type: string;
+      properties?: Record<string, unknown>;
+      required?: string[];
+    };
+    properties?: Record<string, unknown>;
+    required?: string[];
+  }): z.ZodTypeAny {
+    switch (prop.type) {
+      case 'string':
+        return prop.enum ? z.enum(prop.enum as [string, ...string[]]) : z.string();
+      case 'number':
+        return z.number();
+      case 'boolean':
+        return z.boolean();
+      case 'array': {
+        if (!prop.items) {
+          return z.array(z.unknown());
+        }
+        const itemType = this.convertPropertyToZod(
+          prop.items as Parameters<typeof this.convertPropertyToZod>[0]
+        );
+        return z.array(itemType);
+      }
+      case 'object': {
+        if (!prop.properties) {
+          return z.record(z.string(), z.unknown());
+        }
+        const objShape: Record<string, z.ZodTypeAny> = {};
+        const objRequired = prop.required ?? [];
+
+        for (const [k, v] of Object.entries(prop.properties)) {
+          let fieldType = this.convertPropertyToZod(
+            v as Parameters<typeof this.convertPropertyToZod>[0]
+          );
+          const fieldProp = v as { description?: string };
+          if (fieldProp.description) {
+            fieldType = fieldType.describe(fieldProp.description);
+          }
+          if (!objRequired.includes(k)) {
+            fieldType = fieldType.optional();
+          }
+          objShape[k] = fieldType;
+        }
+        return z.object(objShape);
+      }
+      default:
+        return z.unknown();
+    }
   }
 
   /**

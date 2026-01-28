@@ -17,22 +17,28 @@ export interface ChatMessage {
   toolCallId?: string;
   /** ツールの名前（roleがtoolの場合） */
   toolName?: string;
+  /** ツールコール一覧（roleがassistantでツールを呼び出した場合） */
+  toolCalls?: ToolCall[];
 }
 
 /**
  * ツール定義のパラメータスキーマ（JSON Schema形式）
  */
+/**
+ * ツールパラメータのプロパティ定義
+ */
+export interface ToolPropertySchema {
+  type: string;
+  description?: string;
+  enum?: string[];
+  items?: ToolPropertySchema;
+  properties?: Record<string, ToolPropertySchema>;
+  required?: string[];
+}
+
 export interface ToolParameterSchema {
   type: 'object';
-  properties: Record<
-    string,
-    {
-      type: string;
-      description?: string;
-      enum?: string[];
-      items?: { type: string };
-    }
-  >;
+  properties: Record<string, ToolPropertySchema>;
   required?: string[];
 }
 

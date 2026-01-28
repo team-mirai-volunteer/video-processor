@@ -55,6 +55,25 @@ export interface DeleteShortsProjectResponse {
   success: boolean;
 }
 
+// Planning types
+export interface ShortsPlanning {
+  id: string;
+  projectId: string;
+  content: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GetShortsPlanningResponse {
+  id: string;
+  projectId: string;
+  content: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ComposedVideo types
 export type ComposedVideoStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
@@ -134,4 +153,42 @@ export interface GetPublishTextResponse {
   description: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// Script types
+export type VisualType = 'image_gen' | 'stock_video' | 'solid_color';
+
+export interface ShortsScene {
+  id: string;
+  order: number;
+  summary: string;
+  visualType: VisualType;
+  voiceText: string | null;
+  subtitles: string[];
+  silenceDurationMs: number | null;
+  stockVideoKey: string | null;
+  solidColor: string | null;
+  imagePrompt: string | null;
+  imageStyleHint: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShortsScript {
+  id: string;
+  projectId: string;
+  planningId: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GetShortsScriptResponse {
+  id: string;
+  projectId: string;
+  planningId: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  scenes: ShortsScene[];
 }

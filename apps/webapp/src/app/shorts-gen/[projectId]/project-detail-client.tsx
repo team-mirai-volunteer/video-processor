@@ -2,9 +2,16 @@
 
 import {
   ComposeStep,
+  type Planning,
+  PlanningGenerationStep,
   PublishTextStep,
+  type Scene,
+  type Script,
+  ScriptGenerationStep,
   StepCard,
   type StepStatus,
+  type UpdatePlanningParams,
+  type UpdateSceneParams,
 } from '@/components/features/shorts-gen';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,6 +27,9 @@ import { useCallback, useState } from 'react';
 
 interface ProjectDetailClientProps {
   project: ShortsProject;
+  initialPlanning: Planning | null;
+  initialScript?: Script | null;
+  initialScenes?: Scene[];
 }
 
 interface StepState {
@@ -31,18 +41,38 @@ type StepId = 'project' | 'planning' | 'script' | 'assets' | 'compose' | 'publis
 
 type StepsState = Record<StepId, StepState>;
 
-const INITIAL_STEPS: StepsState = {
-  project: { status: 'completed', isExpanded: false },
-  planning: { status: 'ready', isExpanded: true },
-  script: { status: 'pending', isExpanded: false },
-  assets: { status: 'pending', isExpanded: false },
-  compose: { status: 'pending', isExpanded: false },
-  publish: { status: 'pending', isExpanded: false },
-};
+function getInitialSteps(hasPlanning: boolean, hasScript: boolean): StepsState {
+  return {
+    project: { status: 'completed', isExpanded: false },
+    planning: { status: hasPlanning ? 'completed' : 'ready', isExpanded: !hasPlanning },
+    script: {
+      status: hasScript ? 'completed' : hasPlanning ? 'ready' : 'pending',
+      isExpanded: hasPlanning && !hasScript,
+    },
+    assets: { status: hasScript ? 'ready' : 'pending', isExpanded: false },
+    compose: { status: 'pending', isExpanded: false },
+    publish: { status: 'pending', isExpanded: false },
+  };
+}
 
-export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
-  const [steps, setSteps] = useState<StepsState>(INITIAL_STEPS);
-  const [scriptId] = useState<string | null>(null);
+export function ProjectDetailClient({
+  project,
+  initialPlanning,
+  initialScript = null,
+  initialScenes = [],
+}: ProjectDetailClientProps) {
+  const [steps, setSteps] = useState<StepsState>(() =>
+    getInitialSteps(!!initialPlanning, !!initialScript)
+  );
+
+  // Planning state (E4)
+  const [planning, setPlanning] = useState<Planning | null>(initialPlanning);
+
+  // Script state (E5)
+  const [script, setScript] = useState<Script | null>(initialScript);
+  const [scenes, setScenes] = useState<Scene[]>(initialScenes);
+
+  // Assets & Compose state
   const [isAssetsComplete] = useState(false);
   const [isComposeComplete, setIsComposeComplete] = useState(false);
 
@@ -74,6 +104,80 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
       updateStepStatus('publish', 'completed');
     },
     [updateStepStatus]
+  );
+
+  // E4: Planning handlers
+  const handlePlanningGenerated = useCallback(
+    (newPlanning: Planning) => {
+      setPlanning(newPlanning);
+      updateStepStatus('planning', 'completed');
+      updateStepStatus('script', 'ready');
+      // Expand script step automatically
+      setSteps((prev) => ({
+        ...prev,
+        script: { ...prev.script, isExpanded: true },
+        planning: { ...prev.planning, isExpanded: false },
+      }));
+    },
+    [updateStepStatus]
+  );
+
+  const handlePlanningUpdated = useCallback((updatedPlanning: Planning) => {
+    setPlanning(updatedPlanning);
+  }, []);
+
+  const handleSavePlanning = useCallback(
+    async (planningId: string, params: UpdatePlanningParams) => {
+      // TODO: Call API to save planning
+      const response = await fetch(
+        `/api/shorts-gen/projects/${project.id}/planning/${planningId}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(params),
+        }
+      );
+      if (!response.ok) {
+        throw new Error('Failed to save planning');
+      }
+    },
+    [project.id]
+  );
+
+  // E5: Script handlers
+  const handleScriptGenerated = useCallback(
+    (newScript: Script, newScenes: Scene[]) => {
+      setScript(newScript);
+      setScenes(newScenes);
+      updateStepStatus('script', 'completed');
+      updateStepStatus('assets', 'ready');
+      // Expand assets step automatically
+      setSteps((prev) => ({
+        ...prev,
+        assets: { ...prev.assets, isExpanded: true },
+        script: { ...prev.script, isExpanded: false },
+      }));
+    },
+    [updateStepStatus]
+  );
+
+  const handleSceneUpdated = useCallback((updatedScene: Scene) => {
+    setScenes((prev) => prev.map((s) => (s.id === updatedScene.id ? updatedScene : s)));
+  }, []);
+
+  const handleSaveScene = useCallback(
+    async (sceneId: string, params: UpdateSceneParams) => {
+      // TODO: Call API to save scene
+      const response = await fetch(`/api/shorts-gen/projects/${project.id}/scenes/${sceneId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to save scene');
+      }
+    },
+    [project.id]
   );
 
   return (
@@ -141,7 +245,7 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
           </Card>
         </StepCard>
 
-        {/* Step 2: Planning */}
+        {/* Step 2: Planning (E4) */}
         <StepCard
           stepNumber={2}
           title="企画書"
@@ -152,13 +256,23 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
           canRegenerate
           canEdit
         >
-          <div className="text-center py-8 text-muted-foreground">
-            <p>企画書生成UIはE4タスクで実装されます</p>
-            <p className="text-sm mt-1">チャットUIでAIと対話しながら企画書を作成できます</p>
-          </div>
+          <PlanningGenerationStep
+            projectId={project.id}
+            planning={planning}
+            status={
+              steps.planning.status === 'ready'
+                ? 'ready'
+                : steps.planning.status === 'completed'
+                  ? 'completed'
+                  : 'idle'
+            }
+            onPlanningGenerated={handlePlanningGenerated}
+            onPlanningUpdated={handlePlanningUpdated}
+            onSavePlanning={handleSavePlanning}
+          />
         </StepCard>
 
-        {/* Step 3: Script */}
+        {/* Step 3: Script (E5) */}
         <StepCard
           stepNumber={3}
           title="台本"
@@ -169,10 +283,22 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
           canRegenerate
           canEdit
         >
-          <div className="text-center py-8 text-muted-foreground">
-            <p>台本生成UIはE5タスクで実装されます</p>
-            <p className="text-sm mt-1">チャットUIでAIと対話しながら台本を作成できます</p>
-          </div>
+          <ScriptGenerationStep
+            projectId={project.id}
+            planningId={planning?.id ?? null}
+            script={script}
+            scenes={scenes}
+            status={
+              steps.script.status === 'ready'
+                ? 'ready'
+                : steps.script.status === 'completed'
+                  ? 'completed'
+                  : 'idle'
+            }
+            onScriptGenerated={handleScriptGenerated}
+            onSceneUpdated={handleSceneUpdated}
+            onSaveScene={handleSaveScene}
+          />
         </StepCard>
 
         {/* Step 4: Assets (4-5-6-7) */}
@@ -203,7 +329,7 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
         >
           <ComposeStep
             projectId={project.id}
-            scriptId={scriptId}
+            scriptId={script?.id ?? null}
             isEnabled={isAssetsComplete}
             onComposeComplete={handleComposeComplete}
           />

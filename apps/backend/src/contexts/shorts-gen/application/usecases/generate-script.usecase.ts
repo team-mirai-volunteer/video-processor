@@ -122,9 +122,48 @@ const SAVE_SCRIPT_TOOL: ToolDefinition = {
     properties: {
       scenes: {
         type: 'array',
-        description:
-          'シーンの配列。各シーンはsummary, visualType, voiceText/silenceDurationMs, subtitlesなどを含む',
-        items: { type: 'object' },
+        description: 'シーンの配列',
+        items: {
+          type: 'object',
+          properties: {
+            summary: {
+              type: 'string',
+              description: 'シーンの概要・説明（必須、空文字不可）',
+            },
+            visualType: {
+              type: 'string',
+              enum: ['image_gen', 'stock_video', 'solid_color'],
+              description:
+                '映像タイプ: image_gen=AI生成画像、stock_video=ストック動画、solid_color=単色背景',
+            },
+            voiceText: {
+              type: 'string',
+              description: 'ナレーション文（読み上げテキスト）。無音シーンの場合はnullまたは省略',
+            },
+            subtitles: {
+              type: 'array',
+              items: { type: 'string' },
+              description: '字幕テキストの配列（1シーンに複数可）',
+            },
+            silenceDurationMs: {
+              type: 'number',
+              description: '無音シーンの長さ（ミリ秒）。voiceTextがある場合はnullまたは省略',
+            },
+            stockVideoKey: {
+              type: 'string',
+              description: 'ストック動画のキー（visualTypeがstock_videoの場合のみ必須）',
+            },
+            solidColor: {
+              type: 'string',
+              description: '背景色（#RRGGBB形式、visualTypeがsolid_colorの場合のみ必須）',
+            },
+            imageStyleHint: {
+              type: 'string',
+              description: '画像生成時のスタイルヒント（任意）',
+            },
+          },
+          required: ['summary', 'visualType'],
+        },
       },
     },
     required: ['scenes'],
@@ -378,6 +417,12 @@ export class GenerateScriptUseCase {
         throw new ValidationError(`Scene at index ${i} is undefined`);
       }
 
+      // AIの出力を正規化: 0やnullは未設定として扱う
+      const silenceDurationMs =
+        sceneInput.silenceDurationMs && sceneInput.silenceDurationMs > 0
+          ? sceneInput.silenceDurationMs
+          : null;
+
       const sceneResult = ShortsScene.create(
         {
           scriptId: script.id,
@@ -386,7 +431,7 @@ export class GenerateScriptUseCase {
           visualType: sceneInput.visualType,
           voiceText: sceneInput.voiceText ?? null,
           subtitles: sceneInput.subtitles ?? [],
-          silenceDurationMs: sceneInput.silenceDurationMs ?? null,
+          silenceDurationMs,
           stockVideoKey: sceneInput.stockVideoKey ?? null,
           solidColor: sceneInput.solidColor ?? null,
           imageStyleHint: sceneInput.imageStyleHint ?? null,
