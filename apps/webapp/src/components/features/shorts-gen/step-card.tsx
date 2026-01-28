@@ -31,13 +31,21 @@ export interface StepCardProps {
   progressMessage?: string | null;
 }
 
-const CIRCLED_NUMBERS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
+const CIRCLED_NUMBERS: Record<number, string> = {
+  1: '①',
+  2: '②',
+  3: '③',
+  4: '④',
+  5: '⑤',
+  6: '⑥',
+  7: '⑦',
+  8: '⑧',
+  9: '⑨',
+  10: '⑩',
+};
 
 function getCircledNumber(num: number): string {
-  if (num >= 1 && num <= 10) {
-    return CIRCLED_NUMBERS[num - 1];
-  }
-  return `(${num})`;
+  return CIRCLED_NUMBERS[num] ?? `(${num})`;
 }
 
 function StatusIcon({ status }: { status: StepStatus }) {
