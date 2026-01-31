@@ -9,6 +9,7 @@ video-processor: Google Drive動画をAIで分析し、ショート動画に自�
 pnpm dev              # frontend + backend 同時起動
 pnpm lint             # Biomeでlint
 pnpm lint:fix         # lint + 自動修正
+pnpm typecheck        # TypeScript型チェック
 
 # Backend (apps/backend)
 pnpm --filter backend test:unit         # ユニットテスト
