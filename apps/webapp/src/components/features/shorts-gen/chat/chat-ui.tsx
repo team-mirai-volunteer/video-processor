@@ -127,9 +127,9 @@ export function ChatUI({
         </CardHeader>
       )}
 
-      <CardContent className="flex flex-1 flex-col gap-4 p-4 pt-0">
+      <CardContent className="flex flex-1 flex-col gap-4 p-4 pt-0 overflow-hidden">
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto min-h-[200px] max-h-[400px] pr-2">
+        <div className="flex-1 overflow-y-auto min-h-0 pr-2">
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
               メッセージがありません

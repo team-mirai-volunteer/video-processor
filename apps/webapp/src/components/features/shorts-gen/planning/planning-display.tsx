@@ -27,9 +27,9 @@ export function PlanningDisplay({ planning, onEdit, className }: PlanningDisplay
   }, [planning.content]);
 
   return (
-    <Card className={cn('', className)}>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-3">
+    <Card className={cn('flex flex-col', className)}>
+      <CardContent className="p-4 flex flex-col flex-1 overflow-hidden">
+        <div className="flex items-center justify-between mb-3 flex-shrink-0">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>バージョン {planning.version}</span>
           </div>
@@ -48,7 +48,7 @@ export function PlanningDisplay({ planning, onEdit, className }: PlanningDisplay
         </div>
 
         {/* Markdown content rendered as prose */}
-        <div className="prose prose-sm dark:prose-invert max-w-none">
+        <div className="prose prose-sm dark:prose-invert max-w-none flex-1 overflow-y-auto">
           <div className="whitespace-pre-wrap text-sm leading-relaxed">{planning.content}</div>
         </div>
       </CardContent>

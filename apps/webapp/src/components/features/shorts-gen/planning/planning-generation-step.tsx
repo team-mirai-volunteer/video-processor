@@ -116,7 +116,7 @@ export function PlanningGenerationStep({
       {(isReady || hasPlanning) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Left: Planning display/editor */}
-          <div className="order-2 lg:order-1">
+          <div className="order-2 lg:order-1 h-[800px]">
             {hasPlanning && isEditing && (
               <PlanningEditor
                 planning={planning}
@@ -130,18 +130,19 @@ export function PlanningGenerationStep({
               <PlanningDisplay
                 planning={planning}
                 onEdit={onSavePlanning ? handleEdit : undefined}
+                className="h-full"
               />
             )}
 
             {!hasPlanning && (
-              <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded-md h-full flex items-center justify-center min-h-[300px]">
+              <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded-md h-full flex items-center justify-center">
                 <p>チャットで企画書を生成してください</p>
               </div>
             )}
           </div>
 
           {/* Right: Chat UI */}
-          <div className="order-1 lg:order-2">
+          <div className="order-1 lg:order-2 h-[800px]">
             <ChatUI
               endpoint={getEndpoint(projectId)}
               title="企画書生成チャット"
@@ -152,7 +153,7 @@ export function PlanningGenerationStep({
               headers={{
                 'X-Planning-Id': planning?.id || '',
               }}
-              className="min-h-[300px]"
+              className="h-full"
             />
           </div>
         </div>
