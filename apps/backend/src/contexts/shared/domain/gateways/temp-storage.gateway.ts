@@ -77,4 +77,12 @@ export interface TempStorageGateway {
    * @param gcsUri GCS URI to check
    */
   exists(gcsUri: string): Promise<boolean>;
+
+  /**
+   * Generate a signed URL from a GCS URI
+   * @param gcsUri GCS URI (gs://bucket/path format)
+   * @param expiresInMinutes Expiration time in minutes (default: 60)
+   * @returns Signed HTTPS URL for browser access
+   */
+  getSignedUrl(gcsUri: string, expiresInMinutes?: number): Promise<string>;
 }

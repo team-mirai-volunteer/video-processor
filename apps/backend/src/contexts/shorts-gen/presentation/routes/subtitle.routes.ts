@@ -1,3 +1,4 @@
+import type { TempStorageGateway } from '@shared/domain/gateways/temp-storage.gateway.js';
 import { GcsClient } from '@shared/infrastructure/clients/gcs.client.js';
 import { LocalTempStorageClient } from '@shared/infrastructure/clients/local-temp-storage.client.js';
 import { prisma } from '@shared/infrastructure/database/connection.js';
@@ -24,13 +25,42 @@ const projectRepository = new ShortsProjectRepository(prisma);
 const sceneRepository = new ShortsSceneRepository(prisma);
 const sceneAssetRepository = new ShortsSceneAssetRepository(prisma);
 
+// Initialize gateways based on environment
+function createTempStorageGateway(): TempStorageGateway {
+  if (process.env.TEMP_STORAGE_TYPE === 'local') {
+    return new LocalTempStorageClient();
+  }
+  return new GcsClient();
+}
+
+// Singleton storage gateway for URL signing
+let storageGateway: TempStorageGateway | null = null;
+
+function getStorageGateway(): TempStorageGateway {
+  if (!storageGateway) {
+    storageGateway = createTempStorageGateway();
+  }
+  return storageGateway;
+}
+
+/**
+ * Convert GCS URI to signed URL for browser access
+ */
+async function toSignedUrl(gcsUri: string | null | undefined): Promise<string | null> {
+  if (!gcsUri) return null;
+  // Only convert gs:// or local:// URIs
+  if (!gcsUri.startsWith('gs://') && !gcsUri.startsWith('local://')) {
+    return gcsUri;
+  }
+  return getStorageGateway().getSignedUrl(gcsUri);
+}
+
 /**
  * Create AssetStorageGateway adapter from TempStorageGateway
  * This wraps the TempStorage interface to match AssetStorageGateway
  */
 function createAssetStorageGateway(): AssetStorageGateway {
-  const isLocal = process.env.TEMP_STORAGE_TYPE === 'local';
-  const tempStorage = isLocal ? new LocalTempStorageClient() : new GcsClient();
+  const tempStorage = getStorageGateway();
 
   return {
     async upload(params) {
@@ -108,7 +138,23 @@ router.post('/scripts/:scriptId/subtitles', async (req, res, next) => {
     const useCase = getGenerateSubtitlesUseCase();
     const result = await useCase.execute(input);
 
-    res.status(200).json(result);
+    // Convert GCS URIs to signed URLs for browser access
+    const sceneResultsWithSignedUrls = await Promise.all(
+      result.sceneResults.map(async (sceneResult) => ({
+        ...sceneResult,
+        assets: await Promise.all(
+          sceneResult.assets.map(async (asset) => ({
+            ...asset,
+            fileUrl: (await toSignedUrl(asset.fileUrl)) ?? '',
+          }))
+        ),
+      }))
+    );
+
+    res.status(200).json({
+      ...result,
+      sceneResults: sceneResultsWithSignedUrls,
+    });
   } catch (error) {
     if (error instanceof GenerateSubtitlesError) {
       const statusCode = getStatusCodeForSubtitleError(error.code);
@@ -158,7 +204,23 @@ router.post('/scenes/:sceneId/subtitles', async (req, res, next) => {
     const useCase = getGenerateSubtitlesUseCase();
     const result = await useCase.execute(input);
 
-    res.status(200).json(result);
+    // Convert GCS URIs to signed URLs for browser access
+    const sceneResultsWithSignedUrls = await Promise.all(
+      result.sceneResults.map(async (sceneResult) => ({
+        ...sceneResult,
+        assets: await Promise.all(
+          sceneResult.assets.map(async (asset) => ({
+            ...asset,
+            fileUrl: (await toSignedUrl(asset.fileUrl)) ?? '',
+          }))
+        ),
+      }))
+    );
+
+    res.status(200).json({
+      ...result,
+      sceneResults: sceneResultsWithSignedUrls,
+    });
   } catch (error) {
     if (error instanceof GenerateSubtitlesError) {
       const statusCode = getStatusCodeForSubtitleError(error.code);
@@ -204,16 +266,17 @@ router.get('/scripts/:scriptId/subtitles', async (req, res, next) => {
     // Filter to subtitle_image assets only
     const subtitleAssets = assets.filter((a) => a.assetType === 'subtitle_image');
 
-    // Group by scene
+    // Group by scene and convert to signed URLs
     const assetsByScene = new Map<
       string,
       Array<{ assetId: string; fileUrl: string; subtitleIndex: number; subtitleText: string }>
     >();
     for (const asset of subtitleAssets) {
+      const signedUrl = await toSignedUrl(asset.fileUrl);
       const existing = assetsByScene.get(asset.sceneId) ?? [];
       existing.push({
         assetId: asset.id,
-        fileUrl: asset.fileUrl,
+        fileUrl: signedUrl ?? '',
         subtitleIndex: (asset.metadata as { subtitleIndex?: number })?.subtitleIndex ?? 0,
         subtitleText: (asset.metadata as { subtitleText?: string })?.subtitleText ?? '',
       });

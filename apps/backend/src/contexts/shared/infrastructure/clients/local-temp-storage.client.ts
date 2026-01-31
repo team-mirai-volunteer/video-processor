@@ -194,4 +194,19 @@ export class LocalTempStorageClient implements TempStorageGateway {
   getBaseDir(): string {
     return this.baseDir;
   }
+
+  /**
+   * Generate a URL for accessing local files
+   * For local development, returns a URL through the backend's local file server endpoint
+   * @param uri Local URI (local:// format) or GCS URI (gs:// format for compatibility)
+   * @param _expiresInMinutes Ignored for local storage (no expiration needed)
+   * @returns URL accessible via backend's local file server
+   */
+  async getSignedUrl(uri: string, _expiresInMinutes?: number): Promise<string> {
+    const filePath = this.parseUri(uri);
+    // Return URL through backend's local file server endpoint
+    // The path is encoded to handle special characters
+    const backendUrl = process.env.BACKEND_URL ?? 'http://localhost:3001';
+    return `${backendUrl}/api/local-files?path=${encodeURIComponent(filePath)}`;
+  }
 }
