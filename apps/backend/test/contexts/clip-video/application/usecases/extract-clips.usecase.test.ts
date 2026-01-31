@@ -57,6 +57,7 @@ describe('ExtractClipsUseCase', () => {
     download: vi.fn(),
     downloadAsStream: vi.fn(),
     exists: vi.fn(),
+    getSignedUrl: vi.fn(),
   };
 
   const mockAiGateway: AiGateway = {
