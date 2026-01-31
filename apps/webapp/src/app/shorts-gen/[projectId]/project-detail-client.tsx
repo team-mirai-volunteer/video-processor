@@ -173,12 +173,6 @@ export function ProjectDetailClient({
     setIsAssetsComplete(true);
     updateStepStatus('assets', 'completed');
     updateStepStatus('compose', 'ready');
-    // Expand compose step automatically
-    setSteps((prev) => ({
-      ...prev,
-      compose: { ...prev.compose, isExpanded: true },
-      assets: { ...prev.assets, isExpanded: false },
-    }));
   }, [updateStepStatus]);
 
   const handleComposeComplete = useCallback(
@@ -236,12 +230,6 @@ export function ProjectDetailClient({
       setScenes(newScenes);
       updateStepStatus('script', 'completed');
       updateStepStatus('assets', 'ready');
-      // Expand assets step automatically
-      setSteps((prev) => ({
-        ...prev,
-        assets: { ...prev.assets, isExpanded: true },
-        script: { ...prev.script, isExpanded: false },
-      }));
     },
     [updateStepStatus]
   );
