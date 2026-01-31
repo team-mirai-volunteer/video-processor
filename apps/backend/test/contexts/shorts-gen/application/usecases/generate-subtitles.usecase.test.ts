@@ -339,7 +339,7 @@ describe('GenerateSubtitlesUseCase', () => {
       });
     });
 
-    it('should throw error when subtitle generation fails', async () => {
+    it('should record error in results when subtitle generation fails', async () => {
       vi.mocked(subtitleGenerator.generate).mockResolvedValue({
         success: false,
         error: {
@@ -348,23 +348,25 @@ describe('GenerateSubtitlesUseCase', () => {
         },
       });
 
-      await expect(useCase.execute({ scriptId: 'script-1' })).rejects.toThrow(
-        GenerateSubtitlesError
-      );
-      await expect(useCase.execute({ scriptId: 'script-1' })).rejects.toMatchObject({
-        code: GENERATE_SUBTITLES_ERROR_CODES.GENERATION_FAILED,
-      });
+      const result = await useCase.execute({ scriptId: 'script-1' });
+
+      // All scenes should have failed
+      expect(result.sceneResults.every((r) => !r.success)).toBe(true);
+      expect(result.errors).toBeDefined();
+      expect(result.errors?.length).toBe(2);
+      expect(result.totalAssetsGenerated).toBe(0);
     });
 
-    it('should throw error when asset upload fails', async () => {
+    it('should record error in results when asset upload fails', async () => {
       vi.mocked(assetStorage.upload).mockRejectedValue(new Error('Upload failed'));
 
-      await expect(useCase.execute({ scriptId: 'script-1' })).rejects.toThrow(
-        GenerateSubtitlesError
-      );
-      await expect(useCase.execute({ scriptId: 'script-1' })).rejects.toMatchObject({
-        code: GENERATE_SUBTITLES_ERROR_CODES.UPLOAD_FAILED,
-      });
+      const result = await useCase.execute({ scriptId: 'script-1' });
+
+      // All scenes should have failed
+      expect(result.sceneResults.every((r) => !r.success)).toBe(true);
+      expect(result.errors).toBeDefined();
+      expect(result.errors?.length).toBe(2);
+      expect(result.totalAssetsGenerated).toBe(0);
     });
 
     it('should return correct scene results in order', async () => {
