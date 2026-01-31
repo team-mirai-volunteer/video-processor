@@ -1,11 +1,11 @@
 'use server';
 
+import { backendClient } from '@/server/infrastructure/clients/backend-client';
 import type {
   ComposeVideoAcceptedResponse,
   ComposeVideoResponse,
   GetComposedVideoResponse,
 } from '@video-processor/shared';
-import { backendClient } from '@/server/infrastructure/clients/backend-client';
 
 export async function composeVideo(
   projectId: string,

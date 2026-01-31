@@ -1,7 +1,7 @@
 'use server';
 
-import type { GeneratePublishTextResponse, GetPublishTextResponse } from '@video-processor/shared';
 import { backendClient } from '@/server/infrastructure/clients/backend-client';
+import type { GeneratePublishTextResponse, GetPublishTextResponse } from '@video-processor/shared';
 
 export async function generatePublishText(projectId: string): Promise<GeneratePublishTextResponse> {
   return backendClient.generatePublishText({ projectId });
