@@ -5,9 +5,11 @@ import type {
   AssetColumnData,
   AssetGenerationStatus,
   GenerateAllAssetsResponse,
+  GenerateImagePromptResponse,
   GenerateImageResponse,
   GenerateSubtitleResponse,
   GenerateVoiceResponse,
+  ImagePromptState,
   Scene,
   SceneAsset,
   SceneAssetState,
@@ -19,6 +21,7 @@ interface UseAssetGenerationOptions {
   onVoiceGenerate?: (sceneId: string) => Promise<GenerateVoiceResponse>;
   onSubtitleGenerate?: (sceneId: string) => Promise<GenerateSubtitleResponse>;
   onImageGenerate?: (sceneId: string) => Promise<GenerateImageResponse>;
+  onImagePromptGenerate?: (sceneId: string) => Promise<GenerateImagePromptResponse>;
   onAllVoicesGenerate?: () => Promise<GenerateAllAssetsResponse>;
   onAllSubtitlesGenerate?: () => Promise<GenerateAllAssetsResponse>;
   onAllImagesGenerate?: () => Promise<GenerateAllAssetsResponse>;
@@ -28,12 +31,21 @@ interface AssetGenerationState {
   voice: Record<string, SceneAssetState>;
   subtitle: Record<string, SceneAssetState>;
   image: Record<string, SceneAssetState>;
+  imagePrompt: Record<string, ImagePromptState>;
   isGeneratingVoice: boolean;
   isGeneratingSubtitle: boolean;
   isGeneratingImage: boolean;
+  isGeneratingImagePrompt: boolean;
 }
 
 function createInitialSceneState(sceneId: string): SceneAssetState {
+  return {
+    sceneId,
+    status: 'pending',
+  };
+}
+
+function createInitialImagePromptState(sceneId: string): ImagePromptState {
   return {
     sceneId,
     status: 'pending',
@@ -44,20 +56,24 @@ function initializeState(scenes: Scene[]): AssetGenerationState {
   const voice: Record<string, SceneAssetState> = {};
   const subtitle: Record<string, SceneAssetState> = {};
   const image: Record<string, SceneAssetState> = {};
+  const imagePrompt: Record<string, ImagePromptState> = {};
 
   for (const scene of scenes) {
     voice[scene.id] = createInitialSceneState(scene.id);
     subtitle[scene.id] = createInitialSceneState(scene.id);
     image[scene.id] = createInitialSceneState(scene.id);
+    imagePrompt[scene.id] = createInitialImagePromptState(scene.id);
   }
 
   return {
     voice,
     subtitle,
     image,
+    imagePrompt,
     isGeneratingVoice: false,
     isGeneratingSubtitle: false,
     isGeneratingImage: false,
+    isGeneratingImagePrompt: false,
   };
 }
 
@@ -67,6 +83,7 @@ export function useAssetGeneration({
   onVoiceGenerate,
   onSubtitleGenerate,
   onImageGenerate,
+  onImagePromptGenerate,
   onAllVoicesGenerate,
   onAllSubtitlesGenerate,
   onAllImagesGenerate,
@@ -81,6 +98,22 @@ export function useAssetGeneration({
           ...prev[type],
           [sceneId]: {
             ...prev[type][sceneId],
+            ...updates,
+          },
+        },
+      }));
+    },
+    []
+  );
+
+  const updateImagePromptState = useCallback(
+    (sceneId: string, updates: Partial<ImagePromptState>) => {
+      setState((prev) => ({
+        ...prev,
+        imagePrompt: {
+          ...prev.imagePrompt,
+          [sceneId]: {
+            ...prev.imagePrompt[sceneId],
             ...updates,
           },
         },
@@ -138,6 +171,28 @@ export function useAssetGeneration({
       }
     },
     [onImageGenerate, updateSceneState]
+  );
+
+  const generateImagePrompt = useCallback(
+    async (sceneId: string): Promise<GenerateImagePromptResponse | undefined> => {
+      if (!onImagePromptGenerate) return;
+      updateImagePromptState(sceneId, { status: 'running', error: undefined });
+      try {
+        const response = await onImagePromptGenerate(sceneId);
+        updateImagePromptState(sceneId, {
+          status: 'completed',
+          imagePrompt: response.imagePrompt,
+        });
+        return response;
+      } catch (error) {
+        updateImagePromptState(sceneId, {
+          status: 'error',
+          error: error instanceof Error ? error.message : 'プロンプト生成に失敗しました',
+        });
+        return undefined;
+      }
+    },
+    [onImagePromptGenerate, updateImagePromptState]
   );
 
   const generateAllVoices = useCallback(async () => {
@@ -380,6 +435,7 @@ export function useAssetGeneration({
     generateVoice,
     generateSubtitle,
     generateImage,
+    generateImagePrompt,
     generateAllVoices,
     generateAllSubtitles,
     generateAllImages,
