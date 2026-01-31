@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -233,9 +233,53 @@ export class FFmpegComposeClient implements VideoComposeGateway {
   ): Promise<void> {
     const durationSec = scene.durationMs / 1000;
 
+    // FFmpegコマンド引数を構築
+    const args: string[] = ['-y'];
+
+    // 背景入力の設定
+    if (scene.visual.type === 'solid_color') {
+      const color = scene.visual.color?.replace('#', '') ?? '000000';
+      args.push(
+        '-f',
+        'lavfi',
+        '-i',
+        `color=c=0x${color}:s=${width}x${height}:d=${durationSec}:r=${frameRate}`
+      );
+    } else if (scene.visual.type === 'image' && scene.visual.filePath) {
+      args.push('-loop', '1', '-t', String(durationSec), '-i', scene.visual.filePath);
+    } else if (scene.visual.type === 'video' && scene.visual.filePath) {
+      args.push('-stream_loop', '-1', '-t', String(durationSec), '-i', scene.visual.filePath);
+    }
+
+    // 字幕画像入力
+    for (const subtitle of scene.subtitles) {
+      args.push('-i', subtitle.imagePath);
+    }
+
+    // 音声入力（ある場合）または無音音声
+    const audioPath = scene.audioPath;
+    let audioInputIndex: number;
+    if (audioPath) {
+      args.push('-i', audioPath);
+      audioInputIndex = 1 + scene.subtitles.length;
+    } else {
+      // 無音音声を追加
+      args.push('-f', 'lavfi', '-i', `anullsrc=r=44100:cl=stereo:d=${durationSec}`);
+      audioInputIndex = 1 + scene.subtitles.length;
+    }
+
+    // フィルターチェーン構築
+    let filterComplex = '';
+
+    // 背景のスケーリング（solid_colorの場合はすでに正しいサイズなのでスキップ可能だが統一のため適用）
+    if (scene.visual.type === 'solid_color') {
+      filterComplex = '[0:v]setsar=1[bg];';
+    } else {
+      filterComplex = `[0:v]scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${frameRate}[bg];`;
+    }
+
     // 字幕オーバーレイ用のフィルター構築
     const subtitleFilterParts: string[] = [];
-
     for (let i = 0; i < scene.subtitles.length; i++) {
       const subtitle = scene.subtitles[i];
       if (!subtitle) {
@@ -251,78 +295,54 @@ export class FFmpegComposeClient implements VideoComposeGateway {
       );
     }
 
+    // 字幕オーバーレイ
+    if (subtitleFilterParts.length > 0) {
+      filterComplex += subtitleFilterParts.join(';');
+    } else {
+      filterComplex += '[bg]null[vout]';
+    }
+
+    args.push('-filter_complex', filterComplex);
+    args.push(
+      '-map',
+      '[vout]',
+      '-map',
+      `${audioInputIndex}:a`,
+      '-c:v',
+      'libx264',
+      '-preset',
+      'fast',
+      '-crf',
+      '23',
+      '-pix_fmt',
+      'yuv420p',
+      '-c:a',
+      'aac',
+      '-b:a',
+      '128k',
+      '-t',
+      String(durationSec),
+      outputPath
+    );
+
     return new Promise((resolve, reject) => {
-      const command = ffmpeg();
-
-      // 背景入力の設定
-      if (scene.visual.type === 'solid_color') {
-        const color = scene.visual.color?.replace('#', '') ?? '000000';
-        command.input(`color=c=0x${color}:s=${width}x${height}:d=${durationSec}`);
-        command.inputOptions(['-f', 'lavfi']);
-      } else if (scene.visual.type === 'image' && scene.visual.filePath) {
-        command.input(scene.visual.filePath);
-        command.inputOptions(['-loop', '1', '-t', String(durationSec)]);
-      } else if (scene.visual.type === 'video' && scene.visual.filePath) {
-        command.input(scene.visual.filePath);
-        command.inputOptions(['-stream_loop', '-1', '-t', String(durationSec)]);
-      }
-
-      // 字幕画像入力
-      for (const subtitle of scene.subtitles) {
-        command.input(subtitle.imagePath);
-      }
-
-      // 音声入力（ある場合）
-      const audioPath = scene.audioPath;
-      if (audioPath) {
-        command.input(audioPath);
-      }
-
-      // フィルターチェーン構築
-      let filterComplex = '';
-
-      // 背景のスケーリング
-      filterComplex = `[0:v]scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${frameRate}[bg];`;
-
-      // 字幕オーバーレイ
-      if (subtitleFilterParts.length > 0) {
-        filterComplex += subtitleFilterParts.join(';');
-      } else {
-        filterComplex += '[bg]null[vout]';
-      }
-
-      command.complexFilter(filterComplex);
-
-      command.outputOptions([
-        '-map',
-        '[vout]',
-        '-c:v',
-        'libx264',
-        '-preset',
-        'fast',
-        '-crf',
-        '23',
-        '-pix_fmt',
-        'yuv420p',
-        '-t',
-        String(durationSec),
-      ]);
-
-      // 音声マッピング
-      if (audioPath) {
-        const audioInputIndex = 1 + scene.subtitles.length;
-        command.outputOptions(['-map', `${audioInputIndex}:a`, '-c:a', 'aac', '-b:a', '128k']);
-      } else {
-        // 無音音声を追加
-        command.outputOptions(['-f', 'lavfi', '-i', `anullsrc=r=44100:cl=stereo:d=${durationSec}`]);
-        // Note: 無音はフィルターで追加する必要があるため、別処理
-      }
-
-      command
-        .output(outputPath)
-        .on('end', () => resolve())
-        .on('error', (e: Error) => reject(new Error(`Failed to create scene video: ${e.message}`)))
-        .run();
+      const proc = spawn('ffmpeg', args);
+      let stderr = '';
+      proc.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+      proc.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(
+            new Error(`Failed to create scene video: ffmpeg exited with code ${code}\n${stderr}`)
+          );
+        }
+      });
+      proc.on('error', (e) => {
+        reject(new Error(`Failed to create scene video: ${e.message}`));
+      });
     });
   }
 

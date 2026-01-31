@@ -24,8 +24,8 @@ function isFFmpegAvailable(): boolean {
 // Skip integration tests if INTEGRATION_TEST is not set or ffmpeg is not available
 const runIntegrationTests = process.env.INTEGRATION_TEST === 'true' && isFFmpegAvailable();
 
-const TEST_FIXTURES_DIR = path.join(__dirname, '../../../../fixtures');
-const OUTPUT_DIR = path.join(TEST_FIXTURES_DIR, 'output');
+const TEST_FIXTURES_DIR = path.join(__dirname, '../../fixtures/input');
+const TEST_OUTPUT_DIR = path.join(__dirname, '../../fixtures/output/compose');
 
 describe.skipIf(!runIntegrationTests)('FFmpegComposeClient Integration', () => {
   let client: FFmpegComposeClient;
@@ -34,7 +34,8 @@ describe.skipIf(!runIntegrationTests)('FFmpegComposeClient Integration', () => {
   beforeAll(async () => {
     client = new FFmpegComposeClient();
     tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'ffmpeg-compose-test-'));
-    await fs.promises.mkdir(OUTPUT_DIR, { recursive: true });
+    // 出力ディレクトリを作成（存在しない場合）
+    await fs.promises.mkdir(TEST_OUTPUT_DIR, { recursive: true });
   });
 
   afterAll(async () => {
@@ -479,6 +480,113 @@ describe.skipIf(!runIntegrationTests)('FFmpegComposeClient Integration', () => {
         expect(fs.existsSync(outputPath)).toBe(true);
       }
     });
+
+    it('should compose 3-scene video with real fixtures (images, subtitles, audio)', async () => {
+      // 3シーン分のfixture
+      const scene1ImagePath = path.join(TEST_FIXTURES_DIR, 'images', 'scene1.png');
+      const scene2ImagePath = path.join(TEST_FIXTURES_DIR, 'images', 'scene2.png');
+      const scene3ImagePath = path.join(TEST_FIXTURES_DIR, 'images', 'scene3.png');
+      const scene1SubtitlePath = path.join(TEST_FIXTURES_DIR, 'subtitles', 'scene1.png');
+      const scene2SubtitlePath = path.join(TEST_FIXTURES_DIR, 'subtitles', 'scene2.png');
+      const scene3SubtitlePath = path.join(TEST_FIXTURES_DIR, 'subtitles', 'scene3.png');
+      const scene1AudioPath = path.join(TEST_FIXTURES_DIR, 'audio', 'scene1.mp3');
+      const scene2AudioPath = path.join(TEST_FIXTURES_DIR, 'audio', 'scene2.mp3');
+      const scene3AudioPath = path.join(TEST_FIXTURES_DIR, 'audio', 'scene3.mp3');
+
+      // すべてのfixtureが存在することを確認
+      const fixtures = [
+        scene1ImagePath,
+        scene2ImagePath,
+        scene3ImagePath,
+        scene1SubtitlePath,
+        scene2SubtitlePath,
+        scene3SubtitlePath,
+        scene1AudioPath,
+        scene2AudioPath,
+        scene3AudioPath,
+      ];
+      const missingFixtures = fixtures.filter((f) => !fs.existsSync(f));
+      if (missingFixtures.length > 0) {
+        console.log('Skipping 3-scene fixture test: required fixtures not found', missingFixtures);
+        return;
+      }
+
+      const outputPath = path.join(TEST_OUTPUT_DIR, 'three_scene_output.mp4');
+
+      const params: VideoComposeParams = {
+        outputPath,
+        width: 1080,
+        height: 1920,
+        frameRate: 30,
+        scenes: [
+          {
+            sceneId: 'scene-1',
+            order: 0,
+            durationMs: 3000,
+            visual: {
+              type: 'image',
+              filePath: scene1ImagePath,
+            },
+            audioPath: scene1AudioPath,
+            subtitles: [
+              {
+                imagePath: scene1SubtitlePath,
+                startMs: 500,
+                endMs: 2500,
+              },
+            ],
+          },
+          {
+            sceneId: 'scene-2',
+            order: 1,
+            durationMs: 3000,
+            visual: {
+              type: 'image',
+              filePath: scene2ImagePath,
+            },
+            audioPath: scene2AudioPath,
+            subtitles: [
+              {
+                imagePath: scene2SubtitlePath,
+                startMs: 500,
+                endMs: 2500,
+              },
+            ],
+          },
+          {
+            sceneId: 'scene-3',
+            order: 2,
+            durationMs: 3000,
+            visual: {
+              type: 'image',
+              filePath: scene3ImagePath,
+            },
+            audioPath: scene3AudioPath,
+            subtitles: [
+              {
+                imagePath: scene3SubtitlePath,
+                startMs: 500,
+                endMs: 2500,
+              },
+            ],
+          },
+        ],
+      };
+
+      const result = await client.compose(params);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.value.outputPath).toBe(outputPath);
+        // 3シーン × 3秒 = 約9秒
+        expect(result.value.durationSeconds).toBeGreaterThanOrEqual(8);
+        expect(result.value.durationSeconds).toBeLessThanOrEqual(10);
+        expect(fs.existsSync(outputPath)).toBe(true);
+        // ファイルサイズが妥当か確認（少なくとも1MB以上）
+        const stats = fs.statSync(outputPath);
+        expect(stats.size).toBeGreaterThan(1024 * 1024);
+      }
+    }, 120000);
   });
 });
 
