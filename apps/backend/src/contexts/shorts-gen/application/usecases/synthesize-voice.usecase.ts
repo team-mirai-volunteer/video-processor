@@ -180,8 +180,7 @@ export class SynthesizeVoiceUseCase {
     const results: SceneVoiceSynthesisResult[] = [];
     const errors: SceneSynthesisError[] = [];
 
-    for (let i = 0; i < scenes.length; i++) {
-      const scene = scenes[i]!;
+    for (const [i, scene] of scenes.entries()) {
       const result = await this.processScene(scene, input.voiceModelId);
 
       if ('error' in result) {
