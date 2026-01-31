@@ -132,7 +132,7 @@ function AssetColumn({
           className="h-7 text-xs"
         >
           {column.isGenerating && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
-          {column.isGenerating ? '生成中...' : allCompleted ? '再生成' : '生成'}
+          {column.isGenerating ? '生成中...' : allCompleted ? '再生成' : '一括生成'}
         </Button>
       </div>
 

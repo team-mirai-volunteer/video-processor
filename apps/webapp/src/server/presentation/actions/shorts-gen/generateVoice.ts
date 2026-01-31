@@ -101,5 +101,48 @@ export async function generateAllVoices(projectId: string): Promise<{
     throw new Error(`音声生成に失敗しました: ${errorText}`);
   }
 
-  return response.json();
+  const data: SynthesizeVoiceBackendResponse = await response.json();
+
+  // Transform backend response to frontend format
+  const results: { sceneId: string; success: boolean; asset?: SceneAsset; error?: string }[] =
+    data.results.map((result) => {
+      if (result.skipped) {
+        return {
+          sceneId: result.sceneId,
+          success: true,
+          asset: {
+            id: '',
+            sceneId: result.sceneId,
+            assetType: 'voice' as const,
+            fileUrl: '',
+            durationMs: result.durationMs,
+          },
+        };
+      }
+      return {
+        sceneId: result.sceneId,
+        success: true,
+        asset: {
+          id: result.assetId,
+          sceneId: result.sceneId,
+          assetType: 'voice' as const,
+          fileUrl: result.fileUrl,
+          durationMs: result.durationMs,
+        },
+      };
+    });
+
+  // Add failed scenes from errors array
+  for (const error of data.errors) {
+    results.push({
+      sceneId: error.sceneId,
+      success: false,
+      error: error.message,
+    });
+  }
+
+  return {
+    success: data.failedCount === 0,
+    results,
+  };
 }
