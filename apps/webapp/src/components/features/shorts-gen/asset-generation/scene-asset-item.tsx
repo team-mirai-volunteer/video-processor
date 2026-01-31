@@ -159,7 +159,7 @@ export function SceneAssetItem({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          {state.status === 'completed' && state.asset && (
+          {state.status === 'completed' && state.asset && columnType !== 'voice' && (
             <Button
               size="sm"
               variant="ghost"
@@ -201,7 +201,14 @@ export function SceneAssetItem({
         </div>
       )}
 
-      {showPreview && state.asset && (
+      {columnType === 'voice' && state.status === 'completed' && state.asset && (
+        <div className="mt-2">
+          {/* biome-ignore lint/a11y/useMediaCaption: Captions not available for generated audio preview */}
+          <audio src={state.asset.fileUrl} controls className="w-full h-8" preload="metadata" />
+        </div>
+      )}
+
+      {showPreview && state.asset && columnType !== 'voice' && (
         <div className="mt-2 p-2 bg-muted/50 rounded">
           {getPreviewContent()}
           <Button
