@@ -7,6 +7,7 @@ import type {
   ToolCall,
   ToolDefinition,
 } from '@shorts-gen/domain/gateways/agentic-ai.gateway.js';
+import type { AssetRegistryGateway } from '@shorts-gen/domain/gateways/asset-registry.gateway.js';
 import type { ShortsPlanningRepositoryGateway } from '@shorts-gen/domain/gateways/planning-repository.gateway.js';
 import type { ShortsSceneRepositoryGateway } from '@shorts-gen/domain/gateways/scene-repository.gateway.js';
 import type { ShortsScriptRepositoryGateway } from '@shorts-gen/domain/gateways/script-repository.gateway.js';
@@ -66,6 +67,7 @@ export interface GenerateScriptUseCaseDeps {
   planningRepository: ShortsPlanningRepositoryGateway;
   scriptRepository: ShortsScriptRepositoryGateway;
   sceneRepository: ShortsSceneRepositoryGateway;
+  assetRegistryGateway: AssetRegistryGateway;
   generateId: () => string;
 }
 
@@ -77,9 +79,9 @@ interface SaveScriptToolArguments {
 }
 
 /**
- * 台本生成用のシステムプロンプト
+ * 台本生成用のシステムプロンプトのベース部分
  */
-const SYSTEM_PROMPT = `あなたはショート動画の台本作成アシスタントです。
+const SYSTEM_PROMPT_BASE = `あなたはショート動画の台本作成アシスタントです。
 企画書の内容を元に、視聴者を引きつける魅力的な台本を作成してください。
 
 ## 台本の要件
@@ -90,13 +92,13 @@ const SYSTEM_PROMPT = `あなたはショート動画の台本作成アシスタ
    - voiceText: ナレーション文（読み上げテキスト、無音の場合はnull）
    - subtitles: 字幕テキストの配列（1シーンに複数可）
    - silenceDurationMs: 無音シーンの長さ（ミリ秒、voiceTextがある場合はnull）
-   - stockVideoKey: ストック動画のキー（visualTypeがstock_videoの場合のみ）
+   - stockVideoKey: ストック動画のキー（visualTypeがstock_videoの場合のみ、下記の利用可能なキーから選択）
    - solidColor: 背景色（#RRGGBB形式、visualTypeがsolid_colorの場合のみ）
    - imageStyleHint: 画像生成時のスタイルヒント（任意）
 
 2. **重要なルール**
    - 各シーンにはvoiceTextかsilenceDurationMsのいずれかが必須
-   - visualTypeがstock_videoの場合はstockVideoKeyが必須
+   - visualTypeがstock_videoの場合はstockVideoKeyが必須（下記の利用可能なキーのみ使用可能）
    - visualTypeがsolid_colorの場合はsolidColor（#RRGGBB形式）が必須
    - ショート動画は60秒以内を目安に
    - 視聴者の注目を引く冒頭を心がける
@@ -179,6 +181,7 @@ export class GenerateScriptUseCase {
   private readonly planningRepository: ShortsPlanningRepositoryGateway;
   private readonly scriptRepository: ShortsScriptRepositoryGateway;
   private readonly sceneRepository: ShortsSceneRepositoryGateway;
+  private readonly assetRegistryGateway: AssetRegistryGateway;
   private readonly generateId: () => string;
 
   constructor(deps: GenerateScriptUseCaseDeps) {
@@ -186,7 +189,37 @@ export class GenerateScriptUseCase {
     this.planningRepository = deps.planningRepository;
     this.scriptRepository = deps.scriptRepository;
     this.sceneRepository = deps.sceneRepository;
+    this.assetRegistryGateway = deps.assetRegistryGateway;
     this.generateId = deps.generateId;
+  }
+
+  /**
+   * 利用可能なストック動画一覧を含むシステムプロンプトを生成
+   */
+  private buildSystemPrompt(): string {
+    const videoKeys = this.assetRegistryGateway.listVideoAssetKeys();
+
+    // 各キーの説明を取得
+    const videoDescriptions = videoKeys
+      .map((key) => {
+        const result = this.assetRegistryGateway.getVideoAsset(key);
+        if (result.success) {
+          return `   - ${key}: ${result.value.description}`;
+        }
+        return `   - ${key}`;
+      })
+      .join('\n');
+
+    const stockVideoSection =
+      videoKeys.length > 0
+        ? `
+
+4. **利用可能なストック動画（stockVideoKey）**
+   visualTypeがstock_videoの場合、以下のキーのみ使用可能です:
+${videoDescriptions}`
+        : '';
+
+    return SYSTEM_PROMPT_BASE + stockVideoSection;
   }
 
   /**
@@ -230,7 +263,7 @@ export class GenerateScriptUseCase {
     const streamResult = await this.agenticAiGateway.chatStream({
       messages,
       tools: [SAVE_SCRIPT_TOOL],
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt: this.buildSystemPrompt(),
       temperature: 0.7,
     });
 
@@ -304,7 +337,7 @@ export class GenerateScriptUseCase {
     const result = await this.agenticAiGateway.chat({
       messages,
       tools: [SAVE_SCRIPT_TOOL],
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt: this.buildSystemPrompt(),
       temperature: 0.7,
     });
 

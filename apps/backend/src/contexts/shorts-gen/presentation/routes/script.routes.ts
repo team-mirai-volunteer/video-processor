@@ -9,6 +9,7 @@ import {
 } from '@shorts-gen/application/usecases/generate-script.usecase.js';
 import type { ChatMessage } from '@shorts-gen/domain/gateways/agentic-ai.gateway.js';
 import type { VisualType } from '@shorts-gen/domain/models/scene.js';
+import { AssetRegistryClient } from '@shorts-gen/infrastructure/clients/asset-registry.client.js';
 import { OpenAiAgenticClient } from '@shorts-gen/infrastructure/clients/openai-agentic.client.js';
 import { ShortsPlanningRepository } from '@shorts-gen/infrastructure/repositories/planning.repository.js';
 import { ShortsSceneRepository } from '@shorts-gen/infrastructure/repositories/scene.repository.js';
@@ -24,6 +25,7 @@ const planningRepository = new ShortsPlanningRepository(prisma);
 const scriptRepository = new ShortsScriptRepository(prisma);
 const sceneRepository = new ShortsSceneRepository(prisma);
 const agenticAiGateway = new OpenAiAgenticClient();
+const assetRegistryGateway = new AssetRegistryClient();
 
 // Initialize use cases
 const generateScriptUseCase = new GenerateScriptUseCase({
@@ -31,6 +33,7 @@ const generateScriptUseCase = new GenerateScriptUseCase({
   planningRepository,
   scriptRepository,
   sceneRepository,
+  assetRegistryGateway,
   generateId: () => uuidv4(),
 });
 
