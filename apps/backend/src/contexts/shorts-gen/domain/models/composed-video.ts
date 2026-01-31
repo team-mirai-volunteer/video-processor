@@ -45,8 +45,8 @@ function isValidUrl(url: string): boolean {
 const VALID_TRANSITIONS: Record<ComposedVideoStatus, ComposedVideoStatus[]> = {
   pending: ['processing', 'failed'],
   processing: ['completed', 'failed'],
-  completed: ['pending'], // Allow re-generation
-  failed: ['pending'], // Allow retry
+  completed: ['pending', 'processing'], // Allow re-generation
+  failed: ['pending', 'processing'], // Allow retry directly
 };
 
 export class ShortsComposedVideo {

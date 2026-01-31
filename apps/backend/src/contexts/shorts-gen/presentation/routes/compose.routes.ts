@@ -41,6 +41,18 @@ const tempStorageGateway = createTempStorageGateway();
 const videoComposeGateway = new FFmpegComposeClient();
 const assetRegistryGateway = new AssetRegistryClient();
 
+/**
+ * Convert GCS URI to signed URL for browser access
+ */
+async function toSignedUrl(gcsUri: string | null | undefined): Promise<string | null> {
+  if (!gcsUri) return null;
+  // Only convert gs:// or local:// URIs
+  if (!gcsUri.startsWith('gs://') && !gcsUri.startsWith('local://')) {
+    return gcsUri;
+  }
+  return tempStorageGateway.getSignedUrl(gcsUri);
+}
+
 // Initialize use case
 const composeVideoUseCase = new ComposeVideoUseCase({
   projectRepository,
@@ -194,7 +206,7 @@ router.get('/project/:projectId', async (req, res, next) => {
       id: composedVideo.id,
       projectId: composedVideo.projectId,
       scriptId: composedVideo.scriptId,
-      fileUrl: composedVideo.fileUrl,
+      fileUrl: await toSignedUrl(composedVideo.fileUrl),
       durationSeconds: composedVideo.durationSeconds,
       status: composedVideo.status,
       errorMessage: composedVideo.errorMessage,
@@ -239,7 +251,7 @@ router.get('/script/:scriptId', async (req, res, next) => {
       id: composedVideo.id,
       projectId: composedVideo.projectId,
       scriptId: composedVideo.scriptId,
-      fileUrl: composedVideo.fileUrl,
+      fileUrl: await toSignedUrl(composedVideo.fileUrl),
       durationSeconds: composedVideo.durationSeconds,
       status: composedVideo.status,
       errorMessage: composedVideo.errorMessage,
@@ -284,7 +296,7 @@ router.get('/:id', async (req, res, next) => {
       id: composedVideo.id,
       projectId: composedVideo.projectId,
       scriptId: composedVideo.scriptId,
-      fileUrl: composedVideo.fileUrl,
+      fileUrl: await toSignedUrl(composedVideo.fileUrl),
       durationSeconds: composedVideo.durationSeconds,
       status: composedVideo.status,
       errorMessage: composedVideo.errorMessage,
