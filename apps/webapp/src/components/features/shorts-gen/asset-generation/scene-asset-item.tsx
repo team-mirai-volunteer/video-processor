@@ -62,6 +62,19 @@ function formatDuration(ms: number | null): string {
   return mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}秒`;
 }
 
+/** Photoshop風の市松模様背景スタイル（透明度表示用） */
+const checkerboardStyle: React.CSSProperties = {
+  backgroundImage: `
+    linear-gradient(45deg, #ccc 25%, transparent 25%),
+    linear-gradient(-45deg, #ccc 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ccc 75%),
+    linear-gradient(-45deg, transparent 75%, #ccc 75%)
+  `,
+  backgroundSize: '8px 8px',
+  backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+  backgroundColor: '#fff',
+};
+
 export function SceneAssetItem({
   scene,
   state,
@@ -100,11 +113,42 @@ export function SceneAssetItem({
           <audio src={state.asset.fileUrl} controls className="w-full h-8" preload="metadata" />
         );
       case 'subtitle':
+        // 字幕は複数画像を横スクロールで表示（市松模様背景）
+        if (state.assets && state.assets.length > 0) {
+          return (
+            <div className="overflow-x-auto">
+              <div className="flex gap-2" style={{ width: 'max-content' }}>
+                {state.assets.map((asset, index) => (
+                  <div
+                    key={asset.id}
+                    className="rounded shrink-0"
+                    style={{ ...checkerboardStyle, width: '80px' }}
+                  >
+                    <img
+                      src={asset.fileUrl}
+                      alt={`シーン ${scene.order + 1} - 字幕 ${index + 1}`}
+                      className="h-auto w-full rounded object-contain"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div className="rounded" style={{ ...checkerboardStyle, width: '80px' }}>
+            <img
+              src={state.asset.fileUrl}
+              alt={`シーン ${scene.order + 1} - 字幕`}
+              className="h-auto w-full rounded object-contain"
+            />
+          </div>
+        );
       case 'image':
         return (
           <img
             src={state.asset.fileUrl}
-            alt={`シーン ${scene.order + 1} - ${columnType === 'subtitle' ? '字幕' : '画像'}`}
+            alt={`シーン ${scene.order + 1} - 画像`}
             className="w-full h-auto rounded object-contain max-h-24"
           />
         );
