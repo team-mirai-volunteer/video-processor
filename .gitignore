@@ -58,3 +58,4 @@ playwright/.cache/
 
 # Test fixture outputs
 apps/backend/test/fixtures/output/
+apps/backend/test/contexts/*/fixtures/output/

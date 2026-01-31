@@ -15,10 +15,16 @@ import type {
 } from '../../domain/gateways/subtitle-generator.gateway.js';
 
 /**
+ * Default font family with fallbacks for different platforms
+ * Noto Sans CJK JP (Linux), Hiragino Sans (macOS), or DejaVu Sans (fallback)
+ */
+const DEFAULT_FONT_FAMILY = process.env.SUBTITLE_FONT_FAMILY || 'Hiragino Sans';
+
+/**
  * Default subtitle style settings
  */
 const DEFAULT_STYLE: Required<SubtitleStyle> = {
-  fontFamily: 'Noto Sans CJK JP',
+  fontFamily: DEFAULT_FONT_FAMILY,
   fontSize: 64,
   fontColor: '#FFFFFF',
   outlineColor: '#000000',

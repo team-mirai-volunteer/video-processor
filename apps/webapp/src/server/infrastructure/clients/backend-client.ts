@@ -14,10 +14,13 @@ import type {
   GetComposedVideoResponse,
   GetPublishTextResponse,
   GetRefinedTranscriptionResponse,
+  GetShortsImagesResponse,
   GetShortsPlanningResponse,
   GetShortsProjectResponse,
   GetShortsProjectsResponse,
   GetShortsScriptResponse,
+  GetShortsSubtitlesResponse,
+  GetShortsVoiceResponse,
   GetTranscriptionResponse,
   GetVideoResponse,
   GetVideosQuery,
@@ -359,6 +362,58 @@ export const backendClient = {
     await fetchBackend(`/api/shorts-gen/publish/${id}`, {
       method: 'DELETE',
     });
+  },
+
+  // Shorts Gen - Assets
+  async getShortsVoice(
+    scriptId: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetShortsVoiceResponse | null> {
+    try {
+      return await fetchBackend<GetShortsVoiceResponse>(
+        `/api/shorts-gen/scripts/${scriptId}/voice`,
+        options
+      );
+    } catch (error) {
+      if (error instanceof BackendApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  async getShortsSubtitles(
+    scriptId: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetShortsSubtitlesResponse | null> {
+    try {
+      return await fetchBackend<GetShortsSubtitlesResponse>(
+        `/api/shorts-gen/scripts/${scriptId}/subtitles`,
+        options
+      );
+    } catch (error) {
+      if (error instanceof BackendApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  async getShortsImages(
+    scriptId: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetShortsImagesResponse | null> {
+    try {
+      return await fetchBackend<GetShortsImagesResponse>(
+        `/api/shorts-gen/scripts/${scriptId}/images`,
+        options
+      );
+    } catch (error) {
+      if (error instanceof BackendApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
 };
 

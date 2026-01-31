@@ -82,4 +82,12 @@ export type {
   ShortsScene,
   ShortsScript,
   GetShortsScriptResponse,
+  // Asset types
+  SceneVoiceAsset,
+  GetShortsVoiceResponse,
+  SceneSubtitleAsset,
+  SceneSubtitles,
+  GetShortsSubtitlesResponse,
+  SceneImage,
+  GetShortsImagesResponse,
 } from './shorts-gen.js';

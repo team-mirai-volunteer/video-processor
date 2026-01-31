@@ -220,11 +220,13 @@ export class GenerateSubtitlesUseCase {
       });
 
       if (!result.success) {
-        const errorMessage =
-          'message' in result.error ? result.error.message : `Error type: ${result.error.type}`;
+        const errorType = result.error.type;
+        const errorMessage = 'message' in result.error ? result.error.message : '';
+        const errorStderr = 'stderr' in result.error ? result.error.stderr : '';
+        const fullErrorMessage = `Failed to generate subtitle for scene ${scene.id}, index ${i}: [${errorType}] ${errorMessage}${errorStderr ? ` - stderr: ${errorStderr}` : ''}`;
         throw new GenerateSubtitlesError(
           GENERATE_SUBTITLES_ERROR_CODES.GENERATION_FAILED,
-          `Failed to generate subtitle for scene ${scene.id}, index ${i}: ${errorMessage}`,
+          fullErrorMessage,
           result.error
         );
       }
