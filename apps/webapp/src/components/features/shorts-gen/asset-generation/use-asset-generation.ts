@@ -112,7 +112,11 @@ export function useAssetGeneration({
       updateSceneState('subtitle', sceneId, { status: 'running', error: undefined });
       try {
         const response = await onSubtitleGenerate(sceneId);
-        updateSceneState('subtitle', sceneId, { status: 'completed', asset: response.assets[0] });
+        updateSceneState('subtitle', sceneId, {
+          status: 'completed',
+          asset: response.assets[0],
+          assets: response.assets,
+        });
       } catch (error) {
         updateSceneState('subtitle', sceneId, {
           status: 'error',
@@ -217,6 +221,7 @@ export function useAssetGeneration({
           updateSceneState('subtitle', result.sceneId, {
             status: 'completed',
             asset: result.assets[0],
+            assets: result.assets,
           });
         } else {
           updateSceneState('subtitle', result.sceneId, {
