@@ -410,11 +410,26 @@ export function useAssetGeneration({
   }, [scenes, state]);
 
   const getOverallStatus = useCallback((): AssetGenerationStatus => {
-    const allStates = [
-      ...Object.values(state.voice),
-      ...Object.values(state.subtitle),
-      ...Object.values(state.image),
-    ];
+    // 生成が必要なシーンのみを対象とする（スキップ対象は分母から除外）
+    const voiceStates = scenes
+      .filter((s) => !!s.voiceText)
+      .map((s) => state.voice[s.id])
+      .filter((s): s is SceneAssetState => s !== undefined);
+    const subtitleStates = scenes
+      .filter((s) => s.subtitles.length > 0)
+      .map((s) => state.subtitle[s.id])
+      .filter((s): s is SceneAssetState => s !== undefined);
+    const imageStates = scenes
+      .filter((s) => s.visualType === 'image_gen')
+      .map((s) => state.image[s.id])
+      .filter((s): s is SceneAssetState => s !== undefined);
+
+    const allStates = [...voiceStates, ...subtitleStates, ...imageStates];
+
+    // 生成対象が1つもない場合はpending
+    if (allStates.length === 0) {
+      return 'pending';
+    }
 
     if (state.isGeneratingVoice || state.isGeneratingSubtitle || state.isGeneratingImage) {
       return 'running';
@@ -429,7 +444,7 @@ export function useAssetGeneration({
       return 'running';
     }
     return 'pending';
-  }, [state]);
+  }, [scenes, state]);
 
   const isAllCompleted = useCallback((): boolean => {
     return getOverallStatus() === 'completed';

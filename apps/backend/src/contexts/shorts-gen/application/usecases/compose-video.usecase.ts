@@ -157,7 +157,10 @@ export class ComposeVideoUseCase {
     let tempDir: string | null = null;
 
     try {
-      // 3. Fetch project for dimensions
+      // 3. Create temp directory for downloads and output
+      tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'compose-video-'));
+
+      // 4. Fetch project for dimensions
       const project = await this.projectRepository.findById(projectId);
       if (!project) {
         throw this.createError({ type: 'PROJECT_NOT_FOUND', projectId });
@@ -182,20 +185,21 @@ export class ComposeVideoUseCase {
       // Group assets by scene
       const scenesWithAssets = this.groupAssetsWithScenes(scenes, allAssets);
 
-      // 6. Build ComposeSceneInput for each scene
+      // 7. Build ComposeSceneInput for each scene (downloads GCS files to tempDir)
       const composeScenes: ComposeSceneInput[] = [];
       for (const { scene, voiceAsset, subtitleAssets, backgroundImageAsset } of scenesWithAssets) {
         const sceneInput = await this.buildComposeSceneInput(
           scene,
           voiceAsset,
           subtitleAssets,
-          backgroundImageAsset
+          backgroundImageAsset,
+          tempDir
         );
         composeScenes.push(sceneInput);
       }
       log.info('Built compose scene inputs', { count: composeScenes.length });
 
-      // 7. Resolve BGM path if provided
+      // 8. Resolve BGM path if provided
       let bgmPath: string | null = null;
       const effectiveBgmKey = composedVideo.bgmKey;
       if (effectiveBgmKey) {
@@ -211,8 +215,6 @@ export class ComposeVideoUseCase {
         log.info('Resolved BGM path', { bgmKey: effectiveBgmKey, bgmPath });
       }
 
-      // 8. Create temp directory for output
-      tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'compose-video-'));
       const outputPath = path.join(tempDir, `composed_${composedVideo.id}.mp4`);
 
       // 9. Call VideoComposeGateway
@@ -318,7 +320,8 @@ export class ComposeVideoUseCase {
     scene: ShortsScene,
     voiceAsset: ShortsSceneAsset | null,
     subtitleAssets: ShortsSceneAsset[],
-    backgroundImageAsset: ShortsSceneAsset | null
+    backgroundImageAsset: ShortsSceneAsset | null,
+    tempDir: string
   ): Promise<ComposeSceneInput> {
     // Determine scene duration
     let durationMs: number;
@@ -335,14 +338,16 @@ export class ComposeVideoUseCase {
       });
     }
 
-    // Build visual
-    const visual = await this.buildSceneVisual(scene, backgroundImageAsset);
+    // Build visual (downloads GCS files if needed)
+    const visual = await this.buildSceneVisual(scene, backgroundImageAsset, tempDir);
 
-    // Build subtitle overlays
-    const subtitles = this.buildSubtitleOverlays(subtitleAssets, durationMs);
+    // Build subtitle overlays (downloads GCS files if needed)
+    const subtitles = await this.buildSubtitleOverlays(subtitleAssets, durationMs, tempDir);
 
-    // Get audio path (convert URL to local path if needed)
-    const audioPath = voiceAsset ? this.urlToLocalPath(voiceAsset.fileUrl) : null;
+    // Get audio path (download from GCS if needed)
+    const audioPath = voiceAsset
+      ? await this.resolveAssetPath(voiceAsset.fileUrl, `voice_${scene.id}`, tempDir)
+      : null;
 
     return {
       sceneId: scene.id,
@@ -359,7 +364,8 @@ export class ComposeVideoUseCase {
    */
   private async buildSceneVisual(
     scene: ShortsScene,
-    backgroundImageAsset: ShortsSceneAsset | null
+    backgroundImageAsset: ShortsSceneAsset | null,
+    tempDir: string
   ): Promise<SceneVisual> {
     switch (scene.visualType) {
       case 'image_gen': {
@@ -367,9 +373,14 @@ export class ComposeVideoUseCase {
           // Return placeholder solid color if image not generated
           return { type: 'solid_color', color: '#000000' };
         }
+        const imagePath = await this.resolveAssetPath(
+          backgroundImageAsset.fileUrl,
+          `bg_${scene.id}`,
+          tempDir
+        );
         return {
           type: 'image',
-          filePath: this.urlToLocalPath(backgroundImageAsset.fileUrl),
+          filePath: imagePath,
         };
       }
 
@@ -411,28 +422,41 @@ export class ComposeVideoUseCase {
    * Build subtitle overlays with timing
    * Subtitles are distributed evenly across the scene duration
    */
-  private buildSubtitleOverlays(
+  private async buildSubtitleOverlays(
     subtitleAssets: ShortsSceneAsset[],
-    durationMs: number
-  ): SubtitleOverlay[] {
+    durationMs: number,
+    tempDir: string
+  ): Promise<SubtitleOverlay[]> {
     if (subtitleAssets.length === 0) {
       return [];
     }
 
     const subtitleDuration = durationMs / subtitleAssets.length;
+    const overlays: SubtitleOverlay[] = [];
 
-    return subtitleAssets.map((asset, index) => ({
-      imagePath: this.urlToLocalPath(asset.fileUrl),
-      startMs: Math.floor(subtitleDuration * index),
-      endMs: Math.floor(subtitleDuration * (index + 1)),
-    }));
+    for (let index = 0; index < subtitleAssets.length; index++) {
+      const asset = subtitleAssets[index];
+      if (!asset) continue;
+      const imagePath = await this.resolveAssetPath(
+        asset.fileUrl,
+        `subtitle_${asset.sceneId}_${index}`,
+        tempDir
+      );
+      overlays.push({
+        imagePath,
+        startMs: Math.floor(subtitleDuration * index),
+        endMs: Math.floor(subtitleDuration * (index + 1)),
+      });
+    }
+
+    return overlays;
   }
 
   /**
-   * Convert URL/URI to local file path
-   * Handles GCS URIs and file:// URLs
+   * Resolve asset URL to local file path
+   * Downloads from GCS if needed, returns local path for local files
    */
-  private urlToLocalPath(url: string): string {
+  private async resolveAssetPath(url: string, filename: string, tempDir: string): Promise<string> {
     // If it's already a local path, return as-is
     if (url.startsWith('/')) {
       return url;
@@ -443,11 +467,37 @@ export class ComposeVideoUseCase {
       return url.substring(7);
     }
 
-    // For GCS URIs or other URLs, we assume the file has been
-    // downloaded to a local temp directory. In production,
-    // this would need to download the file first.
-    // For now, return the URL as-is and let the compose gateway handle it.
+    // Handle local:// URLs (local temp storage)
+    if (url.startsWith('local://')) {
+      return url.substring(8);
+    }
+
+    // For GCS URIs, download to temp directory
+    if (url.startsWith('gs://')) {
+      const extension = path.extname(url) || this.guessExtension(url);
+      const localPath = path.join(tempDir, `${filename}${extension}`);
+      log.debug('Downloading asset from GCS', { url, localPath });
+
+      const buffer = await this.tempStorageGateway.download(url);
+      await fs.promises.writeFile(localPath, buffer);
+
+      return localPath;
+    }
+
+    // For other URLs, return as-is (may fail later)
     return url;
+  }
+
+  /**
+   * Guess file extension from URL
+   */
+  private guessExtension(url: string): string {
+    if (url.includes('.png')) return '.png';
+    if (url.includes('.jpg') || url.includes('.jpeg')) return '.jpg';
+    if (url.includes('.mp3')) return '.mp3';
+    if (url.includes('.wav')) return '.wav';
+    if (url.includes('.mp4')) return '.mp4';
+    return '';
   }
 
   /**
