@@ -5,8 +5,7 @@ import type { ToolCall } from '@/components/features/shorts-gen/chat';
 import { cn } from '@/lib/utils';
 import { FileText } from 'lucide-react';
 import { useCallback, useState } from 'react';
-import { PlanningDisplay } from './planning-display';
-import { PlanningEditor } from './planning-editor';
+import { PlanningBlockEditor } from './planning-block-editor';
 import type { Planning, UpdatePlanningParams } from './types';
 
 export type PlanningGenerationStatus = 'idle' | 'ready' | 'generating' | 'completed' | 'error';
@@ -36,7 +35,6 @@ export function PlanningGenerationStep({
   onSavePlanning,
   className,
 }: PlanningGenerationStepProps) {
-  const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleToolCall = useCallback(
@@ -62,14 +60,6 @@ export function PlanningGenerationStep({
     // Chat completed
   }, []);
 
-  const handleEdit = useCallback(() => {
-    setIsEditing(true);
-  }, []);
-
-  const handleCancelEdit = useCallback(() => {
-    setIsEditing(false);
-  }, []);
-
   const handleSavePlanning = useCallback(
     async (planningId: string, params: UpdatePlanningParams) => {
       if (!onSavePlanning) return;
@@ -85,7 +75,6 @@ export function PlanningGenerationStep({
             updatedAt: new Date().toISOString(),
           } as Planning);
         }
-        setIsEditing(false);
       } finally {
         setIsSaving(false);
       }
@@ -115,26 +104,23 @@ export function PlanningGenerationStep({
       {/* Main content: Left = Planning, Right = Chat */}
       {(isReady || hasPlanning) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Left: Planning display/editor */}
+          {/* Left: Planning BlockNote editor */}
           <div className="order-2 lg:order-1 h-[800px]">
-            {hasPlanning && isEditing && (
-              <PlanningEditor
+            {hasPlanning && onSavePlanning ? (
+              <PlanningBlockEditor
                 planning={planning}
                 onSave={handleSavePlanning}
-                onCancel={handleCancelEdit}
                 isSaving={isSaving}
-              />
-            )}
-
-            {hasPlanning && !isEditing && (
-              <PlanningDisplay
-                planning={planning}
-                onEdit={onSavePlanning ? handleEdit : undefined}
                 className="h-full"
               />
-            )}
-
-            {!hasPlanning && (
+            ) : hasPlanning ? (
+              <PlanningBlockEditor
+                planning={planning}
+                onSave={async () => {}}
+                isSaving={false}
+                className="h-full"
+              />
+            ) : (
               <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded-md h-full flex items-center justify-center">
                 <p>チャットで企画書を生成してください</p>
               </div>

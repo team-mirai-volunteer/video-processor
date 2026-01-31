@@ -1,6 +1,5 @@
 // Components
-export { PlanningDisplay } from './planning-display';
-export { PlanningEditor } from './planning-editor';
+export { PlanningBlockEditor } from './planning-block-editor';
 export { PlanningGenerationStep } from './planning-generation-step';
 
 // Types

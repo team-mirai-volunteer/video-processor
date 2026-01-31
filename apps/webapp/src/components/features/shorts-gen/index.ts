@@ -78,7 +78,7 @@ export type {
 } from './publish';
 
 // Planning (E4)
-export { PlanningDisplay, PlanningEditor, PlanningGenerationStep } from './planning';
+export { PlanningBlockEditor, PlanningGenerationStep } from './planning';
 export type { Planning, PlanningGenerationStatus, UpdatePlanningParams } from './planning';
 
 // Chat UI (E2)
