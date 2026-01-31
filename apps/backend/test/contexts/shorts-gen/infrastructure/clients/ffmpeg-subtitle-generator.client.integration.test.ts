@@ -19,7 +19,7 @@ function isFFmpegAvailable(): boolean {
 // Skip integration tests if INTEGRATION_TEST is not set or ffmpeg is not available
 const runIntegrationTests = process.env.INTEGRATION_TEST === 'true' && isFFmpegAvailable();
 
-const OUTPUT_DIR = path.join(__dirname, '../../../../fixtures/output/subtitle-generator');
+const OUTPUT_DIR = path.join(__dirname, '../../fixtures/output/subtitle-generator');
 
 /**
  * Save buffer to output directory for inspection
@@ -363,7 +363,7 @@ describe.skipIf(!runIntegrationTests)('FFmpegSubtitleGeneratorClient Integration
       const style = client.getDefaultStyle();
 
       expect(style).toBeDefined();
-      expect(style.fontFamily).toBe('Noto Sans CJK JP');
+      expect(style.fontFamily).toBe('Hiragino Kaku Gothic Pro');
       expect(style.fontSize).toBe(64);
       expect(style.fontColor).toBe('#FFFFFF');
       expect(style.outlineColor).toBe('#000000');
@@ -393,7 +393,7 @@ describe('FFmpegSubtitleGeneratorClient Unit Tests', () => {
 
     it('should return default style without FFmpeg', () => {
       const style = client.getDefaultStyle();
-      expect(style.fontFamily).toBe('Noto Sans CJK JP');
+      expect(style.fontFamily).toBe('Hiragino Kaku Gothic Pro');
     });
   });
 });
