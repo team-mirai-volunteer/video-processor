@@ -265,18 +265,45 @@ export function ProjectDetailClient({
       throw new Error(error.error || 'Failed to generate voices');
     }
     const data = await response.json();
-    // Convert API response to GenerateAllAssetsResponse format
+
+    // Convert backend response to GenerateAllAssetsResponse format
+    // Backend returns: { results: [{ sceneId, assetId, fileUrl, durationMs, skipped }], errors: [...] }
+    const results: GenerateAllAssetsResponse['results'] = (data.results || []).map(
+      (result: {
+        sceneId: string;
+        assetId: string;
+        fileUrl: string;
+        durationMs: number;
+        skipped: boolean;
+      }) => ({
+        sceneId: result.sceneId,
+        success: true,
+        asset: result.skipped
+          ? undefined
+          : {
+              id: result.assetId,
+              sceneId: result.sceneId,
+              assetType: 'voice' as const,
+              fileUrl: result.fileUrl,
+              durationMs: result.durationMs,
+            },
+      })
+    );
+
+    // Add failed scenes from errors array
+    for (const error of data.errors || []) {
+      results.push({
+        sceneId: error.sceneId,
+        success: false,
+        error: error.message,
+      });
+    }
+
     return {
-      success: true,
-      results:
-        data.results ||
-        scenes.map((s) => ({
-          sceneId: s.id,
-          success: true,
-          asset: data.sceneVoices?.find((sv: { sceneId: string }) => sv.sceneId === s.id)?.asset,
-        })),
+      success: (data.failedCount || 0) === 0,
+      results,
     };
-  }, [script, scenes]);
+  }, [script]);
 
   // Single scene voice generation handler
   const handleVoiceGenerate = useCallback(
