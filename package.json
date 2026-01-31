@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "docker compose -f apps/backend/docker-compose.yml up -d && pnpm --filter backend db:push && pnpm --filter @video-processor/webapp --filter backend --parallel run dev",
     "test": "pnpm --filter backend test:unit",
+    "test:integration": "INTEGRATION_TEST=true pnpm --filter backend test:integration",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",

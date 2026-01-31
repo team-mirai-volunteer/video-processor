@@ -13,7 +13,7 @@
     "lint:fix": "biome check --write .",
     "test": "vitest",
     "test:unit": "vitest run test/contexts",
-    "test:integration": "vitest run test/contexts --testNamePattern=integration",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:e2e": "vitest run test/e2e",
     "db:generate": "prisma generate --schema=src/contexts/shared/infrastructure/database/prisma/schema.prisma",
     "db:push": "prisma db push --schema=src/contexts/shared/infrastructure/database/prisma/schema.prisma",
