@@ -5,6 +5,20 @@ import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/shadcn';
 import { useCallback, useEffect, useRef } from 'react';
 
+// BlockNote + Radix UI の組み合わせで発生する forwardRef 警告を抑制
+// @see https://github.com/TypeCellOS/BlockNote/issues/749
+// 機能には影響なし。ライブラリ側の修正を待つ
+if (typeof window !== 'undefined') {
+  const originalWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    const msg = args[0];
+    if (typeof msg === 'string' && msg.includes('Function components cannot be given refs')) {
+      return;
+    }
+    originalWarn.apply(console, args);
+  };
+}
+
 interface BlockNoteEditorInnerProps {
   initialContent: string;
   onChange: (markdown: string) => void;

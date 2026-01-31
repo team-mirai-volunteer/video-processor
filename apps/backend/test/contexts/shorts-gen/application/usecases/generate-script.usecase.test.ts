@@ -13,6 +13,7 @@ import type {
   ChatCompletionResult,
   StreamChunk,
 } from '@shorts-gen/domain/gateways/agentic-ai.gateway.js';
+import type { AssetRegistryGateway } from '@shorts-gen/domain/gateways/asset-registry.gateway.js';
 import type { ShortsPlanningRepositoryGateway } from '@shorts-gen/domain/gateways/planning-repository.gateway.js';
 import type { ShortsSceneRepositoryGateway } from '@shorts-gen/domain/gateways/scene-repository.gateway.js';
 import type { ShortsScriptRepositoryGateway } from '@shorts-gen/domain/gateways/script-repository.gateway.js';
@@ -26,6 +27,7 @@ describe('GenerateScriptUseCase', () => {
   let planningRepository: ShortsPlanningRepositoryGateway;
   let scriptRepository: ShortsScriptRepositoryGateway;
   let sceneRepository: ShortsSceneRepositoryGateway;
+  let assetRegistryGateway: AssetRegistryGateway;
   let idCounter: number;
 
   const testProjectId = 'project-1';
@@ -100,11 +102,33 @@ describe('GenerateScriptUseCase', () => {
       countByScriptId: vi.fn().mockResolvedValue(0),
     };
 
+    assetRegistryGateway = {
+      getVideoAsset: vi.fn().mockReturnValue({
+        success: true,
+        value: {
+          key: 'speech_exciting',
+          absolutePath: '/path/to/video.mov',
+          description: '党首演説',
+          durationMs: 10000,
+        },
+      }),
+      getBgmAsset: vi.fn().mockReturnValue({
+        success: false,
+        error: { type: 'ASSET_NOT_FOUND', key: 'test', assetType: 'bgm' },
+      }),
+      listVideoAssetKeys: vi
+        .fn()
+        .mockReturnValue(['speech_exciting', 'speech_serious', 'family_financial_struggle']),
+      listBgmAssetKeys: vi.fn().mockReturnValue([]),
+      assetExists: vi.fn().mockReturnValue(true),
+    };
+
     const deps: GenerateScriptUseCaseDeps = {
       agenticAiGateway,
       planningRepository,
       scriptRepository,
       sceneRepository,
+      assetRegistryGateway,
       generateId: () => `id-${++idCounter}`,
     };
 
