@@ -108,6 +108,7 @@ export function PlanningGenerationStep({
           <div className="order-2 lg:order-1 h-[800px]">
             {hasPlanning && onSavePlanning ? (
               <PlanningBlockEditor
+                key={`${planning.id}-${planning.version}`}
                 planning={planning}
                 onSave={handleSavePlanning}
                 isSaving={isSaving}
@@ -115,6 +116,7 @@ export function PlanningGenerationStep({
               />
             ) : hasPlanning ? (
               <PlanningBlockEditor
+                key={`${planning.id}-${planning.version}`}
                 planning={planning}
                 onSave={async () => {}}
                 isSaving={false}

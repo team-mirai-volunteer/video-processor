@@ -91,7 +91,9 @@ export function SceneAssetItem({
   // 画像カラムでimage_gen以外の場合はスキップ
   const isImageColumn = columnType === 'image';
   const isImageGenType = scene.visualType === 'image_gen';
-  const hasImagePrompt = !!scene.imagePrompt;
+  // imagePromptStateから生成済みプロンプトを取得（未生成の場合はsceneのプロンプトを使用）
+  const generatedPrompt = imagePromptState?.imagePrompt ?? scene.imagePrompt;
+  const hasImagePrompt = !!generatedPrompt;
   const isPromptGenerating = imagePromptState?.status === 'running';
   const isImageGenerating = state.status === 'running';
 
@@ -247,7 +249,7 @@ export function SceneAssetItem({
             {/* プロンプトプレビュー */}
             <div className="text-xs text-muted-foreground bg-muted/30 rounded p-2 min-h-[4rem]">
               {hasImagePrompt ? (
-                <span className="whitespace-pre-wrap break-words">{scene.imagePrompt}</span>
+                <span className="whitespace-pre-wrap break-words">{generatedPrompt}</span>
               ) : (
                 <span className="italic">プロンプト未設定</span>
               )}

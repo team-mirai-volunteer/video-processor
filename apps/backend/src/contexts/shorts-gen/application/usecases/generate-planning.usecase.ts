@@ -292,14 +292,15 @@ export class GeneratePlanningUseCase {
 
         if (toolCall.name === 'fetch_url') {
           const url = toolCall.arguments.url as string;
-          yield {
-            type: 'text_delta',
-            textDelta: `\n\n[URLを取得中: ${url}...]\n\n`,
-          };
           toolResult = await fetchUrlContent(url);
+          // fetch_url完了を通知
           yield {
-            type: 'text_delta',
-            textDelta: '[URL取得完了]\n\n',
+            type: 'tool_call',
+            toolCall: {
+              ...toolCall,
+              arguments: { ...toolCall.arguments },
+            },
+            toolCompleted: true,
           };
         } else if (toolCall.name === 'save_planning') {
           const content = toolCall.arguments.content as string;

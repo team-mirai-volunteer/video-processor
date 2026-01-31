@@ -147,6 +147,7 @@ export function useSSEChat(options: UseSSEChatOptions): UseSSEChatReturn {
                 textDelta?: string;
                 toolCall?: { id: string; name: string; arguments: Record<string, unknown> };
                 savedPlanning?: unknown;
+                toolCompleted?: boolean;
                 error?: string;
               };
 
@@ -189,16 +190,34 @@ export function useSSEChat(options: UseSSEChatOptions): UseSSEChatReturn {
                     setToolCalls((prev) => [...prev, toolCall]);
                     onToolCall?.(toolCall);
                   }
-                  // Backend format: { toolCall: { name, arguments }, savedPlanning? }
+                  // Backend format: { toolCall: { name, arguments }, savedPlanning?, toolCompleted? }
                   else if (backendEvent.toolCall) {
-                    const toolCall: ToolCall = {
-                      name: backendEvent.toolCall.name,
-                      args: backendEvent.toolCall.arguments || {},
-                      result: backendEvent.savedPlanning,
-                      status: backendEvent.savedPlanning ? 'completed' : 'running',
-                    };
-                    setToolCalls((prev) => [...prev, toolCall]);
-                    onToolCall?.(toolCall);
+                    const toolName = backendEvent.toolCall.name;
+                    const hasResult = !!backendEvent.savedPlanning;
+                    const isCompleted = hasResult || backendEvent.toolCompleted;
+
+                    if (isCompleted) {
+                      // Update existing tool call to completed
+                      const completedToolCall: ToolCall = {
+                        name: toolName,
+                        args: backendEvent.toolCall.arguments || {},
+                        result: backendEvent.savedPlanning,
+                        status: 'completed',
+                      };
+                      setToolCalls((prev) =>
+                        prev.map((tc) => (tc.name === toolName ? completedToolCall : tc))
+                      );
+                      onToolCall?.(completedToolCall);
+                    } else {
+                      // Add new running tool call
+                      const toolCall: ToolCall = {
+                        name: toolName,
+                        args: backendEvent.toolCall.arguments || {},
+                        status: 'running',
+                      };
+                      setToolCalls((prev) => [...prev, toolCall]);
+                      onToolCall?.(toolCall);
+                    }
                   }
                   break;
 
@@ -228,6 +247,7 @@ export function useSSEChat(options: UseSSEChatOptions): UseSSEChatReturn {
                       m.id === assistantMessageId ? { ...m, isStreaming: false } : m
                     )
                   );
+                  setToolCalls([]);
                   setStatus('idle');
                   onComplete?.();
                   break;

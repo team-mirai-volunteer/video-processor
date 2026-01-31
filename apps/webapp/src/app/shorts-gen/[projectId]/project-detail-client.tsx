@@ -203,12 +203,6 @@ export function ProjectDetailClient({
       setPlanning(newPlanning);
       updateStepStatus('planning', 'completed');
       updateStepStatus('script', 'ready');
-      // Expand script step automatically
-      setSteps((prev) => ({
-        ...prev,
-        script: { ...prev.script, isExpanded: true },
-        planning: { ...prev.planning, isExpanded: false },
-      }));
     },
     [updateStepStatus]
   );
