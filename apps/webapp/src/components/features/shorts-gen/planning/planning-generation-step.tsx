@@ -112,41 +112,49 @@ export function PlanningGenerationStep({
         </div>
       </div>
 
-      {/* Chat UI for generation */}
+      {/* Main content: Left = Planning, Right = Chat */}
       {(isReady || hasPlanning) && (
-        <ChatUI
-          endpoint={getEndpoint(projectId)}
-          title="企画書生成チャット"
-          placeholder="企画の元になる情報を入力... (例: 「この記事の内容をショート動画にしたい: https://...」)"
-          onToolCall={handleToolCall}
-          onComplete={handleComplete}
-          disabled={isGenerating}
-          headers={{
-            'X-Planning-Id': planning?.id || '',
-          }}
-          className="min-h-[300px]"
-        />
-      )}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Left: Planning display/editor */}
+          <div className="order-2 lg:order-1">
+            {hasPlanning && isEditing && (
+              <PlanningEditor
+                planning={planning}
+                onSave={handleSavePlanning}
+                onCancel={handleCancelEdit}
+                isSaving={isSaving}
+              />
+            )}
 
-      {/* Planning editing */}
-      {hasPlanning && isEditing && (
-        <div className="border-t pt-4">
-          <PlanningEditor
-            planning={planning}
-            onSave={handleSavePlanning}
-            onCancel={handleCancelEdit}
-            isSaving={isSaving}
-          />
-        </div>
-      )}
+            {hasPlanning && !isEditing && (
+              <PlanningDisplay
+                planning={planning}
+                onEdit={onSavePlanning ? handleEdit : undefined}
+              />
+            )}
 
-      {/* Planning display */}
-      {hasPlanning && !isEditing && (
-        <div className="border-t pt-4">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-muted-foreground">生成された企画書</span>
+            {!hasPlanning && (
+              <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded-md h-full flex items-center justify-center min-h-[300px]">
+                <p>チャットで企画書を生成してください</p>
+              </div>
+            )}
           </div>
-          <PlanningDisplay planning={planning} onEdit={onSavePlanning ? handleEdit : undefined} />
+
+          {/* Right: Chat UI */}
+          <div className="order-1 lg:order-2">
+            <ChatUI
+              endpoint={getEndpoint(projectId)}
+              title="企画書生成チャット"
+              placeholder="企画の元になる情報を入力... (例: 「この記事の内容をショート動画にしたい: https://...」)"
+              onToolCall={handleToolCall}
+              onComplete={handleComplete}
+              disabled={isGenerating}
+              headers={{
+                'X-Planning-Id': planning?.id || '',
+              }}
+              className="min-h-[300px]"
+            />
+          </div>
         </div>
       )}
 

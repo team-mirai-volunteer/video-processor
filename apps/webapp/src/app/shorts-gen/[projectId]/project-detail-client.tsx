@@ -57,15 +57,15 @@ type StepsState = Record<StepId, StepState>;
 
 function getInitialSteps(hasPlanning: boolean, hasScript: boolean): StepsState {
   return {
-    project: { status: 'completed', isExpanded: false },
-    planning: { status: hasPlanning ? 'completed' : 'ready', isExpanded: !hasPlanning },
+    project: { status: 'completed', isExpanded: true },
+    planning: { status: hasPlanning ? 'completed' : 'ready', isExpanded: true },
     script: {
       status: hasScript ? 'completed' : hasPlanning ? 'ready' : 'pending',
-      isExpanded: hasPlanning && !hasScript,
+      isExpanded: true,
     },
-    assets: { status: hasScript ? 'ready' : 'pending', isExpanded: false },
-    compose: { status: 'pending', isExpanded: false },
-    publish: { status: 'pending', isExpanded: false },
+    assets: { status: hasScript ? 'ready' : 'pending', isExpanded: true },
+    compose: { status: 'pending', isExpanded: true },
+    publish: { status: 'pending', isExpanded: true },
   };
 }
 
