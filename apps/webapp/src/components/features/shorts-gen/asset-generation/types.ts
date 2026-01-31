@@ -45,6 +45,8 @@ export interface SceneAssetState {
   sceneId: string;
   status: AssetGenerationStatus;
   asset?: SceneAsset;
+  /** 字幕など複数アセットを持つ場合に使用 */
+  assets?: SceneAsset[];
   error?: string;
 }
 

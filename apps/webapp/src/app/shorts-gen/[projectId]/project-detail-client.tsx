@@ -6,6 +6,7 @@ import {
   type GenerateAllAssetsResponse,
   type GenerateImagePromptResponse,
   type GenerateImageResponse,
+  type GenerateSubtitleResponse,
   type GenerateVoiceResponse,
   type Planning,
   PlanningGenerationStep,
@@ -345,6 +346,32 @@ export function ProjectDetailClient({
     []
   );
 
+  // Single scene subtitle generation handler
+  const handleSubtitleGenerate = useCallback(
+    async (sceneId: string): Promise<GenerateSubtitleResponse> => {
+      const response = await fetch(`/api/shorts-gen/scenes/${sceneId}/subtitles`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(error.error || 'Failed to generate subtitle');
+      }
+      const data = await response.json();
+
+      // The API returns sceneResults array
+      const sceneResult = data.sceneResults?.[0];
+      if (!sceneResult) {
+        throw new Error('Subtitle result not found in response');
+      }
+
+      return {
+        assets: sceneResult.assets ?? [],
+      };
+    },
+    []
+  );
+
   const handleAllSubtitlesGenerate = useCallback(async (): Promise<GenerateAllAssetsResponse> => {
     if (!script) throw new Error('Script not found');
     const response = await fetch(`/api/shorts-gen/scripts/${script.id}/subtitles`, {
@@ -359,7 +386,14 @@ export function ProjectDetailClient({
     return {
       success: true,
       results:
-        data.results ||
+        data.sceneResults?.map(
+          (sr: { sceneId: string; success: boolean; assets?: unknown[]; error?: string }) => ({
+            sceneId: sr.sceneId,
+            success: sr.success,
+            assets: sr.assets,
+            error: sr.error,
+          })
+        ) ||
         scenes.map((s) => ({
           sceneId: s.id,
           success: true,
@@ -587,6 +621,7 @@ export function ProjectDetailClient({
           canStart={steps.assets.status === 'ready' || steps.assets.status === 'completed'}
           existingAssets={existingAssets}
           onVoiceGenerate={handleVoiceGenerate}
+          onSubtitleGenerate={handleSubtitleGenerate}
           onImageGenerate={handleImageGenerate}
           onImagePromptGenerate={handleImagePromptGenerate}
           onAllVoicesGenerate={handleAllVoicesGenerate}
