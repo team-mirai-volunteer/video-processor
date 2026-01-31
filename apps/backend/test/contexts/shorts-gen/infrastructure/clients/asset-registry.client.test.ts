@@ -245,8 +245,10 @@ describe('AssetRegistryClient with default assets', () => {
     const bgmKeys = client.listBgmAssetKeys();
 
     // These are the keys defined in the default asset-registry.json
-    expect(videoKeys).toContain('speech_placeholder');
-    expect(bgmKeys).toContain('upbeat_corporate');
-    expect(bgmKeys).toContain('calm_ambient');
+    expect(videoKeys).toContain('speech_exciting');
+    expect(videoKeys).toContain('speech_serious');
+    expect(videoKeys).toContain('speech_smiley');
+    // BGM is currently empty in the default registry
+    expect(bgmKeys).toEqual([]);
   });
 });
