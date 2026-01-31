@@ -170,6 +170,13 @@ describe.skipIf(!runIntegrationTests)('OpenAiAgenticClient Integration', () => {
           {
             role: 'assistant',
             content: '',
+            toolCalls: [
+              {
+                id: toolCall.id,
+                name: toolCall.name,
+                arguments: toolCall.arguments,
+              },
+            ],
           },
           {
             role: 'tool',
