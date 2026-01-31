@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import { Bot, User } from 'lucide-react';
+import Markdown from 'react-markdown';
 import type { ChatMessage as ChatMessageType } from './types';
 
 interface ChatMessageProps {
@@ -67,8 +68,8 @@ export function ChatMessage({ message, className }: ChatMessageProps) {
             isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'
           )}
         >
-          <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap break-words">
-            {message.content}
+          <div className="prose prose-sm dark:prose-invert max-w-none break-words">
+            <Markdown>{message.content}</Markdown>
             {message.isStreaming && <StreamingIndicator />}
           </div>
         </div>
