@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { AlertCircle, Loader2, Send, Square, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ChatMessageList } from './chat-message';
 import type { ChatUIProps, ToolCall } from './types';
 import { useSSEChat } from './use-sse-chat';
@@ -65,15 +65,6 @@ export function ChatUI({
   });
 
   const isLoading = status === 'connecting' || status === 'streaming';
-
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll when messages change
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages.length, scrollToBottom]);
 
   const handleSubmit = useCallback(
     async (e?: React.FormEvent) => {
