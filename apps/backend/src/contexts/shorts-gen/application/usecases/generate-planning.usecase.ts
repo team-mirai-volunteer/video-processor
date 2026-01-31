@@ -137,6 +137,8 @@ export interface GeneratePlanningResult {
 export interface PlanningStreamChunk extends StreamChunk {
   /** 保存された企画書（tool_callで保存された場合、UIが期待する形式） */
   savedPlanning?: { planning: ShortsPlanning };
+  /** ツール呼び出しが完了したかどうか */
+  toolCompleted?: boolean;
 }
 
 /**
