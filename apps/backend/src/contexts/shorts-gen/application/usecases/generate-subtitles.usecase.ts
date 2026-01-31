@@ -39,6 +39,10 @@ export interface SceneSubtitleResult {
   order: number;
   /** 生成された字幕画像アセット */
   assets: ShortsSceneAsset[];
+  /** 処理が成功したかどうか */
+  success: boolean;
+  /** エラーメッセージ（失敗時のみ） */
+  error?: string;
 }
 
 /**
@@ -55,6 +59,8 @@ export interface GenerateSubtitlesOutput {
   totalScenesProcessed: number;
   /** 生成されたアセット総数 */
   totalAssetsGenerated: number;
+  /** エラー一覧（部分失敗時のみ） */
+  errors?: Array<{ sceneId: string; error: string }>;
 }
 
 /**
@@ -153,33 +159,52 @@ export class GenerateSubtitlesUseCase {
 
     // 5. 各シーンの字幕画像を生成
     const sceneResults: SceneSubtitleResult[] = [];
+    const errors: Array<{ sceneId: string; error: string }> = [];
     let totalAssetsGenerated = 0;
 
     for (const scene of scenesWithSubtitles) {
-      // 既存の字幕アセットを削除（再生成の場合）
-      await this.sceneAssetRepository.deleteBySceneIdAndType(scene.id, 'subtitle_image');
+      try {
+        // 既存の字幕アセットを削除（再生成の場合）
+        await this.sceneAssetRepository.deleteBySceneIdAndType(scene.id, 'subtitle_image');
 
-      const assets = await this.generateSubtitlesForScene(
-        scene,
-        project.resolutionWidth,
-        project.resolutionHeight,
-        project.id,
-        subtitleStyle,
-        verticalPosition
-      );
+        const assets = await this.generateSubtitlesForScene(
+          scene,
+          project.resolutionWidth,
+          project.resolutionHeight,
+          project.id,
+          subtitleStyle,
+          verticalPosition
+        );
 
-      // アセットを保存
-      if (assets.length > 0) {
-        await this.sceneAssetRepository.saveMany(assets);
+        // アセットを保存
+        if (assets.length > 0) {
+          await this.sceneAssetRepository.saveMany(assets);
+        }
+
+        sceneResults.push({
+          sceneId: scene.id,
+          order: scene.order,
+          assets,
+          success: true,
+        });
+
+        totalAssetsGenerated += assets.length;
+      } catch (error) {
+        // シーンごとのエラーをキャッチして記録
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        errors.push({
+          sceneId: scene.id,
+          error: errorMessage,
+        });
+
+        sceneResults.push({
+          sceneId: scene.id,
+          order: scene.order,
+          assets: [],
+          success: false,
+          error: errorMessage,
+        });
       }
-
-      sceneResults.push({
-        sceneId: scene.id,
-        order: scene.order,
-        assets,
-      });
-
-      totalAssetsGenerated += assets.length;
     }
 
     return {
@@ -188,6 +213,7 @@ export class GenerateSubtitlesUseCase {
       sceneResults,
       totalScenesProcessed: scenesWithSubtitles.length,
       totalAssetsGenerated,
+      errors: errors.length > 0 ? errors : undefined,
     };
   }
 
