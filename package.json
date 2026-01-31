@@ -20,7 +20,8 @@
     "deploy:prod:full": "cd infrastructure/terraform && ./deploy.sh prod full"
   },
   "simple-git-hooks": {
-    "pre-commit": "pnpm lint-staged"
+    "pre-commit": "pnpm lint-staged",
+    "pre-push": "pnpm lint && pnpm typecheck"
   },
   "lint-staged": {
     "*.{js,ts,jsx,tsx,json}": "biome check --write"
