@@ -1,6 +1,8 @@
 import { prisma } from '@shared/infrastructure/database/connection.js';
 import { createLogger } from '@shared/infrastructure/logging/logger.js';
 import { NotFoundError, ValidationError } from '@shorts-gen/application/errors/errors.js';
+import { AddSceneUseCase } from '@shorts-gen/application/usecases/add-scene.usecase.js';
+import { CreateManualScriptUseCase } from '@shorts-gen/application/usecases/create-manual-script.usecase.js';
 import {
   type GenerateScriptInput,
   GenerateScriptUseCase,
@@ -32,6 +34,19 @@ const generateScriptUseCase = new GenerateScriptUseCase({
   generateId: () => uuidv4(),
 });
 
+const createManualScriptUseCase = new CreateManualScriptUseCase({
+  planningRepository,
+  scriptRepository,
+  sceneRepository,
+  generateId: () => uuidv4(),
+});
+
+const addSceneUseCase = new AddSceneUseCase({
+  scriptRepository,
+  sceneRepository,
+  generateId: () => uuidv4(),
+});
+
 /**
  * Request body for generating script
  */
@@ -56,6 +71,123 @@ interface UpdateSceneRequest {
   imageStyleHint?: string | null;
   order?: number;
 }
+
+/**
+ * Request body for creating manual script
+ */
+interface CreateManualScriptRequest {
+  planningId: string;
+}
+
+/**
+ * Request body for adding a scene
+ */
+interface AddSceneRequest {
+  summary: string;
+  visualType: VisualType;
+  voiceText?: string | null;
+  subtitles?: string[];
+  silenceDurationMs?: number | null;
+  stockVideoKey?: string | null;
+  solidColor?: string | null;
+  imageStyleHint?: string | null;
+  order?: number;
+}
+
+/**
+ * POST /api/shorts-gen/projects/:projectId/script
+ * Create an empty script for manual editing
+ */
+router.post('/:projectId/script', async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const body = req.body as CreateManualScriptRequest;
+
+    if (!projectId) {
+      throw new ValidationError('Project ID is required');
+    }
+
+    if (!body.planningId) {
+      throw new ValidationError('Planning ID is required');
+    }
+
+    log.info('Creating manual script', { projectId, planningId: body.planningId });
+
+    const result = await createManualScriptUseCase.execute({
+      projectId,
+      planningId: body.planningId,
+    });
+
+    res.json({
+      id: result.scriptId,
+      projectId: result.projectId,
+      planningId: result.planningId,
+      version: result.version,
+      scenes: [],
+      createdAt: result.createdAt.toISOString(),
+      updatedAt: result.updatedAt.toISOString(),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/shorts-gen/projects/:projectId/script/scenes
+ * Add a scene to the script
+ */
+router.post('/:projectId/script/scenes', async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const body = req.body as AddSceneRequest;
+
+    if (!projectId) {
+      throw new ValidationError('Project ID is required');
+    }
+
+    // Get script for this project
+    const script = await scriptRepository.findByProjectId(projectId);
+    if (!script) {
+      throw new NotFoundError('Script', projectId);
+    }
+
+    log.info('Adding scene to script', { projectId, scriptId: script.id });
+
+    const result = await addSceneUseCase.execute({
+      scriptId: script.id,
+      summary: body.summary,
+      visualType: body.visualType,
+      voiceText: body.voiceText,
+      subtitles: body.subtitles,
+      silenceDurationMs: body.silenceDurationMs,
+      stockVideoKey: body.stockVideoKey,
+      solidColor: body.solidColor,
+      imageStyleHint: body.imageStyleHint,
+      order: body.order,
+    });
+
+    const scene = result.scene;
+
+    res.status(201).json({
+      id: scene.id,
+      scriptId: scene.scriptId,
+      order: scene.order,
+      summary: scene.summary,
+      visualType: scene.visualType,
+      voiceText: scene.voiceText,
+      subtitles: scene.subtitles,
+      silenceDurationMs: scene.silenceDurationMs,
+      stockVideoKey: scene.stockVideoKey,
+      solidColor: scene.solidColor,
+      imagePrompt: scene.imagePrompt,
+      imageStyleHint: scene.imageStyleHint,
+      createdAt: scene.createdAt,
+      updatedAt: scene.updatedAt,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * POST /api/shorts-gen/projects/:projectId/script/generate

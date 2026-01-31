@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import type { Scene, Script, UpdateSceneParams } from './types';
+import type { CreateSceneParams, Scene, Script, UpdateSceneParams } from './types';
 
 export type ScriptGenerationStatus = 'idle' | 'ready' | 'generating' | 'completed' | 'error';
 
@@ -22,6 +22,8 @@ interface UseScriptGenerationReturn {
   updateScene: (sceneId: string, params: UpdateSceneParams) => Promise<void>;
   fetchScript: () => Promise<void>;
   deleteScene: (sceneId: string) => Promise<void>;
+  createManualScript: (planningId: string) => Promise<Script>;
+  addScene: (params: CreateSceneParams) => Promise<Scene>;
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
@@ -125,6 +127,82 @@ export function useScriptGeneration({
     [projectId]
   );
 
+  const createManualScript = useCallback(
+    async (planningId: string): Promise<Script> => {
+      try {
+        setError(null);
+
+        const response = await fetch(`${API_BASE}/api/shorts-gen/projects/${projectId}/script`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ planningId }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to create script: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const newScript: Script = {
+          id: data.id,
+          projectId: data.projectId,
+          planningId: data.planningId,
+          version: data.version,
+          scenes: data.scenes || [],
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt,
+        };
+
+        setScript(newScript);
+        setScenes([]);
+        setStatus('completed');
+
+        return newScript;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        setError(message);
+        throw err;
+      }
+    },
+    [projectId]
+  );
+
+  const addScene = useCallback(
+    async (params: CreateSceneParams): Promise<Scene> => {
+      try {
+        setError(null);
+
+        const response = await fetch(
+          `${API_BASE}/api/shorts-gen/projects/${projectId}/script/scenes`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(params),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to add scene: ${response.status}`);
+        }
+
+        const newScene = await response.json();
+
+        setScenes((prev) => [...prev, newScene]);
+
+        return newScene;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        setError(message);
+        throw err;
+      }
+    },
+    [projectId]
+  );
+
   return {
     script,
     scenes,
@@ -136,5 +214,7 @@ export function useScriptGeneration({
     updateScene,
     fetchScript,
     deleteScene,
+    createManualScript,
+    addScene,
   };
 }
