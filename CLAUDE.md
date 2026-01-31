@@ -52,6 +52,14 @@ infrastructure/→ repositories, clients (throw errors)
 - **他層エラー**: throw → presentation層でハンドリング
 - **テスト**: domain/application → unit, infrastructure → integration, webapp → e2e
 
+## Git Hooks
+
+- **pre-push hook**: lint, typecheckが自動実行される
+- **失敗時の対応**: hookエラーはスキップせず必ず修正する
+  - 作業に直接関係ないエラーでも修正対象
+  - あまりにも複雑な場合のみ質問する
+  - `--no-verify`でのスキップは原則禁止
+
 ## Test Guidelines
 
 | Layer | Test Type | Command |
