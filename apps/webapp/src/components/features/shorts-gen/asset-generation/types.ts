@@ -112,6 +112,10 @@ export interface GenerateAllAssetsResponse {
     assets?: SceneAsset[];
     error?: string;
   }[];
+  /** 一部成功、一部失敗の場合 */
+  partialSuccess?: boolean;
+  /** エラー一覧（部分失敗時のみ） */
+  errors?: Array<{ sceneId: string; error: string }>;
 }
 
 /**
