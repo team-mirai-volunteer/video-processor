@@ -108,16 +108,19 @@ export function useAssetGeneration({
 
   const updateImagePromptState = useCallback(
     (sceneId: string, updates: Partial<ImagePromptState>) => {
-      setState((prev) => ({
-        ...prev,
-        imagePrompt: {
-          ...prev.imagePrompt,
-          [sceneId]: {
-            ...prev.imagePrompt[sceneId],
-            ...updates,
+      setState((prev) => {
+        const currentState = prev.imagePrompt[sceneId] ?? createInitialImagePromptState(sceneId);
+        return {
+          ...prev,
+          imagePrompt: {
+            ...prev.imagePrompt,
+            [sceneId]: {
+              ...currentState,
+              ...updates,
+            },
           },
-        },
-      }));
+        };
+      });
     },
     []
   );
