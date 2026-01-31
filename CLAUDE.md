@@ -26,7 +26,14 @@ pnpm monorepo構成:
 - `apps/backend` - Express + Prisma + DDD構成
 - `apps/shared` - 共通型定義
 
-### Backend DDD Layers
+### Backend Bounded Contexts
+
+`apps/backend/src/contexts/` に複数のBCが存在:
+- `clip-video` - 動画クリップ切り出し機能
+- `shorts-gen` - ショート動画生成機能
+- `shared` - BC間共有コード
+
+### Backend DDD Layers (各BC内)
 
 ```
 presentation/  → routes, middleware (薄く保つ)
