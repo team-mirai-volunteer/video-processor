@@ -15,8 +15,8 @@ interface NanoBananaResponse {
     content?: {
       parts?: Array<{
         text?: string;
-        inline_data?: {
-          mime_type: string;
+        inlineData?: {
+          mimeType: string;
           data: string;
         };
       }>;
@@ -46,7 +46,6 @@ interface NanoBananaRequest {
     responseModalities?: string[];
     imageConfig?: {
       aspectRatio?: string;
-      imageSize?: string;
     };
   };
 }
@@ -93,20 +92,17 @@ export class NanoBananaImageGenClient implements ImageGenGateway {
   private readonly model: string;
 
   /**
-   * @param apiKey Gemini API key (defaults to NANO_BANANA_API_KEY env var)
-   * @param baseUrl API base URL (defaults to NANO_BANANA_API_URL env var or Google's API)
-   * @param model Model to use (defaults to gemini-2.5-flash-image)
+   * @param apiKey Gemini API key (defaults to GEMINI_API_KEY env var)
+   * @param baseUrl API base URL (defaults to Google's Gemini API)
+   * @param model Model to use (defaults to gemini-2.0-flash-exp-image-generation)
    */
   constructor(config?: { apiKey?: string; baseUrl?: string; model?: string }) {
-    this.apiKey = config?.apiKey ?? process.env.NANO_BANANA_API_KEY ?? '';
-    this.baseUrl =
-      config?.baseUrl ??
-      process.env.NANO_BANANA_API_URL ??
-      'https://generativelanguage.googleapis.com/v1beta/models';
+    this.apiKey = config?.apiKey ?? process.env.GEMINI_API_KEY ?? '';
+    this.baseUrl = config?.baseUrl ?? 'https://generativelanguage.googleapis.com/v1beta/models';
     this.model = config?.model ?? 'gemini-2.5-flash-image';
 
     if (!this.apiKey) {
-      throw new Error('NANO_BANANA_API_KEY environment variable is required');
+      throw new Error('GEMINI_API_KEY environment variable is required');
     }
   }
 
@@ -132,17 +128,6 @@ export class NanoBananaImageGenClient implements ImageGenGateway {
       fullPrompt = `${params.style} style: ${fullPrompt}`;
     }
 
-    // Determine image size based on dimensions
-    let imageSize: string | undefined;
-    const maxDimension = Math.max(params.width, params.height);
-    if (maxDimension >= 3840) {
-      imageSize = '4K';
-    } else if (maxDimension >= 1920) {
-      imageSize = '2K';
-    } else {
-      imageSize = '1K';
-    }
-
     // Build request
     const request: NanoBananaRequest = {
       contents: [
@@ -151,10 +136,9 @@ export class NanoBananaImageGenClient implements ImageGenGateway {
         },
       ],
       generationConfig: {
-        responseModalities: ['IMAGE'],
+        responseModalities: ['TEXT', 'IMAGE'],
         imageConfig: {
           aspectRatio,
-          imageSize,
         },
       },
     };
@@ -197,19 +181,19 @@ export class NanoBananaImageGenClient implements ImageGenGateway {
       }
 
       // Find image data in parts
-      const imagePart = parts.find((part) => part.inline_data);
-      if (!imagePart?.inline_data) {
+      const imagePart = parts.find((part) => part.inlineData);
+      if (!imagePart?.inlineData) {
         return err({
           type: 'GENERATION_FAILED',
           message: 'No image data found in response',
         });
       }
 
-      const { mime_type, data: base64Data } = imagePart.inline_data;
+      const { mimeType, data: base64Data } = imagePart.inlineData;
       const imageBuffer = Buffer.from(base64Data, 'base64');
 
       // Determine format from mime type
-      const format = mime_type.split('/')[1] || 'png';
+      const format = mimeType.split('/')[1] || 'png';
 
       return ok({
         imageBuffer,

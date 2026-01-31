@@ -1,31 +1,29 @@
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { NanoBananaImageGenClient } from '../../../../../src/contexts/shorts-gen/infrastructure/clients/nano-banana-image-gen.client.js';
 
+const OUTPUT_DIR = path.join(__dirname, '../../fixtures/output/nano-banana');
+
 /**
- * Check if Nano Banana API key is configured
+ * Check if Gemini API key is configured
  */
-function isNanoBananaConfigured(): boolean {
-  return !!process.env.NANO_BANANA_API_KEY;
+function isGeminiConfigured(): boolean {
+  return !!process.env.GEMINI_API_KEY;
 }
 
 // Skip integration tests if INTEGRATION_TEST is not set or API key is not available
-const runIntegrationTests = process.env.INTEGRATION_TEST === 'true' && isNanoBananaConfigured();
+const runIntegrationTests = process.env.INTEGRATION_TEST === 'true' && isGeminiConfigured();
 
 describe.skipIf(!runIntegrationTests)('NanoBananaImageGenClient Integration', () => {
   let client: NanoBananaImageGenClient;
-  let outputDir: string;
 
   beforeAll(async () => {
     client = new NanoBananaImageGenClient();
-    outputDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'nano-banana-test-'));
-  });
 
-  afterAll(async () => {
-    if (outputDir) {
-      await fs.promises.rm(outputDir, { recursive: true, force: true });
+    // Ensure output directory exists
+    if (!fs.existsSync(OUTPUT_DIR)) {
+      fs.mkdirSync(OUTPUT_DIR, { recursive: true });
     }
   });
 
@@ -37,6 +35,9 @@ describe.skipIf(!runIntegrationTests)('NanoBananaImageGenClient Integration', ()
         height: 1024,
       });
 
+      if (!result.success) {
+        console.error('Image generation failed:', result.error);
+      }
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.value.imageBuffer).toBeInstanceOf(Buffer);
@@ -46,7 +47,7 @@ describe.skipIf(!runIntegrationTests)('NanoBananaImageGenClient Integration', ()
         expect(result.value.height).toBe(1024);
 
         // Save image for manual inspection
-        const outputPath = path.join(outputDir, `test-image-1x1.${result.value.format}`);
+        const outputPath = path.join(OUTPUT_DIR, `test-image-1x1.${result.value.format}`);
         await fs.promises.writeFile(outputPath, result.value.imageBuffer);
         console.log(`Generated image saved to: ${outputPath}`);
       }
@@ -59,6 +60,9 @@ describe.skipIf(!runIntegrationTests)('NanoBananaImageGenClient Integration', ()
         height: 1920,
       });
 
+      if (!result.success) {
+        console.error('9:16 image generation failed:', result.error);
+      }
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.value.imageBuffer).toBeInstanceOf(Buffer);
@@ -67,7 +71,7 @@ describe.skipIf(!runIntegrationTests)('NanoBananaImageGenClient Integration', ()
         expect(result.value.height).toBe(1920);
 
         // Save image for manual inspection
-        const outputPath = path.join(outputDir, `test-image-9x16.${result.value.format}`);
+        const outputPath = path.join(OUTPUT_DIR, `test-image-9x16.${result.value.format}`);
         await fs.promises.writeFile(outputPath, result.value.imageBuffer);
         console.log(`Generated image saved to: ${outputPath}`);
       }
@@ -87,7 +91,7 @@ describe.skipIf(!runIntegrationTests)('NanoBananaImageGenClient Integration', ()
         expect(result.value.imageBuffer.length).toBeGreaterThan(0);
 
         // Save image for manual inspection
-        const outputPath = path.join(outputDir, `test-image-anime.${result.value.format}`);
+        const outputPath = path.join(OUTPUT_DIR, `test-image-anime.${result.value.format}`);
         await fs.promises.writeFile(outputPath, result.value.imageBuffer);
         console.log(`Generated image saved to: ${outputPath}`);
       }
@@ -107,7 +111,7 @@ describe.skipIf(!runIntegrationTests)('NanoBananaImageGenClient Integration', ()
         expect(result.value.imageBuffer.length).toBeGreaterThan(0);
 
         // Save image for manual inspection
-        const outputPath = path.join(outputDir, `test-image-negative.${result.value.format}`);
+        const outputPath = path.join(OUTPUT_DIR, `test-image-negative.${result.value.format}`);
         await fs.promises.writeFile(outputPath, result.value.imageBuffer);
         console.log(`Generated image saved to: ${outputPath}`);
       }
@@ -174,14 +178,14 @@ describe.skipIf(!runIntegrationTests)('NanoBananaImageGenClient Integration', ()
 describe('NanoBananaImageGenClient Unit Tests', () => {
   describe('constructor', () => {
     it('should throw error when API key is not provided', () => {
-      const originalEnv = process.env.NANO_BANANA_API_KEY;
-      process.env.NANO_BANANA_API_KEY = '';
+      const originalEnv = process.env.GEMINI_API_KEY;
+      process.env.GEMINI_API_KEY = '';
 
       expect(() => new NanoBananaImageGenClient()).toThrow(
-        'NANO_BANANA_API_KEY environment variable is required'
+        'GEMINI_API_KEY environment variable is required'
       );
 
-      process.env.NANO_BANANA_API_KEY = originalEnv;
+      process.env.GEMINI_API_KEY = originalEnv;
     });
 
     it('should accept API key via constructor config', () => {
