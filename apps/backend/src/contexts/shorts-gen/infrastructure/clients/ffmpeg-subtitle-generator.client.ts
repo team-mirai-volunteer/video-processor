@@ -16,9 +16,9 @@ import type {
 
 /**
  * Default font family with fallbacks for different platforms
- * Noto Sans CJK JP (Linux), Hiragino Sans (macOS), or DejaVu Sans (fallback)
+ * Noto Sans CJK JP (Linux), Hiragino Kaku Gothic Pro (macOS), or DejaVu Sans (fallback)
  */
-const DEFAULT_FONT_FAMILY = process.env.SUBTITLE_FONT_FAMILY || 'Hiragino Sans';
+const DEFAULT_FONT_FAMILY = process.env.SUBTITLE_FONT_FAMILY || 'Hiragino Kaku Gothic Pro';
 
 /**
  * Default subtitle style settings
@@ -279,14 +279,17 @@ export class FFmpegSubtitleGeneratorClient implements SubtitleGeneratorGateway {
     // Calculate Y position (verticalPosition is 0-1, where 0 is top)
     const yPosition = `h*${verticalPosition}-text_h/2`;
 
-    // Build font weight string
-    const fontStyle = style.bold ? ':fontweight=Bold' : '';
-
     // Build drawtext filter
     // Note: Using font instead of fontfile for system fonts
+    // For bold text, we append W6 (weight 6) to Hiragino fonts, or use the font as-is for others
+    const fontName =
+      style.bold && style.fontFamily.includes('Hiragino')
+        ? `${style.fontFamily} W6`
+        : style.fontFamily;
+
     const drawtextFilter = [
       `drawtext=text='${escapedText}'`,
-      `font='${style.fontFamily}'`,
+      `font='${fontName}'`,
       `fontsize=${style.fontSize}`,
       `fontcolor=${fontColor}`,
       `bordercolor=${outlineColor}`,
@@ -296,10 +299,7 @@ export class FFmpegSubtitleGeneratorClient implements SubtitleGeneratorGateway {
       `shadowy=${style.shadowOffsetY}`,
       `x=${xPosition}`,
       `y=${yPosition}`,
-      fontStyle,
-    ]
-      .filter((s) => s.length > 0)
-      .join(':');
+    ].join(':');
 
     return [
       '-f',
