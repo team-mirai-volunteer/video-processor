@@ -8,13 +8,14 @@ import {
   Circle,
   Image as ImageIcon,
   Loader2,
+  Pencil,
   Play,
   RefreshCw,
   Type,
   Volume2,
 } from 'lucide-react';
 import { useState } from 'react';
-import type { AssetColumnData, Scene, SceneAssetState } from './types';
+import type { AssetColumnData, ImagePromptState, Scene, SceneAssetState } from './types';
 
 interface SceneAssetItemProps {
   scene: Scene;
@@ -23,6 +24,10 @@ interface SceneAssetItemProps {
   onRetry?: () => void;
   onRegenerate?: () => void;
   onPreview?: () => void;
+  // 画像カラム専用
+  imagePromptState?: ImagePromptState;
+  onGeneratePrompt?: () => void;
+  onGenerateImage?: () => void;
 }
 
 function StatusIcon({ status }: { status: SceneAssetState['status'] }) {
@@ -64,8 +69,18 @@ export function SceneAssetItem({
   onRetry,
   onRegenerate,
   onPreview,
+  imagePromptState,
+  onGeneratePrompt,
+  onGenerateImage,
 }: SceneAssetItemProps) {
   const [showPreview, setShowPreview] = useState(false);
+
+  // 画像カラムでimage_gen以外の場合はスキップ
+  const isImageColumn = columnType === 'image';
+  const isImageGenType = scene.visualType === 'image_gen';
+  const hasImagePrompt = !!scene.imagePrompt;
+  const isPromptGenerating = imagePromptState?.status === 'running';
+  const isImageGenerating = state.status === 'running';
 
   const handlePreview = () => {
     if (onPreview) {
@@ -159,6 +174,44 @@ export function SceneAssetItem({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
+          {/* 画像カラムの個別ボタン */}
+          {isImageColumn && isImageGenType && (
+            <>
+              {onGeneratePrompt && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-6 p-0"
+                  onClick={onGeneratePrompt}
+                  disabled={isPromptGenerating || isImageGenerating}
+                  title="プロンプト生成"
+                >
+                  {isPromptGenerating ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Pencil className="h-3 w-3" />
+                  )}
+                </Button>
+              )}
+              {onGenerateImage && hasImagePrompt && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-6 p-0"
+                  onClick={onGenerateImage}
+                  disabled={isPromptGenerating || isImageGenerating}
+                  title="画像生成"
+                >
+                  {isImageGenerating ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <ImageIcon className="h-3 w-3" />
+                  )}
+                </Button>
+              )}
+            </>
+          )}
+          {/* プレビューボタン (voiceは別でaudioプレーヤー表示) */}
           {state.status === 'completed' && state.asset && columnType !== 'voice' && (
             <Button
               size="sm"
@@ -170,7 +223,8 @@ export function SceneAssetItem({
               <Play className="h-3 w-3" />
             </Button>
           )}
-          {state.status === 'completed' && onRegenerate && !isSkipped && (
+          {/* 画像カラム以外の再生成ボタン */}
+          {!isImageColumn && state.status === 'completed' && onRegenerate && !isSkipped && (
             <Button
               size="sm"
               variant="ghost"

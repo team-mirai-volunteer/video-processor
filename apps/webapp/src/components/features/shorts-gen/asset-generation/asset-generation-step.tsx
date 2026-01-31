@@ -19,9 +19,11 @@ import type {
   AssetColumnData,
   AssetGenerationStatus,
   GenerateAllAssetsResponse,
+  GenerateImagePromptResponse,
   GenerateImageResponse,
   GenerateSubtitleResponse,
   GenerateVoiceResponse,
+  ImagePromptState,
   Scene,
   SceneAsset,
 } from './types';
@@ -42,6 +44,7 @@ export interface AssetGenerationStepProps {
   onVoiceGenerate?: (sceneId: string) => Promise<GenerateVoiceResponse>;
   onSubtitleGenerate?: (sceneId: string) => Promise<GenerateSubtitleResponse>;
   onImageGenerate?: (sceneId: string) => Promise<GenerateImageResponse>;
+  onImagePromptGenerate?: (sceneId: string) => Promise<GenerateImagePromptResponse>;
   onAllVoicesGenerate?: () => Promise<GenerateAllAssetsResponse>;
   onAllSubtitlesGenerate?: () => Promise<GenerateAllAssetsResponse>;
   onAllImagesGenerate?: () => Promise<GenerateAllAssetsResponse>;
@@ -82,9 +85,22 @@ interface AssetColumnProps {
   onGenerate: () => void;
   onRetryItem: (sceneId: string) => void;
   disabled?: boolean;
+  // 画像カラム専用
+  imagePromptStates?: Record<string, ImagePromptState>;
+  onGenerateImagePrompt?: (sceneId: string) => void;
+  onGenerateImage?: (sceneId: string) => void;
 }
 
-function AssetColumn({ column, scenes, onGenerate, onRetryItem, disabled }: AssetColumnProps) {
+function AssetColumn({
+  column,
+  scenes,
+  onGenerate,
+  onRetryItem,
+  disabled,
+  imagePromptStates,
+  onGenerateImagePrompt,
+  onGenerateImage,
+}: AssetColumnProps) {
   const completedCount = column.scenes.filter((s) => s.status === 'completed').length;
   const totalCount = column.scenes.length;
   const hasErrors = column.scenes.some((s) => s.status === 'error');
@@ -144,6 +160,7 @@ function AssetColumn({ column, scenes, onGenerate, onRetryItem, disabled }: Asse
         {scenes.map((scene, index) => {
           const sceneState = column.scenes[index];
           if (!sceneState) return null;
+          const isImageColumn = column.id === 'image';
           return (
             <SceneAssetItem
               key={scene.id}
@@ -152,6 +169,16 @@ function AssetColumn({ column, scenes, onGenerate, onRetryItem, disabled }: Asse
               columnType={column.id}
               onRetry={() => onRetryItem(scene.id)}
               onRegenerate={() => onRetryItem(scene.id)}
+              // 画像カラム専用props
+              imagePromptState={isImageColumn ? imagePromptStates?.[scene.id] : undefined}
+              onGeneratePrompt={
+                isImageColumn && onGenerateImagePrompt
+                  ? () => onGenerateImagePrompt(scene.id)
+                  : undefined
+              }
+              onGenerateImage={
+                isImageColumn && onGenerateImage ? () => onGenerateImage(scene.id) : undefined
+              }
             />
           );
         })}
@@ -175,17 +202,20 @@ export function AssetGenerationStep({
   onVoiceGenerate,
   onSubtitleGenerate,
   onImageGenerate,
+  onImagePromptGenerate,
   onAllVoicesGenerate,
   onAllSubtitlesGenerate,
   onAllImagesGenerate,
 }: AssetGenerationStepProps) {
   const {
+    state,
     columns,
     overallStatus,
     isAllCompleted,
     generateVoice,
     generateSubtitle,
     generateImage,
+    generateImagePrompt,
     generateAllVoices,
     generateAllSubtitles,
     generateAllImages,
@@ -197,6 +227,7 @@ export function AssetGenerationStep({
     onVoiceGenerate,
     onSubtitleGenerate,
     onImageGenerate,
+    onImagePromptGenerate,
     onAllVoicesGenerate,
     onAllSubtitlesGenerate,
     onAllImagesGenerate,
@@ -298,6 +329,10 @@ export function AssetGenerationStep({
                 onGenerate={() => handleColumnGenerate(column.id)}
                 onRetryItem={(sceneId) => handleRetryItem(column.id, sceneId)}
                 disabled={!canStart && overallStatus === 'pending'}
+                // 画像カラム専用props
+                imagePromptStates={column.id === 'image' ? state.imagePrompt : undefined}
+                onGenerateImagePrompt={column.id === 'image' ? generateImagePrompt : undefined}
+                onGenerateImage={column.id === 'image' ? generateImage : undefined}
               />
             ))}
           </div>
