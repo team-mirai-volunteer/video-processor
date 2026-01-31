@@ -1,11 +1,14 @@
 import type { Result } from '@shared/domain/types/result.js';
 import { err, ok } from '@shared/domain/types/result.js';
+import { createLogger } from '@shared/infrastructure/logging/logger.js';
 import type {
   TtsGateway,
   TtsGatewayError,
   TtsSynthesizeParams,
   TtsSynthesizeResult,
 } from '../../domain/gateways/tts.gateway.js';
+
+const log = createLogger('FishAudioTtsClient');
 
 /**
  * Fish Audio TTS API response content type
@@ -44,6 +47,10 @@ export interface FishAudioTtsClientConfig {
   defaultVoiceModelId?: string;
   format?: AudioFormat;
   knownVoiceModels?: string[];
+  /** Maximum number of retries on rate limit or server errors (default: 3) */
+  maxRetries?: number;
+  /** Initial retry delay in milliseconds (default: 1000) */
+  initialRetryDelayMs?: number;
 }
 
 /**
@@ -62,6 +69,16 @@ const DEFAULT_FORMAT: AudioFormat = 'mp3';
 const DEFAULT_VOICE_MODEL_ID = 'e58b0d7efca34eb38d5c4985e378abcb';
 
 /**
+ * Default maximum number of retries
+ */
+const DEFAULT_MAX_RETRIES = 3;
+
+/**
+ * Default initial retry delay in milliseconds
+ */
+const DEFAULT_INITIAL_RETRY_DELAY_MS = 1000;
+
+/**
  * Fish Audio TTS Client
  * Implements the TtsGateway interface using Fish Audio API
  */
@@ -71,6 +88,8 @@ export class FishAudioTtsClient implements TtsGateway {
   private readonly defaultVoiceModelId: string;
   private readonly format: AudioFormat;
   private readonly knownVoiceModels: string[];
+  private readonly maxRetries: number;
+  private readonly initialRetryDelayMs: number;
 
   constructor(config: FishAudioTtsClientConfig = {}) {
     const apiKey = config.apiKey || process.env.FISH_AUDIO_API_KEY;
@@ -86,10 +105,21 @@ export class FishAudioTtsClient implements TtsGateway {
       DEFAULT_VOICE_MODEL_ID;
     this.format = config.format ?? DEFAULT_FORMAT;
     this.knownVoiceModels = config.knownVoiceModels ?? [];
+    this.maxRetries =
+      config.maxRetries ??
+      (process.env.FISH_AUDIO_MAX_RETRIES
+        ? Number.parseInt(process.env.FISH_AUDIO_MAX_RETRIES, 10)
+        : DEFAULT_MAX_RETRIES);
+    this.initialRetryDelayMs =
+      config.initialRetryDelayMs ??
+      (process.env.FISH_AUDIO_INITIAL_RETRY_DELAY_MS
+        ? Number.parseInt(process.env.FISH_AUDIO_INITIAL_RETRY_DELAY_MS, 10)
+        : DEFAULT_INITIAL_RETRY_DELAY_MS);
   }
 
   /**
    * Synthesize speech from text using Fish Audio TTS API
+   * Includes exponential backoff retry logic for rate limits and server errors
    */
   async synthesize(
     params: TtsSynthesizeParams
@@ -113,54 +143,119 @@ export class FishAudioTtsClient implements TtsGateway {
       streaming: false,
     };
 
-    try {
-      const response = await fetch(`${this.apiUrl}/v1/tts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
+    let lastError: TtsGatewayError | null = null;
 
-      // Handle error responses
-      if (!response.ok) {
-        return this.handleErrorResponse(response, voiceModelId);
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      // Wait before retry (skip on first attempt)
+      if (attempt > 0) {
+        const delay =
+          lastError?.type === 'RATE_LIMIT_EXCEEDED' && lastError.retryAfterMs
+            ? lastError.retryAfterMs
+            : this.initialRetryDelayMs * 2 ** (attempt - 1);
+
+        log.info(`Retrying synthesis (attempt ${attempt}/${this.maxRetries}) after ${delay}ms`, {
+          voiceModelId,
+          textLength: params.text.length,
+        });
+        await this.sleep(delay);
       }
 
-      // Get audio data as buffer
-      const audioBuffer = Buffer.from(await response.arrayBuffer());
+      try {
+        const response = await fetch(`${this.apiUrl}/v1/tts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          body: JSON.stringify(requestBody),
+        });
 
-      // Calculate duration from audio data
-      const durationMs = this.estimateDurationFromBuffer(audioBuffer);
+        // Handle error responses
+        if (!response.ok) {
+          const errorResult = await this.handleErrorResponse(response, voiceModelId);
 
-      return ok({
-        audioBuffer,
-        durationMs,
-        format: this.format,
-        sampleRate: this.getSampleRateForFormat(this.format),
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        // Check for rate limit or network errors
-        if (error.message.includes('rate limit') || error.message.includes('429')) {
-          return err({
-            type: 'RATE_LIMIT_EXCEEDED',
-            retryAfterMs: 60000,
-          });
+          if (!errorResult.success) {
+            lastError = errorResult.error;
+
+            // Check if error is retryable and we have retries left
+            if (this.isRetryableError(lastError) && attempt < this.maxRetries) {
+              log.warn('Retryable error occurred, will retry', {
+                errorType: lastError.type,
+                attempt,
+                maxRetries: this.maxRetries,
+              });
+              continue;
+            }
+
+            return errorResult;
+          }
         }
 
-        return err({
-          type: 'SYNTHESIS_FAILED',
-          message: error.message,
-        });
-      }
+        // Get audio data as buffer
+        const audioBuffer = Buffer.from(await response.arrayBuffer());
 
-      return err({
-        type: 'SYNTHESIS_FAILED',
-        message: String(error),
-      });
+        // Calculate duration from audio data
+        const durationMs = this.estimateDurationFromBuffer(audioBuffer);
+
+        if (attempt > 0) {
+          log.info(`Synthesis succeeded after ${attempt} retries`, { voiceModelId });
+        }
+
+        return ok({
+          audioBuffer,
+          durationMs,
+          format: this.format,
+          sampleRate: this.getSampleRateForFormat(this.format),
+        });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+
+        // Check for rate limit or network errors
+        if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
+          lastError = {
+            type: 'RATE_LIMIT_EXCEEDED',
+            retryAfterMs: 60000,
+          };
+        } else {
+          lastError = {
+            type: 'SYNTHESIS_FAILED',
+            message: errorMessage,
+          };
+        }
+
+        // Network errors are retryable
+        if (attempt < this.maxRetries) {
+          log.warn('Network error occurred, will retry', {
+            errorMessage,
+            attempt,
+            maxRetries: this.maxRetries,
+          });
+          continue;
+        }
+
+        return err(lastError);
+      }
     }
+
+    // All retries exhausted
+    return err(lastError || { type: 'SYNTHESIS_FAILED', message: 'Unknown error after retries' });
+  }
+
+  /**
+   * Check if an error is retryable
+   */
+  private isRetryableError(error: TtsGatewayError): boolean {
+    return (
+      error.type === 'RATE_LIMIT_EXCEEDED' ||
+      (error.type === 'API_ERROR' && error.statusCode !== undefined && error.statusCode >= 500)
+    );
+  }
+
+  /**
+   * Sleep for the specified duration
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**

@@ -10,6 +10,11 @@ import type { ShortsScene } from '@shorts-gen/domain/models/scene.js';
 const log = createLogger('SynthesizeVoiceUseCase');
 
 /**
+ * Default delay between voice synthesis requests in milliseconds
+ */
+const DEFAULT_DELAY_BETWEEN_REQUESTS_MS = 500;
+
+/**
  * Dependencies for SynthesizeVoiceUseCase
  */
 export interface SynthesizeVoiceUseCaseDeps {
@@ -23,6 +28,8 @@ export interface SynthesizeVoiceUseCaseDeps {
   storageGateway: TempStorageGateway;
   /** ID generator function */
   generateId: () => string;
+  /** Delay between consecutive TTS requests in milliseconds (default: 500) */
+  delayBetweenRequestsMs?: number;
 }
 
 /**
@@ -129,6 +136,7 @@ export class SynthesizeVoiceUseCase {
   private readonly sceneAssetRepository: ShortsSceneAssetRepositoryGateway;
   private readonly storageGateway: TempStorageGateway;
   private readonly generateId: () => string;
+  private readonly delayBetweenRequestsMs: number;
 
   constructor(deps: SynthesizeVoiceUseCaseDeps) {
     this.ttsGateway = deps.ttsGateway;
@@ -136,6 +144,7 @@ export class SynthesizeVoiceUseCase {
     this.sceneAssetRepository = deps.sceneAssetRepository;
     this.storageGateway = deps.storageGateway;
     this.generateId = deps.generateId;
+    this.delayBetweenRequestsMs = deps.delayBetweenRequestsMs ?? DEFAULT_DELAY_BETWEEN_REQUESTS_MS;
   }
 
   /**
@@ -167,17 +176,24 @@ export class SynthesizeVoiceUseCase {
       totalScenes: scenes.length,
     });
 
-    // Process each scene
+    // Process each scene sequentially with delay between requests
     const results: SceneVoiceSynthesisResult[] = [];
     const errors: SceneSynthesisError[] = [];
 
-    for (const scene of scenes) {
+    for (let i = 0; i < scenes.length; i++) {
+      const scene = scenes[i]!;
       const result = await this.processScene(scene, input.voiceModelId);
 
       if ('error' in result) {
         errors.push(result.error);
       } else {
         results.push(result.result);
+      }
+
+      // Wait between requests to avoid rate limiting (except after last scene)
+      if (i < scenes.length - 1 && this.delayBetweenRequestsMs > 0) {
+        log.debug(`Waiting ${this.delayBetweenRequestsMs}ms before next scene`);
+        await this.sleep(this.delayBetweenRequestsMs);
       }
     }
 
@@ -432,5 +448,12 @@ export class SynthesizeVoiceUseCase {
       default:
         return 'Unknown error';
     }
+  }
+
+  /**
+   * Sleep for the specified duration
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

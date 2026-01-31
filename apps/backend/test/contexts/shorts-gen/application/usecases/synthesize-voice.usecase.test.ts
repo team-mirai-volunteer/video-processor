@@ -534,4 +534,173 @@ describe('SynthesizeVoiceUseCase', () => {
       expect(firstResult?.durationMs).toBe(2500);
     });
   });
+
+  describe('delay between requests', () => {
+    it('should wait between scene processing when delayBetweenRequestsMs is set', async () => {
+      const scene1 = createMockScene({
+        id: 'scene-1',
+        scriptId: 'script-1',
+        order: 0,
+        voiceText: 'Scene 1',
+      });
+      const scene2 = createMockScene({
+        id: 'scene-2',
+        scriptId: 'script-1',
+        order: 1,
+        voiceText: 'Scene 2',
+      });
+      const scene3 = createMockScene({
+        id: 'scene-3',
+        scriptId: 'script-1',
+        order: 2,
+        voiceText: 'Scene 3',
+      });
+
+      // Create use case with short delay for testing
+      const useCaseWithDelay = new SynthesizeVoiceUseCase({
+        ttsGateway: mockTtsGateway,
+        sceneRepository: mockSceneRepository,
+        sceneAssetRepository: mockSceneAssetRepository,
+        storageGateway: mockStorageGateway,
+        generateId: () => `generated-id-${++idCounter}`,
+        delayBetweenRequestsMs: 50, // Short delay for testing
+      });
+
+      vi.mocked(mockSceneRepository.findByScriptId).mockResolvedValue([scene1, scene2, scene3]);
+      vi.mocked(mockTtsGateway.synthesize).mockResolvedValue({
+        success: true,
+        value: createMockTtsResult(),
+      });
+      vi.mocked(mockStorageGateway.uploadFromStream).mockResolvedValue({
+        gcsUri: 'gs://bucket/test.mp3',
+        expiresAt: new Date(),
+      });
+
+      const startTime = Date.now();
+      await useCaseWithDelay.execute({
+        scriptId: 'script-1',
+      });
+      const elapsed = Date.now() - startTime;
+
+      // With 3 scenes and 50ms delay between each (2 delays total), should take at least 100ms
+      expect(elapsed).toBeGreaterThanOrEqual(80); // Allow some margin
+    });
+
+    it('should not wait after the last scene', async () => {
+      const scene = createMockScene({
+        id: 'scene-1',
+        scriptId: 'script-1',
+        order: 0,
+        voiceText: 'Single scene',
+      });
+
+      // Create use case with delay
+      const useCaseWithDelay = new SynthesizeVoiceUseCase({
+        ttsGateway: mockTtsGateway,
+        sceneRepository: mockSceneRepository,
+        sceneAssetRepository: mockSceneAssetRepository,
+        storageGateway: mockStorageGateway,
+        generateId: () => `generated-id-${++idCounter}`,
+        delayBetweenRequestsMs: 100,
+      });
+
+      vi.mocked(mockSceneRepository.findByScriptId).mockResolvedValue([scene]);
+      vi.mocked(mockTtsGateway.synthesize).mockResolvedValue({
+        success: true,
+        value: createMockTtsResult(),
+      });
+      vi.mocked(mockStorageGateway.uploadFromStream).mockResolvedValue({
+        gcsUri: 'gs://bucket/test.mp3',
+        expiresAt: new Date(),
+      });
+
+      const startTime = Date.now();
+      await useCaseWithDelay.execute({
+        scriptId: 'script-1',
+      });
+      const elapsed = Date.now() - startTime;
+
+      // With single scene, should not add any delay
+      expect(elapsed).toBeLessThan(100);
+    });
+
+    it('should use default delay when not specified', async () => {
+      const scene1 = createMockScene({
+        id: 'scene-1',
+        scriptId: 'script-1',
+        order: 0,
+        voiceText: 'Scene 1',
+      });
+      const scene2 = createMockScene({
+        id: 'scene-2',
+        scriptId: 'script-1',
+        order: 1,
+        voiceText: 'Scene 2',
+      });
+
+      // Use default use case (default 500ms delay)
+      vi.mocked(mockSceneRepository.findByScriptId).mockResolvedValue([scene1, scene2]);
+      vi.mocked(mockTtsGateway.synthesize).mockResolvedValue({
+        success: true,
+        value: createMockTtsResult(),
+      });
+      vi.mocked(mockStorageGateway.uploadFromStream).mockResolvedValue({
+        gcsUri: 'gs://bucket/test.mp3',
+        expiresAt: new Date(),
+      });
+
+      const startTime = Date.now();
+      await useCase.execute({
+        scriptId: 'script-1',
+      });
+      const elapsed = Date.now() - startTime;
+
+      // With default 500ms delay between 2 scenes, should take at least 400ms (with margin)
+      expect(elapsed).toBeGreaterThanOrEqual(400);
+    });
+
+    it('should skip delay when delayBetweenRequestsMs is 0', async () => {
+      const scene1 = createMockScene({
+        id: 'scene-1',
+        scriptId: 'script-1',
+        order: 0,
+        voiceText: 'Scene 1',
+      });
+      const scene2 = createMockScene({
+        id: 'scene-2',
+        scriptId: 'script-1',
+        order: 1,
+        voiceText: 'Scene 2',
+      });
+
+      // Create use case with no delay
+      const useCaseNoDelay = new SynthesizeVoiceUseCase({
+        ttsGateway: mockTtsGateway,
+        sceneRepository: mockSceneRepository,
+        sceneAssetRepository: mockSceneAssetRepository,
+        storageGateway: mockStorageGateway,
+        generateId: () => `generated-id-${++idCounter}`,
+        delayBetweenRequestsMs: 0,
+      });
+
+      vi.mocked(mockSceneRepository.findByScriptId).mockResolvedValue([scene1, scene2]);
+      vi.mocked(mockTtsGateway.synthesize).mockResolvedValue({
+        success: true,
+        value: createMockTtsResult(),
+      });
+      vi.mocked(mockStorageGateway.uploadFromStream).mockResolvedValue({
+        gcsUri: 'gs://bucket/test.mp3',
+        expiresAt: new Date(),
+      });
+
+      const startTime = Date.now();
+      await useCaseNoDelay.execute({
+        scriptId: 'script-1',
+      });
+      const elapsed = Date.now() - startTime;
+
+      // With no delay, should complete quickly
+      expect(elapsed).toBeLessThan(200);
+    });
+  });
 });

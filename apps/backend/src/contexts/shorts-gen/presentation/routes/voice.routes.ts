@@ -57,12 +57,18 @@ function getSynthesizeVoiceUseCase(): SynthesizeVoiceUseCase {
     const ttsGateway = new FishAudioTtsClient();
     const storageGateway = createTempStorageGateway();
 
+    // Read delay between requests from environment variable
+    const delayBetweenRequestsMs = process.env.VOICE_SYNTHESIS_DELAY_MS
+      ? Number.parseInt(process.env.VOICE_SYNTHESIS_DELAY_MS, 10)
+      : undefined;
+
     synthesizeVoiceUseCase = new SynthesizeVoiceUseCase({
       ttsGateway,
       sceneRepository,
       sceneAssetRepository,
       storageGateway,
       generateId: () => uuidv4(),
+      delayBetweenRequestsMs,
     });
   }
   return synthesizeVoiceUseCase;
