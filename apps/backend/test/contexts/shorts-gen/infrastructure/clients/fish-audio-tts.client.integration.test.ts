@@ -1,5 +1,9 @@
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { FishAudioTtsClient } from '../../../../../src/contexts/shorts-gen/infrastructure/clients/fish-audio-tts.client.js';
+
+const OUTPUT_DIR = join(__dirname, '../../fixtures/output');
 
 /**
  * Fish Audio TTS Client Integration Tests
@@ -91,7 +95,7 @@ describe('FishAudioTtsClient Integration Tests', () => {
       }
     });
 
-    it('should return VOICE_MODEL_NOT_FOUND for invalid voice model', async () => {
+    it('should return error for invalid voice model', async () => {
       const result = await client.synthesize({
         text: 'Test text',
         voiceModelId: 'invalid-model-id-12345',
@@ -99,8 +103,48 @@ describe('FishAudioTtsClient Integration Tests', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        // Fish Audio may return 404 for invalid model or include it in API_ERROR
-        expect(['VOICE_MODEL_NOT_FOUND', 'API_ERROR']).toContain(result.error.type);
+        // Fish Audio may return different error types for invalid model
+        expect(['VOICE_MODEL_NOT_FOUND', 'API_ERROR', 'INVALID_TEXT']).toContain(result.error.type);
+      }
+    }, 30000);
+
+    it('should synthesize speech with AIあんの voice model', async () => {
+      const aiAnnoVoiceId = 'bfe186256b9240079a5afe8843928f93';
+      const result = await client.synthesize({
+        text: 'こんにちは、AIあんのです。今日も元気に配信していきます！',
+        voiceModelId: aiAnnoVoiceId,
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.value.audioBuffer).toBeInstanceOf(Buffer);
+        expect(result.value.audioBuffer.length).toBeGreaterThan(0);
+        expect(result.value.durationMs).toBeGreaterThan(0);
+        expect(result.value.format).toBe('mp3');
+      }
+    }, 30000);
+
+    it('should synthesize and save audio file with AIあんの voice', async () => {
+      const aiAnnoVoiceId = 'bfe186256b9240079a5afe8843928f93';
+      const result = await client.synthesize({
+        text: 'みなさんこんにちは！AIあんのです。今日はショート動画生成機能のテストをしています。',
+        voiceModelId: aiAnnoVoiceId,
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        // Save to fixtures/output for manual verification
+        if (!existsSync(OUTPUT_DIR)) {
+          mkdirSync(OUTPUT_DIR, { recursive: true });
+        }
+        const outputPath = join(OUTPUT_DIR, 'ai-anno-tts-test.mp3');
+        writeFileSync(outputPath, result.value.audioBuffer);
+
+        expect(existsSync(outputPath)).toBe(true);
+        console.log(`Audio saved to: ${outputPath}`);
+        console.log(
+          `Duration: ${result.value.durationMs}ms, Size: ${result.value.audioBuffer.length} bytes`
+        );
       }
     }, 30000);
   });

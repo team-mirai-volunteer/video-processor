@@ -112,9 +112,16 @@ router.post('/scripts/:scriptId/subtitles', async (req, res, next) => {
   } catch (error) {
     if (error instanceof GenerateSubtitlesError) {
       const statusCode = getStatusCodeForSubtitleError(error.code);
+      console.error(
+        '[subtitle.routes] GenerateSubtitlesError:',
+        error.code,
+        error.message,
+        error.cause
+      );
       res.status(statusCode).json({
         error: error.code,
         message: error.message,
+        details: error.cause ? String(error.cause) : undefined,
       });
       return;
     }
@@ -155,9 +162,16 @@ router.post('/scenes/:sceneId/subtitles', async (req, res, next) => {
   } catch (error) {
     if (error instanceof GenerateSubtitlesError) {
       const statusCode = getStatusCodeForSubtitleError(error.code);
+      console.error(
+        '[subtitle.routes] GenerateSubtitlesError:',
+        error.code,
+        error.message,
+        error.cause
+      );
       res.status(statusCode).json({
         error: error.code,
         message: error.message,
+        details: error.cause ? String(error.cause) : undefined,
       });
       return;
     }
