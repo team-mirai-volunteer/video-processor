@@ -221,6 +221,7 @@ describe('ComposeVideoUseCase', () => {
       download: vi.fn().mockResolvedValue(Buffer.from('video')),
       downloadAsStream: vi.fn().mockReturnValue(null as unknown as NodeJS.ReadableStream),
       exists: vi.fn().mockResolvedValue(true),
+      getSignedUrl: vi.fn().mockResolvedValue('https://storage.googleapis.com/signed-url'),
     };
 
     const deps: ComposeVideoUseCaseDeps = {

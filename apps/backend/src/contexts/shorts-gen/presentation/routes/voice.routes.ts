@@ -27,6 +27,28 @@ function createTempStorageGateway(): TempStorageGateway {
   return new GcsClient();
 }
 
+// Singleton storage gateway for URL signing
+let storageGateway: TempStorageGateway | null = null;
+
+function getStorageGateway(): TempStorageGateway {
+  if (!storageGateway) {
+    storageGateway = createTempStorageGateway();
+  }
+  return storageGateway;
+}
+
+/**
+ * Convert GCS URI to signed URL for browser access
+ */
+async function toSignedUrl(gcsUri: string | null | undefined): Promise<string | null> {
+  if (!gcsUri) return null;
+  // Only convert gs:// or local:// URIs
+  if (!gcsUri.startsWith('gs://') && !gcsUri.startsWith('local://')) {
+    return gcsUri;
+  }
+  return getStorageGateway().getSignedUrl(gcsUri);
+}
+
 // Initialize clients (lazy initialization to allow env vars to be set)
 let synthesizeVoiceUseCase: SynthesizeVoiceUseCase | null = null;
 
@@ -74,7 +96,18 @@ router.post('/scripts/:scriptId/voice', async (req, res, next) => {
     const useCase = getSynthesizeVoiceUseCase();
     const result = await useCase.execute(input);
 
-    res.status(200).json(result);
+    // Convert GCS URIs to signed URLs for browser access
+    const resultsWithSignedUrls = await Promise.all(
+      result.results.map(async (r) => ({
+        ...r,
+        fileUrl: (await toSignedUrl(r.fileUrl)) ?? '',
+      }))
+    );
+
+    res.status(200).json({
+      ...result,
+      results: resultsWithSignedUrls,
+    });
   } catch (error) {
     if (error instanceof SynthesizeVoiceError) {
       const statusCode = getStatusCodeForVoiceError(error.type);
@@ -116,7 +149,18 @@ router.post('/scenes/:sceneId/voice', async (req, res, next) => {
     const useCase = getSynthesizeVoiceUseCase();
     const result = await useCase.execute(input);
 
-    res.status(200).json(result);
+    // Convert GCS URIs to signed URLs for browser access
+    const resultsWithSignedUrls = await Promise.all(
+      result.results.map(async (r) => ({
+        ...r,
+        fileUrl: (await toSignedUrl(r.fileUrl)) ?? '',
+      }))
+    );
+
+    res.status(200).json({
+      ...result,
+      results: resultsWithSignedUrls,
+    });
   } catch (error) {
     if (error instanceof SynthesizeVoiceError) {
       const statusCode = getStatusCodeForVoiceError(error.type);
@@ -155,15 +199,16 @@ router.get('/scripts/:scriptId/voice', async (req, res, next) => {
     // Filter to voice assets only
     const voiceAssets = assets.filter((a) => a.assetType === 'voice');
 
-    // Group by scene
+    // Group by scene and convert to signed URLs
     const assetsByScene = new Map<
       string,
       { assetId: string; fileUrl: string; durationMs: number }
     >();
     for (const asset of voiceAssets) {
+      const signedUrl = await toSignedUrl(asset.fileUrl);
       assetsByScene.set(asset.sceneId, {
         assetId: asset.id,
-        fileUrl: asset.fileUrl,
+        fileUrl: signedUrl ?? '',
         durationMs: asset.durationMs ?? 0,
       });
     }

@@ -191,6 +191,25 @@ export class GcsClient implements TempStorageGateway {
   }
 
   /**
+   * Generate a signed URL from a GCS URI
+   * @param gcsUri GCS URI (gs://bucket/path format)
+   * @param expiresInMinutes Expiration time in minutes (default: 60)
+   * @returns Signed HTTPS URL for browser access
+   */
+  async getSignedUrl(gcsUri: string, expiresInMinutes = 60): Promise<string> {
+    const { bucketName, filePath } = this.parseGcsUri(gcsUri);
+    const bucket = this.storage.bucket(bucketName);
+    const file = bucket.file(filePath);
+
+    const [signedUrl] = await file.getSignedUrl({
+      action: 'read',
+      expires: Date.now() + expiresInMinutes * 60 * 1000,
+    });
+
+    return signedUrl;
+  }
+
+  /**
    * Parse GCS URI into bucket name and file path
    */
   private parseGcsUri(gcsUri: string): { bucketName: string; filePath: string } {
