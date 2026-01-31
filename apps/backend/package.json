@@ -6,7 +6,7 @@
   "scripts": {
     "postinstall": "prisma generate --schema=src/contexts/shared/infrastructure/database/prisma/schema.prisma",
     "dev": "NODE_OPTIONS='--max-old-space-size=8192' tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "tsc && tsc-alias",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "lint": "biome check .",
@@ -43,6 +43,7 @@
     "dependency-cruiser": "^17.3.7",
     "dotenv": "^17.2.3",
     "prisma": "^6.2.1",
+    "tsc-alias": "^1.8.16",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vitest": "^3.0.4"

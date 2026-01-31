@@ -52,8 +52,7 @@ RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 # Copy built files
 COPY --from=builder /app/apps/shared ./apps/shared
 COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
-COPY --from=builder /app/apps/backend/src/infrastructure/database/prisma ./apps/backend/src/infrastructure/database/prisma
-COPY --from=builder /app/apps/backend/src/infrastructure/data ./apps/backend/dist/infrastructure/data
+COPY --from=builder /app/apps/backend/src/contexts/shared/infrastructure/database/prisma ./apps/backend/src/contexts/shared/infrastructure/database/prisma
 
 # Copy Prisma client (generated client + runtime)
 COPY --from=builder /app/node_modules/.pnpm/@prisma+client*/node_modules/@prisma/client ./node_modules/@prisma/client
