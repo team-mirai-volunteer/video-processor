@@ -7,6 +7,33 @@ import type {
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
+/**
+ * Backend response for voice synthesis
+ */
+interface SynthesizeVoiceBackendResponse {
+  scriptId: string;
+  totalScenes: number;
+  scenesWithVoice: number;
+  successCount: number;
+  skippedCount: number;
+  failedCount: number;
+  results: {
+    sceneId: string;
+    sceneOrder: number;
+    assetId: string;
+    fileUrl: string;
+    durationMs: number;
+    skipped: boolean;
+    skipReason?: string;
+  }[];
+  errors: {
+    sceneId: string;
+    sceneOrder: number;
+    errorType: string;
+    message: string;
+  }[];
+}
+
 export async function generateVoice(
   projectId: string,
   sceneId: string
@@ -24,8 +51,43 @@ export async function generateVoice(
     throw new Error(`音声生成に失敗しました: ${errorText}`);
   }
 
-  const data = await response.json();
-  return { asset: data.asset as SceneAsset };
+  const data: SynthesizeVoiceBackendResponse = await response.json();
+
+  // Check for errors
+  const firstError = data.errors[0];
+  if (firstError) {
+    throw new Error(`音声生成に失敗しました: ${firstError.message}`);
+  }
+
+  // Find the result for this scene
+  const result = data.results.find((r) => r.sceneId === sceneId);
+  if (!result) {
+    throw new Error(`シーン ${sceneId} の音声生成結果が見つかりません`);
+  }
+
+  // If skipped (no voice text), return a placeholder asset
+  if (result.skipped) {
+    return {
+      asset: {
+        id: '',
+        sceneId: result.sceneId,
+        assetType: 'voice',
+        fileUrl: '',
+        durationMs: result.durationMs,
+      },
+    };
+  }
+
+  // Map backend result to frontend SceneAsset
+  const asset: SceneAsset = {
+    id: result.assetId,
+    sceneId: result.sceneId,
+    assetType: 'voice',
+    fileUrl: result.fileUrl,
+    durationMs: result.durationMs,
+  };
+
+  return { asset };
 }
 
 export async function generateAllVoices(projectId: string): Promise<{

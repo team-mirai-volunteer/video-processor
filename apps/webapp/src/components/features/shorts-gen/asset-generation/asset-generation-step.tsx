@@ -151,6 +151,7 @@ function AssetColumn({ column, scenes, onGenerate, onRetryItem, disabled }: Asse
               state={sceneState}
               columnType={column.id}
               onRetry={() => onRetryItem(scene.id)}
+              onRegenerate={() => onRetryItem(scene.id)}
             />
           );
         })}

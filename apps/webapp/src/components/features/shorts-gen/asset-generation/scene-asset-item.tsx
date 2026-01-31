@@ -21,6 +21,7 @@ interface SceneAssetItemProps {
   state: SceneAssetState;
   columnType: AssetColumnData['id'];
   onRetry?: () => void;
+  onRegenerate?: () => void;
   onPreview?: () => void;
 }
 
@@ -61,6 +62,7 @@ export function SceneAssetItem({
   state,
   columnType,
   onRetry,
+  onRegenerate,
   onPreview,
 }: SceneAssetItemProps) {
   const [showPreview, setShowPreview] = useState(false);
@@ -166,6 +168,17 @@ export function SceneAssetItem({
               title="プレビュー"
             >
               <Play className="h-3 w-3" />
+            </Button>
+          )}
+          {state.status === 'completed' && onRegenerate && !isSkipped && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0"
+              onClick={onRegenerate}
+              title="再生成"
+            >
+              <RefreshCw className="h-3 w-3" />
             </Button>
           )}
           {state.status === 'error' && onRetry && (

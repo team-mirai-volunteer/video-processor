@@ -4,6 +4,7 @@ import {
   AssetGenerationStep,
   ComposeStep,
   type GenerateAllAssetsResponse,
+  type GenerateVoiceResponse,
   type Planning,
   PlanningGenerationStep,
   PublishTextStep,
@@ -292,6 +293,56 @@ export function ProjectDetailClient({
     };
   }, [script, scenes]);
 
+  // Single scene voice generation handler
+  const handleVoiceGenerate = useCallback(
+    async (sceneId: string): Promise<GenerateVoiceResponse> => {
+      const response = await fetch(`/api/shorts-gen/scenes/${sceneId}/voice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(error.error || 'Failed to generate voice');
+      }
+      const data = await response.json();
+
+      // Check for errors in the response
+      if (data.errors && data.errors.length > 0) {
+        throw new Error(data.errors[0].message || 'Voice generation failed');
+      }
+
+      // The API returns results array from SynthesizeVoiceOutput
+      const result = data.results?.find((r: { sceneId: string }) => r.sceneId === sceneId);
+      if (!result) {
+        throw new Error('Voice result not found in response');
+      }
+
+      // If skipped (no voice text), return placeholder
+      if (result.skipped) {
+        return {
+          asset: {
+            id: '',
+            sceneId,
+            assetType: 'voice',
+            fileUrl: '',
+            durationMs: result.durationMs ?? null,
+          },
+        };
+      }
+
+      return {
+        asset: {
+          id: result.assetId,
+          sceneId,
+          assetType: 'voice',
+          fileUrl: result.fileUrl,
+          durationMs: result.durationMs ?? null,
+        },
+      };
+    },
+    []
+  );
+
   const handleAllSubtitlesGenerate = useCallback(async (): Promise<GenerateAllAssetsResponse> => {
     if (!script) throw new Error('Script not found');
     const response = await fetch(`/api/shorts-gen/scripts/${script.id}/subtitles`, {
@@ -471,6 +522,7 @@ export function ProjectDetailClient({
           onComplete={handleAssetsComplete}
           canStart={steps.assets.status === 'ready' || steps.assets.status === 'completed'}
           existingAssets={existingAssets}
+          onVoiceGenerate={handleVoiceGenerate}
           onAllVoicesGenerate={handleAllVoicesGenerate}
           onAllSubtitlesGenerate={handleAllSubtitlesGenerate}
           onAllImagesGenerate={handleAllImagesGenerate}
