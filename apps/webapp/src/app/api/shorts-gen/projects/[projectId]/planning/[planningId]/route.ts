@@ -26,7 +26,7 @@ export async function PATCH(
         ...(BACKEND_API_KEY && { 'X-API-Key': BACKEND_API_KEY }),
       },
       body: JSON.stringify({
-        content: body.markdownContent,
+        content: body.content,
       }),
     });
 
