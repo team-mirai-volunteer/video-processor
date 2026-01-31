@@ -55,8 +55,44 @@ export interface GenerateScriptInput {
  * GenerateScriptUseCase ストリーミング結果
  */
 export interface GenerateScriptStreamResult {
-  stream: AsyncIterable<StreamChunk>;
+  stream: AsyncIterable<ScriptStreamChunk>;
   scriptId: string | null;
+}
+
+/**
+ * スクリプト用のシーンデータ（フロントエンド向け）
+ */
+export interface ScriptSceneData {
+  id: string;
+  scriptId: string;
+  order: number;
+  summary: string;
+  visualType: VisualType;
+  voiceText: string | null;
+  subtitles: string[];
+  silenceDurationMs: number | null;
+  stockVideoKey: string | null;
+  solidColor: string | null;
+  imagePrompt: string | null;
+  imageStyleHint: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * スクリプト用のストリームチャンク（拡張版）
+ */
+export interface ScriptStreamChunk extends StreamChunk {
+  /** 保存されたスクリプトとシーン（tool_callで保存された場合） */
+  savedScript?: {
+    script: {
+      id: string;
+      projectId: string;
+      planningId: string;
+      version: number;
+    };
+    scenes: ScriptSceneData[];
+  };
 }
 
 /**
@@ -378,7 +414,7 @@ ${videoDescriptions}`
     projectId: string,
     planningId: string,
     onScriptSaved: (scriptId: string) => void
-  ): AsyncIterable<StreamChunk> {
+  ): AsyncIterable<ScriptStreamChunk> {
     for await (const chunk of stream) {
       yield chunk;
 
@@ -389,7 +425,41 @@ ${videoDescriptions}`
             const result = await this.handleSaveScript(chunk.toolCall, projectId, planningId);
             onScriptSaved(result.scriptId);
 
-            // ツール結果を返す
+            // 保存結果をUIに送信（企画書と同様のパターン）
+            const savedScriptChunk: ScriptStreamChunk = {
+              type: 'tool_call',
+              toolCall: {
+                ...chunk.toolCall,
+                arguments: { ...chunk.toolCall.arguments, result: 'saved' },
+              },
+              savedScript: {
+                script: {
+                  id: result.scriptId,
+                  projectId,
+                  planningId,
+                  version: 1,
+                },
+                scenes: result.scenes.map((scene) => ({
+                  id: scene.id,
+                  scriptId: scene.scriptId,
+                  order: scene.order,
+                  summary: scene.summary,
+                  visualType: scene.visualType,
+                  voiceText: scene.voiceText,
+                  subtitles: scene.subtitles,
+                  silenceDurationMs: scene.silenceDurationMs,
+                  stockVideoKey: scene.stockVideoKey,
+                  solidColor: scene.solidColor,
+                  imagePrompt: scene.imagePrompt,
+                  imageStyleHint: scene.imageStyleHint,
+                  createdAt: scene.createdAt.toISOString(),
+                  updatedAt: scene.updatedAt.toISOString(),
+                })),
+              },
+            };
+            yield savedScriptChunk;
+
+            // ツール結果のテキストも返す
             yield {
               type: 'text_delta',
               textDelta: `\n\n[台本を保存しました。${result.scenes.length}シーンを作成しました。]`,

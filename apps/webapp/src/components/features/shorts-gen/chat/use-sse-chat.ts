@@ -147,6 +147,7 @@ export function useSSEChat(options: UseSSEChatOptions): UseSSEChatReturn {
                 textDelta?: string;
                 toolCall?: { id: string; name: string; arguments: Record<string, unknown> };
                 savedPlanning?: unknown;
+                savedScript?: unknown;
                 toolCompleted?: boolean;
                 error?: string;
               };
@@ -190,18 +191,20 @@ export function useSSEChat(options: UseSSEChatOptions): UseSSEChatReturn {
                     setToolCalls((prev) => [...prev, toolCall]);
                     onToolCall?.(toolCall);
                   }
-                  // Backend format: { toolCall: { name, arguments }, savedPlanning?, toolCompleted? }
+                  // Backend format: { toolCall: { name, arguments }, savedPlanning?, savedScript?, toolCompleted? }
                   else if (backendEvent.toolCall) {
                     const toolName = backendEvent.toolCall.name;
-                    const hasResult = !!backendEvent.savedPlanning;
+                    const hasResult = !!backendEvent.savedPlanning || !!backendEvent.savedScript;
                     const isCompleted = hasResult || backendEvent.toolCompleted;
 
                     if (isCompleted) {
                       // Update existing tool call to completed
+                      // Pass the appropriate result based on tool type
+                      const toolResult = backendEvent.savedPlanning || backendEvent.savedScript;
                       const completedToolCall: ToolCall = {
                         name: toolName,
                         args: backendEvent.toolCall.arguments || {},
-                        result: backendEvent.savedPlanning,
+                        result: toolResult,
                         status: 'completed',
                       };
                       setToolCalls((prev) =>

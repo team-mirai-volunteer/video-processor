@@ -36,3 +36,20 @@ variable "webapp_api_key" {
   type        = string
   sensitive   = true
 }
+
+variable "gemini_api_key" {
+  description = "Gemini API key"
+  type        = string
+  sensitive   = true
+}
+
+variable "fish_audio_api_key" {
+  description = "Fish Audio API key"
+  type        = string
+  sensitive   = true
+}
+
+variable "fish_audio_default_voice_model_id" {
+  description = "Fish Audio default voice model ID"
+  type        = string
+}

@@ -27,3 +27,13 @@ output "webapp_api_key_secret_id" {
   description = "Secret Manager secret ID for webapp API key"
   value       = google_secret_manager_secret.webapp_api_key.secret_id
 }
+
+output "gemini_api_key_secret_id" {
+  description = "Secret Manager secret ID for Gemini API key"
+  value       = google_secret_manager_secret.gemini_api_key.secret_id
+}
+
+output "fish_audio_api_key_secret_id" {
+  description = "Secret Manager secret ID for Fish Audio API key"
+  value       = google_secret_manager_secret.fish_audio_api_key.secret_id
+}

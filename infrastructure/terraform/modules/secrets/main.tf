@@ -86,3 +86,47 @@ resource "google_secret_manager_secret_iam_member" "webapp_api_key_access" {
   member    = "serviceAccount:${var.cloud_run_service_account_email}"
   project   = var.project_id
 }
+
+# Secret: Gemini API Key
+resource "google_secret_manager_secret" "gemini_api_key" {
+  secret_id = "${var.project_name}-gemini-api-key"
+  project   = var.project_id
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "gemini_api_key" {
+  secret      = google_secret_manager_secret.gemini_api_key.id
+  secret_data = var.gemini_api_key
+}
+
+resource "google_secret_manager_secret_iam_member" "gemini_api_key_access" {
+  secret_id = google_secret_manager_secret.gemini_api_key.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.cloud_run_service_account_email}"
+  project   = var.project_id
+}
+
+# Secret: Fish Audio API Key
+resource "google_secret_manager_secret" "fish_audio_api_key" {
+  secret_id = "${var.project_name}-fish-audio-api-key"
+  project   = var.project_id
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "fish_audio_api_key" {
+  secret      = google_secret_manager_secret.fish_audio_api_key.id
+  secret_data = var.fish_audio_api_key
+}
+
+resource "google_secret_manager_secret_iam_member" "fish_audio_api_key_access" {
+  secret_id = google_secret_manager_secret.fish_audio_api_key.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.cloud_run_service_account_email}"
+  project   = var.project_id
+}

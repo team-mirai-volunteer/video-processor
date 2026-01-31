@@ -9,13 +9,13 @@ import { useCallback, useEffect, useRef } from 'react';
 // @see https://github.com/TypeCellOS/BlockNote/issues/749
 // 機能には影響なし。ライブラリ側の修正を待つ
 if (typeof window !== 'undefined') {
-  const originalWarn = console.warn;
-  console.warn = (...args: unknown[]) => {
+  const originalError = console.error;
+  console.error = (...args: unknown[]) => {
     const msg = args[0];
     if (typeof msg === 'string' && msg.includes('Function components cannot be given refs')) {
       return;
     }
-    originalWarn.apply(console, args);
+    originalError.apply(console, args);
   };
 }
 

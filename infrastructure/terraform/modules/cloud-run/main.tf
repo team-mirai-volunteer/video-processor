@@ -185,6 +185,31 @@ resource "google_cloud_run_v2_service" "main" {
         }
       }
 
+      env {
+        name = "GEMINI_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = var.gemini_api_key_secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "FISH_AUDIO_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = var.fish_audio_api_key_secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name  = "FISH_AUDIO_DEFAULT_VOICE_MODEL_ID"
+        value = var.fish_audio_default_voice_model_id
+      }
+
       # Cloud SQL connection
       volume_mounts {
         name       = "cloudsql"

@@ -107,6 +107,9 @@ module "cloud_run" {
   google_credentials_secret_id = module.secrets.google_credentials_secret_id
   database_password_secret_id  = module.secrets.database_password_secret_id
   webapp_api_key_secret_id     = module.secrets.webapp_api_key_secret_id
+  gemini_api_key_secret_id     = module.secrets.gemini_api_key_secret_id
+  fish_audio_api_key_secret_id = module.secrets.fish_audio_api_key_secret_id
+  fish_audio_default_voice_model_id = var.fish_audio_default_voice_model_id
 
   cors_origin                   = var.cors_origin
   google_drive_output_folder_id = var.google_drive_output_folder_id
@@ -130,6 +133,9 @@ module "secrets" {
   google_credentials_json = var.google_credentials_json
   database_password       = var.database_password
   webapp_api_key          = var.webapp_api_key
+  gemini_api_key          = var.gemini_api_key
+  fish_audio_api_key      = var.fish_audio_api_key
+  fish_audio_default_voice_model_id = var.fish_audio_default_voice_model_id
 
   # Use the Cloud Run service account email from the resource we created above
   cloud_run_service_account_email = google_service_account.cloud_run.email

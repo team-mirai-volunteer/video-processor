@@ -12,6 +12,9 @@ google_credentials_json = <<-EOF
 ${GOOGLE_CREDENTIALS_JSON}
 EOF
 webapp_api_key = "${WEBAPP_API_KEY}"
+gemini_api_key = "${GEMINI_API_KEY}"
+fish_audio_api_key = "${FISH_AUDIO_API_KEY}"
+fish_audio_default_voice_model_id = "${FISH_AUDIO_DEFAULT_VOICE_MODEL_ID}"
 
 # Application
 container_image               = "${CONTAINER_IMAGE}"

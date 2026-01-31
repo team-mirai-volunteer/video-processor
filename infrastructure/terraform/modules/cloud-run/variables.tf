@@ -109,6 +109,21 @@ variable "webapp_api_key_secret_id" {
   type        = string
 }
 
+variable "gemini_api_key_secret_id" {
+  description = "Secret Manager secret ID for Gemini API key"
+  type        = string
+}
+
+variable "fish_audio_api_key_secret_id" {
+  description = "Secret Manager secret ID for Fish Audio API key"
+  type        = string
+}
+
+variable "fish_audio_default_voice_model_id" {
+  description = "Fish Audio default voice model ID"
+  type        = string
+}
+
 # Application config
 variable "cors_origin" {
   description = "Allowed CORS origin"

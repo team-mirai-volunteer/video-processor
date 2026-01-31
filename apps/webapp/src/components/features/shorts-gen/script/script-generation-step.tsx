@@ -69,9 +69,23 @@ export function ScriptGenerationStep({
     (toolCall: ToolCall) => {
       // Handle save_script tool call from AI
       if (toolCall.name === 'save_script' && toolCall.status === 'completed') {
-        const result = toolCall.result as { script?: Script; scenes?: Scene[] } | undefined;
+        // Backend sends savedScript with script and scenes
+        const result = toolCall.result as
+          | {
+              script?: { id: string; projectId: string; planningId: string; version: number };
+              scenes?: Scene[];
+            }
+          | undefined;
         if (result?.script && result?.scenes) {
-          onScriptGenerated?.(result.script, result.scenes);
+          // Create full Script object with timestamps
+          const now = new Date().toISOString();
+          const fullScript: Script = {
+            ...result.script,
+            scenes: result.scenes,
+            createdAt: now,
+            updatedAt: now,
+          };
+          onScriptGenerated?.(fullScript, result.scenes);
         }
       }
     },
