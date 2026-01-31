@@ -143,7 +143,154 @@ export function SceneAssetItem({
   };
 
   const isSkipped = !needsGeneration();
+  const hasImage = state.status === 'completed' && !!state.asset;
 
+  // 画像カラムでimage_genタイプの場合は専用UIを使う
+  if (isImageColumn && isImageGenType) {
+    return (
+      <div
+        className={cn(
+          'p-3 rounded-md text-sm border',
+          state.status === 'error' && 'border-destructive bg-destructive/5',
+          state.status === 'completed' && 'border-green-200 bg-green-50/50',
+          (state.status === 'running' || isPromptGenerating) && 'border-blue-200 bg-blue-50/50'
+        )}
+      >
+        {/* ヘッダー */}
+        <div className="flex items-center gap-1.5 mb-2">
+          <ImageIcon className="h-3.5 w-3.5" />
+          <span className="font-medium text-xs">シーン {scene.order + 1}</span>
+        </div>
+
+        {/* ① プロンプト行 */}
+        <div className="flex items-center justify-between gap-2 py-1.5 border-b border-dashed">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className="flex items-center gap-1 shrink-0">
+              {hasImagePrompt ? (
+                <Check className="h-3 w-3 text-green-500" />
+              ) : isPromptGenerating ? (
+                <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />
+              ) : (
+                <Circle className="h-3 w-3 text-muted-foreground" />
+              )}
+              <span className="text-xs text-muted-foreground">①</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-xs truncate block">
+                {hasImagePrompt
+                  ? `${scene.imagePrompt?.slice(0, 40)}${(scene.imagePrompt?.length ?? 0) > 40 ? '...' : ''}`
+                  : 'プロンプト未設定'}
+              </span>
+            </div>
+          </div>
+          {onGeneratePrompt && (
+            <Button
+              size="sm"
+              variant={hasImagePrompt ? 'ghost' : 'outline'}
+              className={hasImagePrompt ? 'h-6 px-2 text-xs' : 'h-7 text-xs'}
+              onClick={onGeneratePrompt}
+              disabled={isPromptGenerating || isImageGenerating}
+              title={hasImagePrompt ? 'プロンプト再生成' : undefined}
+            >
+              {isPromptGenerating ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : hasImagePrompt ? (
+                <RefreshCw className="h-3 w-3" />
+              ) : (
+                <>
+                  <Pencil className="h-3 w-3" />
+                  <span className="ml-1">生成</span>
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+
+        {/* ② 画像行 */}
+        <div className="flex items-center justify-between gap-2 pt-1.5">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className="flex items-center gap-1 shrink-0">
+              {hasImage ? (
+                <Check className="h-3 w-3 text-green-500" />
+              ) : isImageGenerating ? (
+                <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />
+              ) : (
+                <Circle className="h-3 w-3 text-muted-foreground" />
+              )}
+              <span className="text-xs text-muted-foreground">②</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-xs text-muted-foreground">
+                {hasImage ? '生成済み' : hasImagePrompt ? '画像未生成' : '(①完了後に実行可能)'}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            {hasImage && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0"
+                onClick={handlePreview}
+                title="プレビュー"
+              >
+                <Play className="h-3 w-3" />
+              </Button>
+            )}
+            {onGenerateImage && (
+              <Button
+                size="sm"
+                variant={hasImage ? 'ghost' : 'outline'}
+                className={hasImage ? 'h-6 px-2 text-xs' : 'h-7 text-xs'}
+                onClick={onGenerateImage}
+                disabled={!hasImagePrompt || isPromptGenerating || isImageGenerating}
+                title={hasImage ? '画像再生成' : undefined}
+              >
+                {isImageGenerating ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : hasImage ? (
+                  <RefreshCw className="h-3 w-3" />
+                ) : (
+                  <>
+                    <ImageIcon className="h-3 w-3" />
+                    <span className="ml-1">生成</span>
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* エラー表示 */}
+        {state.error && (
+          <div className="mt-2 text-xs text-destructive bg-destructive/10 p-1.5 rounded">
+            {state.error}
+          </div>
+        )}
+
+        {/* プレビュー */}
+        {showPreview && state.asset && (
+          <div className="mt-2 p-2 bg-muted/50 rounded">
+            <img
+              src={state.asset.fileUrl}
+              alt={`シーン ${scene.order + 1} - 画像`}
+              className="w-full h-auto rounded object-contain max-h-24"
+            />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="w-full mt-1 h-6 text-xs"
+              onClick={() => setShowPreview(false)}
+            >
+              閉じる
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 画像カラム以外（voice, subtitle）または画像カラムでimage_gen以外の場合
   return (
     <div
       className={cn(
@@ -174,43 +321,6 @@ export function SceneAssetItem({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          {/* 画像カラムの個別ボタン */}
-          {isImageColumn && isImageGenType && (
-            <>
-              {onGeneratePrompt && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 w-6 p-0"
-                  onClick={onGeneratePrompt}
-                  disabled={isPromptGenerating || isImageGenerating}
-                  title="プロンプト生成"
-                >
-                  {isPromptGenerating ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Pencil className="h-3 w-3" />
-                  )}
-                </Button>
-              )}
-              {onGenerateImage && hasImagePrompt && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 w-6 p-0"
-                  onClick={onGenerateImage}
-                  disabled={isPromptGenerating || isImageGenerating}
-                  title="画像生成"
-                >
-                  {isImageGenerating ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <ImageIcon className="h-3 w-3" />
-                  )}
-                </Button>
-              )}
-            </>
-          )}
           {/* プレビューボタン (voiceは別でaudioプレーヤー表示) */}
           {state.status === 'completed' && state.asset && columnType !== 'voice' && (
             <Button
@@ -223,8 +333,8 @@ export function SceneAssetItem({
               <Play className="h-3 w-3" />
             </Button>
           )}
-          {/* 画像カラム以外の再生成ボタン */}
-          {!isImageColumn && state.status === 'completed' && onRegenerate && !isSkipped && (
+          {/* 再生成ボタン */}
+          {state.status === 'completed' && onRegenerate && !isSkipped && (
             <Button
               size="sm"
               variant="ghost"

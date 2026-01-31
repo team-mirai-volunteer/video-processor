@@ -5,6 +5,7 @@ import {
   ComposeStep,
   type GenerateAllAssetsResponse,
   type GenerateImagePromptResponse,
+  type GenerateImageResponse,
   type GenerateVoiceResponse,
   type Planning,
   PlanningGenerationStep,
@@ -423,6 +424,38 @@ export function ProjectDetailClient({
     [scenes]
   );
 
+  // Single scene image generation handler
+  const handleImageGenerate = useCallback(
+    async (sceneId: string): Promise<GenerateImageResponse> => {
+      const response = await fetch(`/api/shorts-gen/scenes/${sceneId}/image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(error.error || error.message || 'Failed to generate image');
+      }
+      const data = await response.json();
+
+      // Backend returns { results: [{ sceneId, assetId, fileUrl, success }], ... }
+      const result = data.results?.[0];
+      if (!result || !result.success) {
+        throw new Error(result?.error || 'Image generation failed');
+      }
+
+      return {
+        asset: {
+          id: result.assetId,
+          sceneId,
+          assetType: 'background_image',
+          fileUrl: result.fileUrl,
+          durationMs: null,
+        },
+      };
+    },
+    []
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -554,6 +587,7 @@ export function ProjectDetailClient({
           canStart={steps.assets.status === 'ready' || steps.assets.status === 'completed'}
           existingAssets={existingAssets}
           onVoiceGenerate={handleVoiceGenerate}
+          onImageGenerate={handleImageGenerate}
           onImagePromptGenerate={handleImagePromptGenerate}
           onAllVoicesGenerate={handleAllVoicesGenerate}
           onAllSubtitlesGenerate={handleAllSubtitlesGenerate}
