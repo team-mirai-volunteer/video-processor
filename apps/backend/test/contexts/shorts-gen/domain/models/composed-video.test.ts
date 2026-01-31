@@ -129,7 +129,7 @@ describe('ShortsComposedVideo', () => {
       }
     });
 
-    it('should return error when transitioning from completed', () => {
+    it('should allow transitioning from completed to processing for re-generation', () => {
       const now = new Date();
       const video = ShortsComposedVideo.fromProps({
         id: 'existing-id',
@@ -145,9 +145,32 @@ describe('ShortsComposedVideo', () => {
       });
 
       const result = video.startProcessing();
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.type).toBe('INVALID_STATE_TRANSITION');
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.value.status).toBe('processing');
+      }
+    });
+
+    it('should allow transitioning from failed to processing for retry', () => {
+      const now = new Date();
+      const video = ShortsComposedVideo.fromProps({
+        id: 'existing-id',
+        projectId: 'project-123',
+        scriptId: 'script-123',
+        fileUrl: null,
+        durationSeconds: null,
+        status: 'failed',
+        errorMessage: 'Previous error',
+        bgmKey: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const result = video.startProcessing();
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.value.status).toBe('processing');
+        expect(result.value.errorMessage).toBeNull();
       }
     });
   });
