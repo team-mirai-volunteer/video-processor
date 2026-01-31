@@ -1,9 +1,6 @@
 'use server';
 
-import type {
-  GenerateSubtitleResponse,
-  SceneAsset,
-} from '@/components/features/shorts-gen/asset-generation';
+import type { GenerateSubtitleResponse, SceneAsset } from '@/lib/types/asset-generation';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 

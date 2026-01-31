@@ -4,7 +4,7 @@ import type {
   GenerateImagePromptResponse,
   GenerateImageResponse,
   SceneAsset,
-} from '@/components/features/shorts-gen/asset-generation';
+} from '@/lib/types/asset-generation';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
