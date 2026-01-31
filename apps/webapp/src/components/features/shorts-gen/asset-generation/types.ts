@@ -1,12 +1,20 @@
+// Re-export shared types from lib (used by both server and components)
+export type {
+  AssetType,
+  SceneAsset,
+  GenerateVoiceResponse,
+  GenerateSubtitleResponse,
+  GenerateImageResponse,
+  GenerateImagePromptResponse,
+} from '@/lib/types/asset-generation';
+
+// Import shared types for use in local interfaces
+import type { SceneAsset } from '@/lib/types/asset-generation';
+
 /**
  * Visual type for a scene
  */
 export type VisualType = 'image_gen' | 'stock_video' | 'solid_color';
-
-/**
- * Asset type for a scene
- */
-export type AssetType = 'voice' | 'subtitle_image' | 'background_image';
 
 /**
  * Asset generation status
@@ -25,17 +33,6 @@ export interface Scene {
   subtitles: string[];
   silenceDurationMs: number | null;
   imagePrompt: string | null;
-}
-
-/**
- * Generated asset for a scene
- */
-export interface SceneAsset {
-  id: string;
-  sceneId: string;
-  assetType: AssetType;
-  fileUrl: string;
-  durationMs: number | null;
 }
 
 /**
@@ -80,13 +77,6 @@ export interface GenerateVoiceRequest {
 }
 
 /**
- * Voice generation response
- */
-export interface GenerateVoiceResponse {
-  asset: SceneAsset;
-}
-
-/**
  * Subtitle generation request
  */
 export interface GenerateSubtitleRequest {
@@ -95,26 +85,11 @@ export interface GenerateSubtitleRequest {
 }
 
 /**
- * Subtitle generation response
- */
-export interface GenerateSubtitleResponse {
-  assets: SceneAsset[];
-}
-
-/**
  * Image generation request (includes prompt generation)
  */
 export interface GenerateImageRequest {
   projectId: string;
   sceneId: string;
-}
-
-/**
- * Image generation response
- */
-export interface GenerateImageResponse {
-  asset: SceneAsset;
-  generatedPrompt?: string;
 }
 
 /**
@@ -137,15 +112,6 @@ export interface GenerateAllAssetsResponse {
     assets?: SceneAsset[];
     error?: string;
   }[];
-}
-
-/**
- * Image prompt generation response
- */
-export interface GenerateImagePromptResponse {
-  sceneId: string;
-  imagePrompt: string;
-  styleHint: string | null;
 }
 
 /**
