@@ -1,4 +1,6 @@
-import { GoogleDriveClient } from '@shared/infrastructure/clients/google-drive.client.js';
+import type { TempStorageGateway } from '@shared/domain/gateways/temp-storage.gateway.js';
+import { GcsClient } from '@shared/infrastructure/clients/gcs.client.js';
+import { LocalTempStorageClient } from '@shared/infrastructure/clients/local-temp-storage.client.js';
 import { prisma } from '@shared/infrastructure/database/connection.js';
 import {
   AiGenerationError,
@@ -30,20 +32,56 @@ const scriptRepository = new ShortsScriptRepository(prisma);
 const sceneRepository = new ShortsSceneRepository(prisma);
 const sceneAssetRepository = new ShortsSceneAssetRepository(prisma);
 
+// Initialize gateways based on environment
+function createTempStorageGateway(): TempStorageGateway {
+  if (process.env.TEMP_STORAGE_TYPE === 'local') {
+    return new LocalTempStorageClient();
+  }
+  return new GcsClient();
+}
+
+// Singleton storage gateway for URL signing
+let storageGateway: TempStorageGateway | null = null;
+
+function getStorageGateway(): TempStorageGateway {
+  if (!storageGateway) {
+    storageGateway = createTempStorageGateway();
+  }
+  return storageGateway;
+}
+
 /**
- * Create ImageStorageGateway adapter from GoogleDriveClient
+ * Convert GCS URI to signed URL for browser access
+ */
+async function toSignedUrl(gcsUri: string | null | undefined): Promise<string | null> {
+  if (!gcsUri) return null;
+  // Only convert gs:// or local:// URIs
+  if (!gcsUri.startsWith('gs://') && !gcsUri.startsWith('local://')) {
+    return gcsUri;
+  }
+  return getStorageGateway().getSignedUrl(gcsUri);
+}
+
+/**
+ * Create ImageStorageGateway adapter using GCS/local storage
  */
 function createImageStorageGateway(): ImageStorageGateway {
-  const driveClient = GoogleDriveClient.fromEnv();
+  const tempStorage = getStorageGateway();
 
   return {
     async uploadFile(params) {
-      return driveClient.uploadFile({
-        name: params.name,
-        mimeType: params.mimeType,
+      // Generate path: shorts-gen/images/{filename}
+      const storagePath = `shorts-gen/images/${params.name}`;
+
+      const result = await tempStorage.upload({
+        videoId: storagePath,
         content: params.content,
-        parentFolderId: params.parentFolderId,
       });
+
+      return {
+        id: storagePath,
+        webViewLink: result.gcsUri, // Return GCS URI (will be converted to signed URL later)
+      };
     },
   };
 }
@@ -218,7 +256,18 @@ router.post('/scripts/:scriptId/images', async (req, res, next) => {
     const useCase = getGenerateImagesUseCase();
     const result = await useCase.executeForScript(input);
 
-    res.status(200).json(result);
+    // Convert GCS URIs to signed URLs for browser access
+    const resultsWithSignedUrls = await Promise.all(
+      result.results.map(async (r) => ({
+        ...r,
+        fileUrl: (await toSignedUrl(r.fileUrl)) ?? r.fileUrl,
+      }))
+    );
+
+    res.status(200).json({
+      ...result,
+      results: resultsWithSignedUrls,
+    });
   } catch (error) {
     if (error instanceof NotFoundError) {
       res.status(404).json({
@@ -255,7 +304,18 @@ router.post('/scenes/:sceneId/images', async (req, res, next) => {
     const useCase = getGenerateImagesUseCase();
     const result = await useCase.executeForScene(input);
 
-    res.status(200).json(result);
+    // Convert GCS URIs to signed URLs for browser access
+    const resultsWithSignedUrls = await Promise.all(
+      result.results.map(async (r) => ({
+        ...r,
+        fileUrl: (await toSignedUrl(r.fileUrl)) ?? r.fileUrl,
+      }))
+    );
+
+    res.status(200).json({
+      ...result,
+      results: resultsWithSignedUrls,
+    });
   } catch (error) {
     if (error instanceof NotFoundError) {
       res.status(404).json({
@@ -300,12 +360,13 @@ router.get('/scripts/:scriptId/images', async (req, res, next) => {
     // Filter to background_image assets only
     const imageAssets = assets.filter((a) => a.assetType === 'background_image');
 
-    // Group by scene
+    // Group by scene and convert to signed URLs
     const assetsByScene = new Map<string, { assetId: string; fileUrl: string }>();
     for (const asset of imageAssets) {
+      const signedUrl = await toSignedUrl(asset.fileUrl);
       assetsByScene.set(asset.sceneId, {
         assetId: asset.id,
-        fileUrl: asset.fileUrl,
+        fileUrl: signedUrl ?? asset.fileUrl, // fallback to original URL
       });
     }
 
