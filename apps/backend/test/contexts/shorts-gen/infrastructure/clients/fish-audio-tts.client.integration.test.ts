@@ -231,6 +231,16 @@ describe('FishAudioTtsClient Unit Tests (no API calls)', () => {
 
       expect(client).toBeDefined();
     });
+
+    it('should accept retry configuration', () => {
+      const client = new FishAudioTtsClient({
+        apiKey: 'test-key',
+        maxRetries: 5,
+        initialRetryDelayMs: 2000,
+      });
+
+      expect(client).toBeDefined();
+    });
   });
 
   describe('listVoiceModels with config', () => {
