@@ -138,3 +138,22 @@ export interface GenerateAllAssetsResponse {
     error?: string;
   }[];
 }
+
+/**
+ * Image prompt generation response
+ */
+export interface GenerateImagePromptResponse {
+  sceneId: string;
+  imagePrompt: string;
+  styleHint: string | null;
+}
+
+/**
+ * State for a single scene's image prompt generation
+ */
+export interface ImagePromptState {
+  sceneId: string;
+  status: AssetGenerationStatus;
+  imagePrompt?: string;
+  error?: string;
+}

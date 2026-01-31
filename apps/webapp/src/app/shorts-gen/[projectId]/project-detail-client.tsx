@@ -5,6 +5,7 @@ import {
   ComposeStep,
   type GenerateAllAssetsResponse,
   type GenerateSubtitleResponse,
+  type GenerateImagePromptResponse,
   type GenerateVoiceResponse,
   type Planning,
   PlanningGenerationStep,
@@ -426,6 +427,36 @@ export function ProjectDetailClient({
     };
   }, [script, scenes]);
 
+  // Single scene image prompt generation handler
+  const handleImagePromptGenerate = useCallback(
+    async (sceneId: string): Promise<GenerateImagePromptResponse> => {
+      const response = await fetch(`/api/shorts-gen/scenes/${sceneId}/image-prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(error.error || 'Failed to generate image prompt');
+      }
+      const data = await response.json();
+
+      // Update scene with generated prompt
+      const updatedScene = scenes.find((s) => s.id === sceneId);
+      if (updatedScene) {
+        setScenes((prev) =>
+          prev.map((s) => (s.id === sceneId ? { ...s, imagePrompt: data.imagePrompt } : s))
+        );
+      }
+
+      return {
+        sceneId: data.sceneId,
+        imagePrompt: data.imagePrompt,
+        styleHint: data.styleHint ?? null,
+      };
+    },
+    [scenes]
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -558,6 +589,7 @@ export function ProjectDetailClient({
           existingAssets={existingAssets}
           onVoiceGenerate={handleVoiceGenerate}
           onSubtitleGenerate={handleSubtitleGenerate}
+          onImagePromptGenerate={handleImagePromptGenerate}
           onAllVoicesGenerate={handleAllVoicesGenerate}
           onAllSubtitlesGenerate={handleAllSubtitlesGenerate}
           onAllImagesGenerate={handleAllImagesGenerate}

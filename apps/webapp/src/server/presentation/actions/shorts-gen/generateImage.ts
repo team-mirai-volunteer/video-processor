@@ -1,11 +1,39 @@
 'use server';
 
 import type {
+  GenerateImagePromptResponse,
   GenerateImageResponse,
   SceneAsset,
 } from '@/components/features/shorts-gen/asset-generation';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
+
+export async function generateImagePrompt(
+  projectId: string,
+  sceneId: string,
+  styleHint?: string
+): Promise<GenerateImagePromptResponse> {
+  const response = await fetch(
+    `${BACKEND_URL}/api/shorts-gen/projects/${projectId}/scenes/${sceneId}/image-prompt`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ styleHint }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`プロンプト生成に失敗しました: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return {
+    sceneId: data.sceneId,
+    imagePrompt: data.imagePrompt,
+    styleHint: data.styleHint ?? null,
+  };
+}
 
 export async function generateImage(
   projectId: string,
