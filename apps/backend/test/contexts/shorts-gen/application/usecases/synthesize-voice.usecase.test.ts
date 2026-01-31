@@ -53,6 +53,7 @@ describe('SynthesizeVoiceUseCase', () => {
     download: vi.fn(),
     downloadAsStream: vi.fn(),
     exists: vi.fn(),
+    getSignedUrl: vi.fn(),
   };
 
   let useCase: SynthesizeVoiceUseCase;
