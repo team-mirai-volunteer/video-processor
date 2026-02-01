@@ -255,19 +255,21 @@ export function ScriptGenerationStep({
 
       {/* AI generation mode */}
       {(mode === 'ai' || (hasScript && mode !== 'manual')) && (isReady || hasScript) && (
-        <ChatUI
-          endpoint={getEndpoint(projectId)}
-          title="台本生成チャット"
-          placeholder="台本に関する指示を入力... (例: 「シーンを5つに分けて台本を作成してください」)"
-          onToolCall={handleToolCall}
-          onComplete={handleComplete}
-          disabled={!isReady && !hasScript}
-          headers={{
-            'X-Planning-Id': planningId || '',
-            'X-Script-Id': script?.id || '',
-          }}
-          className="min-h-[300px]"
-        />
+        <div className="h-[800px]">
+          <ChatUI
+            endpoint={getEndpoint(projectId)}
+            title="台本生成チャット"
+            placeholder="台本に関する指示を入力... (例: 「シーンを5つに分けて台本を作成してください」)"
+            onToolCall={handleToolCall}
+            onComplete={handleComplete}
+            disabled={!isReady && !hasScript}
+            headers={{
+              'X-Planning-Id': planningId || '',
+              'X-Script-Id': script?.id || '',
+            }}
+            className="h-full"
+          />
+        </div>
       )}
 
       {/* Manual creation mode - adding new scene */}
