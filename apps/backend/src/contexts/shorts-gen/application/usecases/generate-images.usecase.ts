@@ -1,9 +1,14 @@
-import type { ImageGenGateway } from '../../domain/gateways/image-gen.gateway.js';
+import { createLogger } from '@shared/infrastructure/logging/logger.js';
+import type { ImageGenGateway, ReferenceImage } from '../../domain/gateways/image-gen.gateway.js';
+import type { ShortsReferenceCharacterRepositoryGateway } from '../../domain/gateways/reference-character-repository.gateway.js';
 import type { ShortsSceneAssetRepositoryGateway } from '../../domain/gateways/scene-asset-repository.gateway.js';
 import type { ShortsSceneRepositoryGateway } from '../../domain/gateways/scene-repository.gateway.js';
+import type { ShortsScriptRepositoryGateway } from '../../domain/gateways/script-repository.gateway.js';
 import { ShortsSceneAsset } from '../../domain/models/scene-asset.js';
 import type { ShortsScene } from '../../domain/models/scene.js';
 import { NotFoundError, ValidationError } from '../errors/errors.js';
+
+const log = createLogger('GenerateImagesUseCase');
 
 /**
  * Input for generating images for an entire script
@@ -46,7 +51,7 @@ export interface GenerateImagesResult {
 }
 
 /**
- * Storage gateway interface for uploading images
+ * Storage gateway interface for uploading and downloading images
  * Uses shared storage gateway pattern
  */
 export interface ImageStorageGateway {
@@ -59,6 +64,8 @@ export interface ImageStorageGateway {
     id: string;
     webViewLink: string;
   }>;
+  /** Download file from storage (for reference images) */
+  downloadFile?(gcsUri: string): Promise<Buffer>;
 }
 
 /**
@@ -74,6 +81,10 @@ export interface GenerateImagesUseCaseDeps {
   defaultWidth?: number;
   /** Default resolution height for generated images (default: 1920) */
   defaultHeight?: number;
+  /** Script repository for getting projectId (optional, for reference character support) */
+  scriptRepository?: ShortsScriptRepositoryGateway;
+  /** Reference character repository (optional) */
+  referenceCharacterRepository?: ShortsReferenceCharacterRepositoryGateway;
 }
 
 /**
@@ -88,6 +99,8 @@ export class GenerateImagesUseCase {
   private readonly generateId: () => string;
   private readonly defaultWidth: number;
   private readonly defaultHeight: number;
+  private readonly scriptRepository?: ShortsScriptRepositoryGateway;
+  private readonly referenceCharacterRepository?: ShortsReferenceCharacterRepositoryGateway;
 
   constructor(deps: GenerateImagesUseCaseDeps) {
     this.sceneRepository = deps.sceneRepository;
@@ -97,6 +110,8 @@ export class GenerateImagesUseCase {
     this.generateId = deps.generateId;
     this.defaultWidth = deps.defaultWidth ?? 1080;
     this.defaultHeight = deps.defaultHeight ?? 1920;
+    this.scriptRepository = deps.scriptRepository;
+    this.referenceCharacterRepository = deps.referenceCharacterRepository;
   }
 
   /**
@@ -111,6 +126,9 @@ export class GenerateImagesUseCase {
       throw new NotFoundError('Scenes for script', scriptId);
     }
 
+    // Get reference images for the project (if available)
+    const referenceImages = await this.getReferenceImagesForScript(scriptId);
+
     // Filter scenes that need image generation
     const scenesToGenerate = scenes.filter(
       (scene) => scene.visualType === 'image_gen' && scene.imagePrompt
@@ -123,7 +141,7 @@ export class GenerateImagesUseCase {
 
     // Generate images for each scene
     for (const scene of scenesToGenerate) {
-      const result = await this.generateImageForScene(scene, outputFolderId);
+      const result = await this.generateImageForScene(scene, outputFolderId, referenceImages);
       results.push(result);
 
       if (result.success) {
@@ -167,7 +185,10 @@ export class GenerateImagesUseCase {
       );
     }
 
-    const result = await this.generateImageForScene(scene, outputFolderId);
+    // Get reference images for the scene's script (if available)
+    const referenceImages = await this.getReferenceImagesForScene(sceneId);
+
+    const result = await this.generateImageForScene(scene, outputFolderId, referenceImages);
 
     return {
       results: [result],
@@ -182,7 +203,8 @@ export class GenerateImagesUseCase {
    */
   private async generateImageForScene(
     scene: ShortsScene,
-    outputFolderId?: string
+    outputFolderId?: string,
+    referenceImages?: ReferenceImage[]
   ): Promise<GeneratedImageResult> {
     try {
       // Ensure imagePrompt exists (caller should have validated this)
@@ -200,12 +222,14 @@ export class GenerateImagesUseCase {
       // Delete existing background_image assets for this scene
       await this.sceneAssetRepository.deleteBySceneIdAndType(scene.id, 'background_image');
 
-      // Generate image using AI
+      // Generate image using AI with reference images
       const imageResult = await this.imageGenGateway.generate({
         prompt: imagePrompt,
         width: this.defaultWidth,
         height: this.defaultHeight,
         style: scene.imageStyleHint ?? undefined,
+        referenceImages:
+          referenceImages && referenceImages.length > 0 ? referenceImages : undefined,
       });
 
       if (!imageResult.success) {
@@ -294,5 +318,107 @@ export class GenerateImagesUseCase {
       default:
         return `Unknown error: ${error.type}`;
     }
+  }
+
+  /**
+   * Get reference images for a script's project
+   */
+  private async getReferenceImagesForScript(scriptId: string): Promise<ReferenceImage[]> {
+    // If repositories are not available, return empty array
+    if (!this.scriptRepository || !this.referenceCharacterRepository) {
+      return [];
+    }
+
+    // Get the script to find projectId
+    const script = await this.scriptRepository.findById(scriptId);
+    if (!script) {
+      return [];
+    }
+
+    return this.downloadReferenceImages(script.projectId);
+  }
+
+  /**
+   * Get reference images for a scene (via its script's project)
+   */
+  private async getReferenceImagesForScene(sceneId: string): Promise<ReferenceImage[]> {
+    // If repositories are not available, return empty array
+    if (!this.scriptRepository || !this.referenceCharacterRepository) {
+      return [];
+    }
+
+    // Get the scene to find scriptId
+    const scene = await this.sceneRepository.findById(sceneId);
+    if (!scene) {
+      return [];
+    }
+
+    // Get the script to find projectId
+    const script = await this.scriptRepository.findById(scene.scriptId);
+    if (!script) {
+      return [];
+    }
+
+    return this.downloadReferenceImages(script.projectId);
+  }
+
+  /**
+   * Download reference character images for a project
+   */
+  private async downloadReferenceImages(projectId: string): Promise<ReferenceImage[]> {
+    if (!this.referenceCharacterRepository || !this.storageGateway.downloadFile) {
+      return [];
+    }
+
+    // Get reference characters for the project
+    const characters = await this.referenceCharacterRepository.findByProjectId(projectId);
+    if (characters.length === 0) {
+      return [];
+    }
+
+    log.info('Downloading reference character images', {
+      projectId,
+      characterCount: characters.length,
+    });
+
+    const referenceImages: ReferenceImage[] = [];
+
+    for (const character of characters) {
+      try {
+        // Download the image from storage
+        const imageBuffer = await this.storageGateway.downloadFile(character.imageUrl);
+
+        // Determine MIME type from URL
+        const mimeType = character.imageUrl.toLowerCase().includes('.png')
+          ? 'image/png'
+          : 'image/jpeg';
+
+        referenceImages.push({
+          imageBuffer,
+          mimeType,
+        });
+
+        log.debug('Downloaded reference image', {
+          characterId: character.id,
+          mimeType,
+          bufferSize: imageBuffer.length,
+        });
+      } catch (error) {
+        log.warn('Failed to download reference image', {
+          characterId: character.id,
+          imageUrl: character.imageUrl,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        // Continue with other images even if one fails
+      }
+    }
+
+    log.info('Reference images downloaded', {
+      projectId,
+      downloadedCount: referenceImages.length,
+      requestedCount: characters.length,
+    });
+
+    return referenceImages;
   }
 }
