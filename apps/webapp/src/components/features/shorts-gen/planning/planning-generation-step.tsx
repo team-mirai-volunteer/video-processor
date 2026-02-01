@@ -8,7 +8,7 @@ import { useCallback, useState } from 'react';
 import { PlanningBlockEditor } from './planning-block-editor';
 import type { Planning, UpdatePlanningParams } from './types';
 
-export type PlanningGenerationStatus = 'idle' | 'ready' | 'generating' | 'completed' | 'error';
+type PlanningGenerationStatus = 'idle' | 'ready' | 'generating' | 'completed' | 'error';
 
 interface PlanningGenerationStepProps {
   projectId: string;

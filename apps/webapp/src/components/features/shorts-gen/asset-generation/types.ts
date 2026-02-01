@@ -1,6 +1,5 @@
 // Re-export shared types from lib (used by both server and components)
 export type {
-  AssetType,
   SceneAsset,
   GenerateVoiceResponse,
   GenerateSubtitleResponse,
@@ -56,48 +55,6 @@ export interface AssetColumnData {
   scenes: SceneAssetState[];
   isGenerating: boolean;
   canGenerate: boolean;
-}
-
-/**
- * Props for individual scene asset item display
- */
-export interface SceneAssetItemProps {
-  scene: Scene;
-  state: SceneAssetState;
-  onRetry?: () => void;
-  onPreview?: () => void;
-}
-
-/**
- * Voice generation request
- */
-export interface GenerateVoiceRequest {
-  projectId: string;
-  sceneId: string;
-}
-
-/**
- * Subtitle generation request
- */
-export interface GenerateSubtitleRequest {
-  projectId: string;
-  sceneId: string;
-}
-
-/**
- * Image generation request (includes prompt generation)
- */
-export interface GenerateImageRequest {
-  projectId: string;
-  sceneId: string;
-}
-
-/**
- * Batch asset generation request
- */
-export interface GenerateAllAssetsRequest {
-  projectId: string;
-  type: 'voice' | 'subtitle' | 'image';
 }
 
 /**

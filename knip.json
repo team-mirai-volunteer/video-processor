@@ -3,7 +3,6 @@
   "workspaces": {
     "apps/backend": {
       "project": ["src/**/*.ts"],
-      "entry": ["src/index.ts"],
       "ignore": [
         "src/**/*.test.ts",
         "test/**/*.ts",
