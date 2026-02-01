@@ -30,7 +30,7 @@ function getErrorMessage(error: AgenticAiGatewayError): string {
 /**
  * シーン入力パラメータ（AIが生成する形式）
  */
-export interface SceneInput {
+interface SceneInput {
   summary: string;
   visualType: VisualType;
   voiceText?: string | null;
@@ -62,7 +62,7 @@ export interface GenerateScriptStreamResult {
 /**
  * スクリプト用のシーンデータ（フロントエンド向け）
  */
-export interface ScriptSceneData {
+interface ScriptSceneData {
   id: string;
   scriptId: string;
   order: number;

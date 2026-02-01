@@ -22,7 +22,7 @@ export interface GenerateImagePromptsInput {
 /**
  * 画像プロンプト生成UseCase出力（1シーン分）
  */
-export interface GeneratedImagePrompt {
+interface GeneratedImagePrompt {
   /** シーンID */
   sceneId: string;
   /** シーン順序 */

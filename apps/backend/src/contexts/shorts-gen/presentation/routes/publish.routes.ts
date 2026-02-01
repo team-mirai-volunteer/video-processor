@@ -6,7 +6,7 @@ import {
   GeneratePublishTextUseCase,
 } from '@shorts-gen/application/usecases/generate-publish-text.usecase.js';
 import type { ShortsPublishText } from '@shorts-gen/domain/models/publish-text.js';
-import { OpenAiAgenticClient } from '@shorts-gen/infrastructure/clients/index.js';
+import { OpenAiAgenticClient } from '@shorts-gen/infrastructure/clients/openai-agentic.client.js';
 import {
   ShortsPlanningRepository,
   ShortsPublishTextRepository,

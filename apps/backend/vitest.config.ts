@@ -10,12 +10,6 @@ export default defineConfig({
     environment: 'node',
     include: ['test/**/*.test.ts'],
     testTimeout: 30000,
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-      include: ['src/**/*.ts'],
-      exclude: ['src/index.ts', 'src/**/*.d.ts'],
-    },
     alias: {
       '@clip-video': path.resolve(__dirname, './src/contexts/clip-video'),
       '@shared': path.resolve(__dirname, './src/contexts/shared'),

@@ -26,7 +26,6 @@ jobs:
         run: pnpm lint
 
   knip:
-    if: false  # Temporarily disabled during shorts-gen implementation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

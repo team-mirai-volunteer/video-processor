@@ -8,10 +8,8 @@ import {
   type ComposeVideoOutput,
   ComposeVideoUseCase,
 } from '@shorts-gen/application/usecases/compose-video.usecase.js';
-import {
-  AssetRegistryClient,
-  FFmpegComposeClient,
-} from '@shorts-gen/infrastructure/clients/index.js';
+import { AssetRegistryClient } from '@shorts-gen/infrastructure/clients/asset-registry.client.js';
+import { FFmpegComposeClient } from '@shorts-gen/infrastructure/clients/ffmpeg-compose.client.js';
 import {
   ShortsComposedVideoRepository,
   ShortsProjectRepository,
