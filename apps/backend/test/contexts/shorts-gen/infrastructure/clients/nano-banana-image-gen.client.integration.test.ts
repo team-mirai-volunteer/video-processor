@@ -205,6 +205,36 @@ describe.skipIf(!runIntegrationTests)('NanoBananaImageGenClient Integration', ()
         console.log(`Generated image with empty references saved to: ${outputPath}`);
       }
     }, 60000);
+
+    it('should reproduce character from reference image in a new scene', async () => {
+      // キャラクター参照画像を読み込み
+      const characterImagePath = path.join(FIXTURES_DIR, 'input/images/reference-character.png');
+      const characterImageBuffer = await fs.promises.readFile(characterImagePath);
+
+      // 参照画像のキャラクターを新しいシーンで再現
+      const result = await client.generate({
+        prompt:
+          'The same character from the reference image, standing in a busy city street, raising both arms up in a banzai pose, celebrating with a big happy smile, joyful expression, daytime, urban background',
+        width: 1080,
+        height: 1920,
+        referenceImages: [
+          {
+            imageBuffer: characterImageBuffer,
+            mimeType: 'image/png',
+          },
+        ],
+      });
+
+      if (!result.success) {
+        console.error('Character reproduction failed:', result.error);
+      }
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const outputPath = path.join(OUTPUT_DIR, `test-character-banzai.${result.value.format}`);
+        await fs.promises.writeFile(outputPath, result.value.imageBuffer);
+        console.log(`Generated character reproduction saved to: ${outputPath}`);
+      }
+    }, 60000);
   });
 
   describe('getSupportedDimensions', () => {
