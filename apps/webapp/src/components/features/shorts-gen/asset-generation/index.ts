@@ -5,6 +5,7 @@ export type {
   AssetType,
   GenerateAllAssetsRequest,
   GenerateAllAssetsResponse,
+  GenerateAllImagePromptsResponse,
   GenerateImagePromptResponse,
   GenerateImageRequest,
   GenerateImageResponse,
