@@ -40,20 +40,6 @@ export interface Script {
 }
 
 /**
- * Scene creation parameters from AI tool use
- */
-export interface CreateSceneParams {
-  summary: string;
-  visualType: VisualType;
-  voiceText?: string | null;
-  subtitles?: string[];
-  silenceDurationMs?: number | null;
-  stockVideoKey?: string | null;
-  solidColor?: string | null;
-  imageStyleHint?: string | null;
-}
-
-/**
  * Scene update parameters
  */
 export interface UpdateSceneParams {

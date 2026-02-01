@@ -259,3 +259,29 @@ export interface GetShortsImagesResponse {
   scenesWithImage: number;
   sceneImages: SceneImage[];
 }
+
+// ReferenceCharacter types
+export interface ReferenceCharacter {
+  id: string;
+  projectId: string;
+  description: string;
+  imageUrl: string;
+  order: number;
+}
+
+export interface GetReferenceCharactersResponse {
+  projectId: string;
+  characters: ReferenceCharacter[];
+}
+
+export interface CreateReferenceCharacterResponse {
+  id: string;
+  projectId: string;
+  description: string;
+  imageUrl: string;
+  order: number;
+}
+
+export interface DeleteReferenceCharacterResponse {
+  success: boolean;
+}

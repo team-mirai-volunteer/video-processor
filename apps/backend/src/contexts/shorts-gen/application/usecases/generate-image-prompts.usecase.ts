@@ -1,5 +1,6 @@
 import { createLogger } from '@shared/infrastructure/logging/logger.js';
 import type { AgenticAiGateway } from '@shorts-gen/domain/gateways/agentic-ai.gateway.js';
+import type { ShortsReferenceCharacterRepositoryGateway } from '@shorts-gen/domain/gateways/reference-character-repository.gateway.js';
 import type { ShortsSceneRepositoryGateway } from '@shorts-gen/domain/gateways/scene-repository.gateway.js';
 import type { ShortsScriptRepositoryGateway } from '@shorts-gen/domain/gateways/script-repository.gateway.js';
 import type { ShortsScene } from '@shorts-gen/domain/models/scene.js';
@@ -57,6 +58,8 @@ export interface GenerateImagePromptsUseCaseDeps {
   scriptRepository: ShortsScriptRepositoryGateway;
   /** AgenticAIゲートウェイ */
   agenticAiGateway: AgenticAiGateway;
+  /** 参照キャラクターリポジトリ（オプション） */
+  referenceCharacterRepository?: ShortsReferenceCharacterRepositoryGateway;
 }
 
 /**
@@ -91,11 +94,13 @@ export class GenerateImagePromptsUseCase {
   private readonly sceneRepository: ShortsSceneRepositoryGateway;
   private readonly scriptRepository: ShortsScriptRepositoryGateway;
   private readonly agenticAiGateway: AgenticAiGateway;
+  private readonly referenceCharacterRepository?: ShortsReferenceCharacterRepositoryGateway;
 
   constructor(deps: GenerateImagePromptsUseCaseDeps) {
     this.sceneRepository = deps.sceneRepository;
     this.scriptRepository = deps.scriptRepository;
     this.agenticAiGateway = deps.agenticAiGateway;
+    this.referenceCharacterRepository = deps.referenceCharacterRepository;
   }
 
   /**
@@ -116,13 +121,16 @@ export class GenerateImagePromptsUseCase {
       throw new NotFoundError('Script', scriptId);
     }
 
-    // 2. シーン一覧を取得
+    // 2. 参照キャラクターの説明文を取得してstyleHintに追加
+    const combinedStyleHint = await this.buildCombinedStyleHint(script.projectId, styleHint);
+
+    // 3. シーン一覧を取得
     let scenes = await this.sceneRepository.findByScriptId(scriptId);
     if (scenes.length === 0) {
       throw new ValidationError(`No scenes found for script ${scriptId}`);
     }
 
-    // 3. 特定のシーンIDが指定されている場合はフィルタリング
+    // 4. 特定のシーンIDが指定されている場合はフィルタリング
     if (sceneIds && sceneIds.length > 0) {
       const sceneIdSet = new Set(sceneIds);
       scenes = scenes.filter((scene) => sceneIdSet.has(scene.id));
@@ -132,7 +140,7 @@ export class GenerateImagePromptsUseCase {
       }
     }
 
-    // 4. visualType === 'image_gen' のシーンのみをフィルタリング
+    // 5. visualType === 'image_gen' のシーンのみをフィルタリング
     const imageGenScenes = scenes.filter((scene) => scene.visualType === 'image_gen');
     const skippedCount = scenes.length - imageGenScenes.length;
 
@@ -152,14 +160,14 @@ export class GenerateImagePromptsUseCase {
       };
     }
 
-    // 5. AIを使用して画像プロンプトを生成
-    const generatedPrompts = await this.generatePromptsWithAi(imageGenScenes, styleHint);
+    // 6. AIを使用して画像プロンプトを生成
+    const generatedPrompts = await this.generatePromptsWithAi(imageGenScenes, combinedStyleHint);
 
-    // 6. シーンを更新して保存
+    // 7. シーンを更新して保存
     const updatedScenes = await this.updateAndSaveScenes(
       imageGenScenes,
       generatedPrompts,
-      styleHint
+      combinedStyleHint
     );
 
     log.info('Image prompt generation completed', {
@@ -179,6 +187,48 @@ export class GenerateImagePromptsUseCase {
       totalProcessed: updatedScenes.length,
       totalSkipped: skippedCount,
     };
+  }
+
+  /**
+   * 参照キャラクターの説明文とstyleHintを結合する
+   */
+  private async buildCombinedStyleHint(
+    projectId: string,
+    styleHint?: string
+  ): Promise<string | undefined> {
+    // 参照キャラクターリポジトリがない場合は元のstyleHintをそのまま返す
+    if (!this.referenceCharacterRepository) {
+      return styleHint;
+    }
+
+    // 参照キャラクターを取得
+    const referenceCharacters = await this.referenceCharacterRepository.findByProjectId(projectId);
+
+    if (referenceCharacters.length === 0) {
+      return styleHint;
+    }
+
+    log.info('Found reference characters for style hint', {
+      projectId,
+      characterCount: referenceCharacters.length,
+    });
+
+    // 参照キャラクターの説明文を結合
+    const characterDescriptions = referenceCharacters
+      .map((char, index) => `キャラクター${index + 1}: ${char.description}`)
+      .join('\n');
+
+    const referenceCharacterHint = `## 登録された参照キャラクター
+以下のキャラクターが登録されています。プロンプト生成時は、これらのキャラクター設定を厳密に維持してください：
+
+${characterDescriptions}`;
+
+    // 元のstyleHintと結合
+    if (styleHint) {
+      return `${referenceCharacterHint}\n\n${styleHint}`;
+    }
+
+    return referenceCharacterHint;
   }
 
   /**
