@@ -120,6 +120,33 @@ interface SaveScriptToolArguments {
 const SYSTEM_PROMPT_BASE = `あなたはショート動画の台本作成アシスタントです。
 企画書の内容を元に、視聴者を引きつける魅力的な台本を作成してください。
 
+## 進め方
+
+1. **全体の長さを確認**: まず動画の長さ（シーン数）をユーザーに確認します
+   - 以下のように選択肢を提示してください：
+   ---
+   まず動画の長さを決めましょう！（1シーン約4秒目安）
+
+   **A. ショート（8シーン / 約32秒）**
+   → サクッと要点だけ伝えたいとき
+
+   **B. スタンダード（12シーン / 約48秒）**（おすすめ）
+   → バランス良く伝えたいとき
+
+   **C. ロング（16シーン / 約64秒）**
+   → じっくり説明したいとき
+
+   A / B / C どれがいいですか？（または希望のシーン数を教えてください）
+   ---
+
+2. **台本の作成**: シーン数が決まったら、企画書に基づいて台本を作成します
+   - 各シーンを作成し、全体の構成を示してください
+   - 作成した台本の概要をユーザーに確認してください
+
+3. **保存**: ユーザーがOKしたら save_script で保存
+
+4. **修正対応**: 保存後「修正があれば教えてください」と伝える
+
 ## 台本の要件
 
 1. **シーン構成**: 各シーンは以下の要素を含みます
@@ -136,13 +163,13 @@ const SYSTEM_PROMPT_BASE = `あなたはショート動画の台本作成アシ�
    - 各シーンにはvoiceTextかsilenceDurationMsのいずれかが必須
    - visualTypeがstock_videoの場合はstockVideoKeyが必須（下記の利用可能なキーのみ使用可能）
    - visualTypeがsolid_colorの場合はsolidColor（#RRGGBB形式）が必須
-   - ショート動画は60秒以内を目安に
    - 視聴者の注目を引く冒頭を心がける
    - 字幕は読みやすい長さに分割する
 
 3. **台本完成時の操作**
    - 台本が完成したら、必ずsave_scriptツールを呼び出して保存してください
    - ユーザーからの修正要望があれば、修正した台本を再度save_scriptで保存してください
+   - **ユーザーの明確な承諾なしに save_script を呼ばないこと**
 
 ユーザーと対話しながら、最適な台本を作成してください。`;
 
@@ -230,9 +257,9 @@ export class GenerateScriptUseCase {
   }
 
   /**
-   * 利用可能なストック動画一覧を含むシステムプロンプトを生成
+   * 利用可能なストック動画一覧と企画書を含むシステムプロンプトを生成
    */
-  private buildSystemPrompt(): string {
+  private buildSystemPrompt(planningContent: string): string {
     const videoKeys = this.assetRegistryGateway.listVideoAssetKeys();
 
     // 各キーの説明を取得
@@ -255,7 +282,14 @@ export class GenerateScriptUseCase {
 ${videoDescriptions}`
         : '';
 
-    return SYSTEM_PROMPT_BASE + stockVideoSection;
+    // 企画書をシステムプロンプトに含める（毎回参照できるように）
+    const planningSection = `
+
+## 企画書（この内容を元に台本を作成してください）
+
+${planningContent}`;
+
+    return SYSTEM_PROMPT_BASE + stockVideoSection + planningSection;
   }
 
   /**
@@ -278,28 +312,26 @@ ${videoDescriptions}`
 
     log.info('Found planning', { planningId, projectId: planning.projectId });
 
-    // 2. メッセージ履歴を構築
+    // 2. メッセージ履歴を構築（企画書はシステムプロンプトに含まれる）
     const messages: ChatMessage[] = [...conversationHistory];
 
-    // 初回の場合は企画書の内容を追加
-    if (messages.length === 0) {
-      messages.push({
-        role: 'user',
-        content: `以下の企画書を元に、ショート動画の台本を作成してください。\n\n## 企画書\n\n${planning.content}`,
-      });
-    } else if (userMessage) {
-      // 継続の場合はユーザーメッセージを追加
+    // ユーザーメッセージを追加
+    if (userMessage) {
       messages.push({
         role: 'user',
         content: userMessage,
       });
     }
 
-    // 3. AIストリーミングを開始
+    // 3. AIストリーミングを開始（企画書をシステムプロンプトに含める）
+    const systemPrompt = this.buildSystemPrompt(planning.content);
+    log.info('System prompt for script generation', { systemPrompt });
+    log.info('Messages for script generation', { messages });
+
     const streamResult = await this.agenticAiGateway.chatStream({
       messages,
       tools: [SAVE_SCRIPT_TOOL],
-      systemPrompt: this.buildSystemPrompt(),
+      systemPrompt,
       temperature: 0.7,
     });
 
@@ -354,26 +386,22 @@ ${videoDescriptions}`
       throw new ValidationError(`Planning ${planningId} does not belong to project ${projectId}`);
     }
 
-    // 2. メッセージ履歴を構築
+    // 2. メッセージ履歴を構築（企画書はシステムプロンプトに含まれる）
     const messages: ChatMessage[] = [...conversationHistory];
 
-    if (messages.length === 0) {
-      messages.push({
-        role: 'user',
-        content: `以下の企画書を元に、ショート動画の台本を作成してください。\n\n## 企画書\n\n${planning.content}`,
-      });
-    } else if (userMessage) {
+    // ユーザーメッセージを追加
+    if (userMessage) {
       messages.push({
         role: 'user',
         content: userMessage,
       });
     }
 
-    // 3. AI呼び出し
+    // 3. AI呼び出し（企画書をシステムプロンプトに含める）
     const result = await this.agenticAiGateway.chat({
       messages,
       tools: [SAVE_SCRIPT_TOOL],
-      systemPrompt: this.buildSystemPrompt(),
+      systemPrompt: this.buildSystemPrompt(planning.content),
       temperature: 0.7,
     });
 

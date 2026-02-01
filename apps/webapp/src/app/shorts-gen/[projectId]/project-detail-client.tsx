@@ -424,19 +424,34 @@ export function ProjectDetailClient({
       throw new Error(error.error || 'Failed to generate images');
     }
     const data = await response.json();
+
+    // バックエンドレスポンスをGenerateAllAssetsResponse形式に変換
     return {
-      success: true,
-      results:
-        data.results ||
-        scenes
-          .filter((s) => s.visualType === 'image_gen')
-          .map((s) => ({
-            sceneId: s.id,
-            success: true,
-            asset: data.sceneImages?.find((si: { sceneId: string }) => si.sceneId === s.id)?.asset,
-          })),
+      success: (data.failureCount || 0) === 0,
+      results: (data.results || []).map(
+        (result: {
+          sceneId: string;
+          assetId: string;
+          fileUrl: string;
+          success: boolean;
+          error?: string;
+        }) => ({
+          sceneId: result.sceneId,
+          success: result.success,
+          asset: result.success
+            ? {
+                id: result.assetId,
+                sceneId: result.sceneId,
+                assetType: 'background_image' as const,
+                fileUrl: result.fileUrl,
+                durationMs: null,
+              }
+            : undefined,
+          error: result.error,
+        })
+      ),
     };
-  }, [script, scenes]);
+  }, [script]);
 
   // Single scene image prompt generation handler
   const handleImagePromptGenerate = useCallback(
