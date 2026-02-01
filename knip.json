@@ -3,19 +3,29 @@
   "workspaces": {
     "apps/backend": {
       "project": ["src/**/*.ts"],
-      "entry": ["src/index.ts", "src/contexts/*/presentation/routes/*.ts"],
+      "entry": [
+        "src/contexts/*/presentation/routes/*.ts",
+        "src/contexts/*/application/index.ts",
+        "src/contexts/*/application/usecases/index.ts",
+        "src/contexts/*/application/errors/index.ts",
+        "src/contexts/*/domain/models/index.ts"
+      ],
       "ignore": [
         "src/**/*.test.ts",
         "test/**/*.ts",
         "src/contexts/shared/infrastructure/clients/local-storage.client.ts"
       ],
-      "ignoreDependencies": ["dotenv"],
-      "vitest": false
+      "vitest": true
     },
     "apps/webapp": {
-      "entry": ["src/app/**/*.{ts,tsx}", "src/components/**/*.{ts,tsx}"],
+      "entry": [
+        "src/app/**/*.{ts,tsx}",
+        "src/components/**/*.{ts,tsx}",
+        "src/server/presentation/actions/**/*.ts"
+      ],
       "project": ["src/**/*.{ts,tsx}"],
       "ignore": ["src/**/*.test.{ts,tsx}"],
+      "ignoreBinaries": ["dot"],
       "playwright": false
     },
     "apps/shared": {

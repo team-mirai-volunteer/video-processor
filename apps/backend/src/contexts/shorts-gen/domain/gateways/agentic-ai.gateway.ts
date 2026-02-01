@@ -27,7 +27,7 @@ export interface ChatMessage {
 /**
  * ツールパラメータのプロパティ定義
  */
-export interface ToolPropertySchema {
+interface ToolPropertySchema {
   type: string;
   description?: string;
   enum?: string[];

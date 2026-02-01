@@ -12,7 +12,7 @@ import type {
   AgenticAiGateway,
   ChatCompletionResult,
   StreamChunk,
-} from '@shorts-gen/domain/gateways/index.js';
+} from '@shorts-gen/domain/gateways/agentic-ai.gateway.js';
 import type { ShortsPlanningRepositoryGateway } from '@shorts-gen/domain/gateways/planning-repository.gateway.js';
 import type { ShortsProjectRepositoryGateway } from '@shorts-gen/domain/gateways/project-repository.gateway.js';
 import { ShortsPlanning } from '@shorts-gen/domain/models/planning.js';
