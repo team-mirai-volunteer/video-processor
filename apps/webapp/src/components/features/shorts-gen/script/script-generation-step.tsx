@@ -1,11 +1,11 @@
 'use client';
 
 import { ChatUI } from '@/components/features/shorts-gen/chat';
-import type { ToolCall } from '@/components/features/shorts-gen/chat';
+import type { ChatMessage, ToolCall } from '@/components/features/shorts-gen/chat';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Bot, FileText, Pencil, Plus } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { SceneEditor } from './scene-editor';
 import { SceneList } from './scene-list';
 import type { CreateSceneParams, Scene, Script, UpdateSceneParams } from './types';
@@ -13,6 +13,28 @@ import type { CreateSceneParams, Scene, Script, UpdateSceneParams } from './type
 type ScriptGenerationStatus = 'idle' | 'ready' | 'generating' | 'completed' | 'error';
 
 type ScriptCreationMode = 'select' | 'ai' | 'manual';
+
+/**
+ * 台本生成チャットの初期メッセージ
+ * バックエンドのシステムプロンプトと整合性を持たせる
+ */
+const SCRIPT_INITIAL_MESSAGE: ChatMessage = {
+  id: 'initial-script-message',
+  role: 'assistant',
+  content: `企画書をもとに台本を作成します。まず動画の長さを決めましょう！（1シーン約4秒目安）
+
+**A. ショート（8シーン / 約32秒）**
+→ サクッと要点だけ伝えたいとき
+
+**B. スタンダード（12シーン / 約48秒）**（おすすめ）
+→ バランス良く伝えたいとき
+
+**C. ロング（16シーン / 約64秒）**
+→ じっくり説明したいとき
+
+A / B / C どれがいいですか？（または希望のシーン数を教えてください）`,
+  createdAt: new Date(),
+};
 
 interface ScriptGenerationStepProps {
   projectId: string;
@@ -179,6 +201,9 @@ export function ScriptGenerationStep({
   const hasScript = script !== null;
   const isGenerating = status === 'generating';
 
+  // 初期メッセージをメモ化（再レンダリング時に参照が変わらないように）
+  const initialMessages = useMemo(() => [SCRIPT_INITIAL_MESSAGE], []);
+
   // Create a placeholder scene for adding new scenes
   const newScenePlaceholder: Scene = {
     id: 'new',
@@ -259,7 +284,8 @@ export function ScriptGenerationStep({
           <ChatUI
             endpoint={getEndpoint(projectId)}
             title="台本生成チャット"
-            placeholder="台本に関する指示を入力... (例: 「シーンを5つに分けて台本を作成してください」)"
+            placeholder="台本に関する指示を入力... (例: 「B」「12シーン」「もう少し短く」)"
+            initialMessages={initialMessages}
             onToolCall={handleToolCall}
             onComplete={handleComplete}
             disabled={!isReady && !hasScript}

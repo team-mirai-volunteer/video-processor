@@ -1,14 +1,26 @@
 'use client';
 
 import { ChatUI } from '@/components/features/shorts-gen/chat';
-import type { ToolCall } from '@/components/features/shorts-gen/chat';
+import type { ChatMessage, ToolCall } from '@/components/features/shorts-gen/chat';
 import { cn } from '@/lib/utils';
 import { FileText } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { PlanningBlockEditor } from './planning-block-editor';
 import type { Planning, UpdatePlanningParams } from './types';
 
 type PlanningGenerationStatus = 'idle' | 'ready' | 'generating' | 'completed' | 'error';
+
+/**
+ * 企画生成チャットの初期メッセージ
+ */
+const PLANNING_INITIAL_MESSAGE: ChatMessage = {
+  id: 'initial-planning-message',
+  role: 'assistant',
+  content: `こんにちは！ショート動画の企画書を作成するお手伝いをします。
+
+動画にしたい内容の**URLや文章**を貼り付けてください。内容を分析して、バズる企画を提案します！`,
+  createdAt: new Date(),
+};
 
 interface PlanningGenerationStepProps {
   projectId: string;
@@ -86,6 +98,9 @@ export function PlanningGenerationStep({
   const hasPlanning = planning !== null;
   const isGenerating = status === 'generating';
 
+  // 初期メッセージをメモ化（再レンダリング時に参照が変わらないように）
+  const initialMessages = useMemo(() => [PLANNING_INITIAL_MESSAGE], []);
+
   return (
     <div className={cn('space-y-4', className)}>
       {/* Header */}
@@ -135,6 +150,7 @@ export function PlanningGenerationStep({
               endpoint={getEndpoint(projectId)}
               title="企画書生成チャット"
               placeholder="企画の元になる情報を入力... (例: 「この記事の内容をショート動画にしたい: https://...」)"
+              initialMessages={initialMessages}
               onToolCall={handleToolCall}
               onComplete={handleComplete}
               disabled={isGenerating}

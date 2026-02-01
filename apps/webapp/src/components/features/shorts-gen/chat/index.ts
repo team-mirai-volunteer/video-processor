@@ -1,2 +1,2 @@
 export { ChatUI } from './chat-ui';
-export type { ToolCall } from './types';
+export type { ChatMessage, ToolCall } from './types';

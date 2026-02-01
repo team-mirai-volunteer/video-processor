@@ -42,10 +42,11 @@ export function useSSEChat(options: UseSSEChatOptions): UseSSEChatReturn {
   }, []);
 
   const clearMessages = useCallback(() => {
-    setMessages([]);
+    // 初期メッセージにリセット（空にするのではなく初期状態に戻す）
+    setMessages(initialMessages);
     setToolCalls([]);
     setError(null);
-  }, []);
+  }, [initialMessages]);
 
   const sendMessage = useCallback(
     async (content: string) => {
