@@ -51,6 +51,9 @@ temp/
 *.tmp
 .cache/
 
+# Node.js compile cache
+node-compile-cache/
+
 # Playwright
 test-results/
 playwright-report/
