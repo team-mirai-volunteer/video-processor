@@ -18,6 +18,3 @@ export { ShortsComposedVideoRepository } from './composed-video.repository.js';
 
 // Publish Text Repository
 export { ShortsPublishTextRepository } from './publish-text.repository.js';
-
-// Reference Character Repository
-export { ShortsReferenceCharacterRepository } from './reference-character.repository.js';
