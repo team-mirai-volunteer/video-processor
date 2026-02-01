@@ -11,3 +11,4 @@ export type {
 
 // Components
 export { AssetGenerationStep } from './asset-generation-step';
+export { ReferenceCharacterUploader } from './reference-character-uploader';

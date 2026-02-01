@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import type { ReferenceCharacter } from '@video-processor/shared';
 import {
   AlertCircle,
   Check,
@@ -12,8 +13,9 @@ import {
   Type,
   Volume2,
 } from 'lucide-react';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { StepCard, type StepStatus } from '../step-card';
+import { ReferenceCharacterUploader } from './reference-character-uploader';
 import { SceneAssetItem } from './scene-asset-item';
 import type {
   AssetColumnData,
@@ -42,6 +44,7 @@ export interface AssetGenerationStepProps {
     subtitle: SceneAsset[];
     image: SceneAsset[];
   };
+  initialReferenceCharacters?: ReferenceCharacter[];
   onVoiceGenerate?: (sceneId: string) => Promise<GenerateVoiceResponse>;
   onSubtitleGenerate?: (sceneId: string) => Promise<GenerateSubtitleResponse>;
   onImageGenerate?: (sceneId: string) => Promise<GenerateImageResponse>;
@@ -246,6 +249,7 @@ export function AssetGenerationStep({
   onComplete,
   canStart = false,
   existingAssets,
+  initialReferenceCharacters = [],
   onVoiceGenerate,
   onSubtitleGenerate,
   onImageGenerate,
@@ -255,6 +259,10 @@ export function AssetGenerationStep({
   onAllImagesGenerate,
   onAllImagePromptsGenerate,
 }: AssetGenerationStepProps) {
+  const [referenceCharacters, setReferenceCharacters] = useState<ReferenceCharacter[]>(
+    initialReferenceCharacters
+  );
+
   const {
     state,
     columns,
@@ -371,6 +379,13 @@ export function AssetGenerationStep({
         </div>
       ) : (
         <div className="space-y-4">
+          {/* Reference Character Uploader */}
+          <ReferenceCharacterUploader
+            projectId={projectId}
+            characters={referenceCharacters}
+            onCharactersChange={setReferenceCharacters}
+          />
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {columns.map((column) => (
               <AssetColumn

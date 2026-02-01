@@ -90,4 +90,9 @@ export type {
   GetShortsSubtitlesResponse,
   SceneImage,
   GetShortsImagesResponse,
+  // ReferenceCharacter types
+  ReferenceCharacter,
+  GetReferenceCharactersResponse,
+  CreateReferenceCharacterResponse,
+  DeleteReferenceCharacterResponse,
 } from './shorts-gen.js';
