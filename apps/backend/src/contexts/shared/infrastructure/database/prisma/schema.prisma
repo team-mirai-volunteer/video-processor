@@ -117,13 +117,30 @@ model ShortsProject {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  plannings      ShortsPlanning[]
-  scripts        ShortsScript[]
-  composedVideos ShortsComposedVideo[]
-  publishTexts   ShortsPublishText[]
+  plannings           ShortsPlanning[]
+  scripts             ShortsScript[]
+  composedVideos      ShortsComposedVideo[]
+  publishTexts        ShortsPublishText[]
+  referenceCharacters ShortsReferenceCharacter[]
 
   @@index([createdAt(sort: Desc)])
   @@map("shorts_projects")
+}
+
+// 参照キャラクター - 画像生成の一貫性のため
+model ShortsReferenceCharacter {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  description String   // キャラクター説明文
+  imageUrl    String   @map("image_url") // GCSのURL
+  order       Int      @default(0) // 順番（0始まり）
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  project ShortsProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("shorts_reference_characters")
 }
 
 // ② 企画書 - マークダウン形式の企画書
