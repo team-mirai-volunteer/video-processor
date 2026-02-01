@@ -529,13 +529,19 @@ export function ProjectDetailClient({
       }
       const data = await response.json();
 
+      // Backend returns { generatedPrompts: [{ sceneId, order, imagePrompt, styleHint }], ... }
+      const generatedPrompts: Array<{
+        sceneId: string;
+        order: number;
+        imagePrompt: string;
+        styleHint: string | null;
+      }> = data.generatedPrompts ?? [];
+
       // Update scenes with generated prompts
-      if (data.results) {
+      if (generatedPrompts.length > 0) {
         setScenes((prev) =>
           prev.map((s) => {
-            const result = data.results.find(
-              (r: { sceneId: string; imagePrompt?: string }) => r.sceneId === s.id
-            );
+            const result = generatedPrompts.find((r) => r.sceneId === s.id);
             if (result?.imagePrompt) {
               return { ...s, imagePrompt: result.imagePrompt };
             }
@@ -545,16 +551,12 @@ export function ProjectDetailClient({
       }
 
       return {
-        success: data.success ?? true,
-        results:
-          data.results?.map(
-            (r: { sceneId: string; success: boolean; imagePrompt?: string; error?: string }) => ({
-              sceneId: r.sceneId,
-              success: r.success,
-              imagePrompt: r.imagePrompt,
-              error: r.error,
-            })
-          ) || [],
+        success: true,
+        results: generatedPrompts.map((r) => ({
+          sceneId: r.sceneId,
+          success: true,
+          imagePrompt: r.imagePrompt,
+        })),
       };
     }, [script]);
 
