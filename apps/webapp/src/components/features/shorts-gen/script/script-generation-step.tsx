@@ -10,7 +10,7 @@ import { SceneEditor } from './scene-editor';
 import { SceneList } from './scene-list';
 import type { CreateSceneParams, Scene, Script, UpdateSceneParams } from './types';
 
-export type ScriptGenerationStatus = 'idle' | 'ready' | 'generating' | 'completed' | 'error';
+type ScriptGenerationStatus = 'idle' | 'ready' | 'generating' | 'completed' | 'error';
 
 type ScriptCreationMode = 'select' | 'ai' | 'manual';
 

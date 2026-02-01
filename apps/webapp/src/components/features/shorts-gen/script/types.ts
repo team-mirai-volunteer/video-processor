@@ -68,14 +68,6 @@ export interface UpdateSceneParams {
 }
 
 /**
- * Script generation endpoint response
- */
-export interface ScriptGenerationResponse {
-  script: Script;
-  scenes: Scene[];
-}
-
-/**
  * Visual type display information
  */
 export const VISUAL_TYPE_LABELS: Record<VisualType, string> = {

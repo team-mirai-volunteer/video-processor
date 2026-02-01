@@ -110,8 +110,6 @@ export {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogOverlay,
-  AlertDialogPortal,
   AlertDialogTitle,
   AlertDialogTrigger,
 };
