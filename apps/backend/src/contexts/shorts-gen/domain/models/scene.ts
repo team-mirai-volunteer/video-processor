@@ -16,7 +16,8 @@ export type ShortsSceneError =
   | { type: 'MISSING_STOCK_VIDEO_KEY'; message: string }
   | { type: 'MISSING_SOLID_COLOR'; message: string }
   | { type: 'INVALID_SILENCE_DURATION'; message: string }
-  | { type: 'MISSING_VOICE_OR_SILENCE'; message: string };
+  | { type: 'MISSING_VOICE_OR_SILENCE'; message: string }
+  | { type: 'SUBTITLE_TOO_LONG'; message: string };
 
 export interface ShortsSceneProps {
   id: string;
@@ -49,9 +50,23 @@ export interface CreateShortsSceneParams {
 }
 
 const VALID_VISUAL_TYPES: VisualType[] = ['image_gen', 'stock_video', 'solid_color'];
+const MAX_SUBTITLE_LENGTH = 16;
 
 function isValidVisualType(type: string): type is VisualType {
   return VALID_VISUAL_TYPES.includes(type as VisualType);
+}
+
+function validateSubtitles(subtitles: string[]): Result<void, ShortsSceneError> {
+  for (let i = 0; i < subtitles.length; i++) {
+    const subtitle = subtitles[i];
+    if (subtitle && subtitle.length > MAX_SUBTITLE_LENGTH) {
+      return err({
+        type: 'SUBTITLE_TOO_LONG',
+        message: `Subtitle at index ${i} exceeds ${MAX_SUBTITLE_LENGTH} characters: "${subtitle}" (${subtitle.length} chars)`,
+      });
+    }
+  }
+  return ok(undefined);
 }
 
 function isValidHexColor(color: string): boolean {
@@ -171,6 +186,13 @@ export class ShortsScene {
       });
     }
 
+    // Validate subtitles length
+    const subtitles = params.subtitles ?? [];
+    const subtitlesValidation = validateSubtitles(subtitles);
+    if (!subtitlesValidation.success) {
+      return subtitlesValidation;
+    }
+
     const now = new Date();
     return ok(
       new ShortsScene({
@@ -245,12 +267,19 @@ export class ShortsScene {
   /**
    * Update scene subtitles
    */
-  withSubtitles(subtitles: string[]): ShortsScene {
-    return new ShortsScene({
-      ...this.toProps(),
-      subtitles,
-      updatedAt: new Date(),
-    });
+  withSubtitles(subtitles: string[]): Result<ShortsScene, ShortsSceneError> {
+    const validation = validateSubtitles(subtitles);
+    if (!validation.success) {
+      return validation;
+    }
+
+    return ok(
+      new ShortsScene({
+        ...this.toProps(),
+        subtitles,
+        updatedAt: new Date(),
+      })
+    );
   }
 
   /**
