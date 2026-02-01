@@ -234,6 +234,65 @@ describe('ShortsScene', () => {
         expect(result.error.type).toBe('INVALID_SILENCE_DURATION');
       }
     });
+
+    it('should accept subtitles within 16 characters in create', () => {
+      const result = ShortsScene.create(
+        {
+          scriptId: 'script-123',
+          order: 0,
+          summary: 'Test scene',
+          visualType: 'image_gen',
+          voiceText: 'Voice text',
+          subtitles: ['1234567890123456', '短い字幕'],
+        },
+        generateId
+      );
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.value.subtitles).toEqual(['1234567890123456', '短い字幕']);
+      }
+    });
+
+    it('should return error for subtitles exceeding 16 characters in create', () => {
+      const result = ShortsScene.create(
+        {
+          scriptId: 'script-123',
+          order: 0,
+          summary: 'Test scene',
+          visualType: 'image_gen',
+          voiceText: 'Voice text',
+          subtitles: ['12345678901234567'],
+        },
+        generateId
+      );
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe('SUBTITLE_TOO_LONG');
+        expect(result.error.message).toContain('index 0');
+        expect(result.error.message).toContain('17 chars');
+      }
+    });
+
+    it('should accept empty subtitles array in create', () => {
+      const result = ShortsScene.create(
+        {
+          scriptId: 'script-123',
+          order: 0,
+          summary: 'Test scene',
+          visualType: 'image_gen',
+          voiceText: 'Voice text',
+          subtitles: [],
+        },
+        generateId
+      );
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.value.subtitles).toEqual([]);
+      }
+    });
   });
 
   describe('fromProps', () => {
@@ -342,8 +401,100 @@ describe('ShortsScene', () => {
       expect(sceneResult.success).toBe(true);
       if (!sceneResult.success) return;
 
-      const updated = sceneResult.value.withSubtitles(['New', 'Subtitles']);
-      expect(updated.subtitles).toEqual(['New', 'Subtitles']);
+      const updatedResult = sceneResult.value.withSubtitles(['New', 'Subtitles']);
+      expect(updatedResult.success).toBe(true);
+      if (updatedResult.success) {
+        expect(updatedResult.value.subtitles).toEqual(['New', 'Subtitles']);
+      }
+    });
+
+    it('should accept subtitles with exactly 16 characters', () => {
+      const sceneResult = ShortsScene.create(
+        {
+          scriptId: 'script-123',
+          order: 0,
+          summary: 'Summary',
+          visualType: 'image_gen',
+          voiceText: 'Voice text',
+        },
+        generateId
+      );
+      expect(sceneResult.success).toBe(true);
+      if (!sceneResult.success) return;
+
+      // 16文字ちょうど
+      const updatedResult = sceneResult.value.withSubtitles(['1234567890123456']);
+      expect(updatedResult.success).toBe(true);
+      if (updatedResult.success) {
+        expect(updatedResult.value.subtitles).toEqual(['1234567890123456']);
+      }
+    });
+
+    it('should reject subtitles exceeding 16 characters', () => {
+      const sceneResult = ShortsScene.create(
+        {
+          scriptId: 'script-123',
+          order: 0,
+          summary: 'Summary',
+          visualType: 'image_gen',
+          voiceText: 'Voice text',
+        },
+        generateId
+      );
+      expect(sceneResult.success).toBe(true);
+      if (!sceneResult.success) return;
+
+      // 17文字
+      const updatedResult = sceneResult.value.withSubtitles(['12345678901234567']);
+      expect(updatedResult.success).toBe(false);
+      if (!updatedResult.success) {
+        expect(updatedResult.error.type).toBe('SUBTITLE_TOO_LONG');
+      }
+    });
+
+    it('should reject if any subtitle in array exceeds 16 characters', () => {
+      const sceneResult = ShortsScene.create(
+        {
+          scriptId: 'script-123',
+          order: 0,
+          summary: 'Summary',
+          visualType: 'image_gen',
+          voiceText: 'Voice text',
+        },
+        generateId
+      );
+      expect(sceneResult.success).toBe(true);
+      if (!sceneResult.success) return;
+
+      // 2番目の字幕が17文字
+      const updatedResult = sceneResult.value.withSubtitles(['短い字幕', '12345678901234567']);
+      expect(updatedResult.success).toBe(false);
+      if (!updatedResult.success) {
+        expect(updatedResult.error.type).toBe('SUBTITLE_TOO_LONG');
+        expect(updatedResult.error.message).toContain('index 1');
+      }
+    });
+
+    it('should accept empty array of subtitles', () => {
+      const sceneResult = ShortsScene.create(
+        {
+          scriptId: 'script-123',
+          order: 0,
+          summary: 'Summary',
+          visualType: 'image_gen',
+          voiceText: 'Voice text',
+          subtitles: ['Original'],
+        },
+        generateId
+      );
+      expect(sceneResult.success).toBe(true);
+      if (!sceneResult.success) return;
+
+      const updatedResult = sceneResult.value.withSubtitles([]);
+      expect(updatedResult.success).toBe(true);
+      if (updatedResult.success) {
+        expect(updatedResult.value.subtitles).toEqual([]);
+      }
     });
   });
 

@@ -469,7 +469,11 @@ router.patch('/:projectId/script/scenes/:sceneId', async (req, res, next) => {
     }
 
     if (body.subtitles !== undefined) {
-      updatedScene = updatedScene.withSubtitles(body.subtitles);
+      const result = updatedScene.withSubtitles(body.subtitles);
+      if (!result.success) {
+        throw new ValidationError(result.error.message);
+      }
+      updatedScene = result.value;
     }
 
     if (body.imagePrompt !== undefined) {
