@@ -19,6 +19,7 @@ import type {
   AssetColumnData,
   AssetGenerationStatus,
   GenerateAllAssetsResponse,
+  GenerateAllImagePromptsResponse,
   GenerateImagePromptResponse,
   GenerateImageResponse,
   GenerateSubtitleResponse,
@@ -48,6 +49,7 @@ export interface AssetGenerationStepProps {
   onAllVoicesGenerate?: () => Promise<GenerateAllAssetsResponse>;
   onAllSubtitlesGenerate?: () => Promise<GenerateAllAssetsResponse>;
   onAllImagesGenerate?: () => Promise<GenerateAllAssetsResponse>;
+  onAllImagePromptsGenerate?: () => Promise<GenerateAllImagePromptsResponse>;
 }
 
 function StatusIcon({ status }: { status: AssetGenerationStatus }) {
@@ -89,6 +91,8 @@ interface AssetColumnProps {
   imagePromptStates?: Record<string, ImagePromptState>;
   onGenerateImagePrompt?: (sceneId: string) => void;
   onGenerateImage?: (sceneId: string) => void;
+  onGenerateAllImagePrompts?: () => void;
+  isGeneratingImagePrompts?: boolean;
 }
 
 function AssetColumn({
@@ -100,6 +104,8 @@ function AssetColumn({
   imagePromptStates,
   onGenerateImagePrompt,
   onGenerateImage,
+  onGenerateAllImagePrompts,
+  isGeneratingImagePrompts,
 }: AssetColumnProps) {
   const completedCount = column.scenes.filter((s) => s.status === 'completed').length;
   const totalCount = column.scenes.length;
@@ -117,6 +123,18 @@ function AssetColumn({
     }
   }).length;
 
+  // 画像カラム専用：プロンプト生成状態の計算
+  const isImageColumn = column.id === 'image';
+  const imageGenScenes = scenes.filter((s) => s.visualType === 'image_gen');
+  const promptCompletedCount = imageGenScenes.filter(
+    (s) => imagePromptStates?.[s.id]?.status === 'completed' || s.imagePrompt
+  ).length;
+  const allPromptsCompleted =
+    promptCompletedCount === imageGenScenes.length && imageGenScenes.length > 0;
+  const hasPromptsForImageGen = imageGenScenes.some(
+    (s) => imagePromptStates?.[s.id]?.status === 'completed' || s.imagePrompt
+  );
+
   return (
     <div className="border rounded-lg p-3 bg-card">
       <div className="flex items-center justify-between mb-3">
@@ -124,16 +142,45 @@ function AssetColumn({
           <ColumnIcon type={column.id} />
           <h4 className="font-medium text-sm">{column.title}</h4>
         </div>
-        <Button
-          size="sm"
-          variant={allCompleted ? 'outline' : 'default'}
-          onClick={onGenerate}
-          disabled={disabled || column.isGenerating || !column.canGenerate}
-          className="h-7 text-xs"
-        >
-          {column.isGenerating && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
-          {column.isGenerating ? '生成中...' : allCompleted ? '再生成' : '一括生成'}
-        </Button>
+        {isImageColumn ? (
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              variant={allPromptsCompleted ? 'outline' : 'default'}
+              onClick={onGenerateAllImagePrompts}
+              disabled={disabled || isGeneratingImagePrompts || imageGenScenes.length === 0}
+              className="h-7 text-xs"
+            >
+              {isGeneratingImagePrompts && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+              {isGeneratingImagePrompts
+                ? '生成中...'
+                : allPromptsCompleted
+                  ? 'プロンプト再生成'
+                  : 'プロンプト一括生成'}
+            </Button>
+            <Button
+              size="sm"
+              variant={allCompleted ? 'outline' : 'default'}
+              onClick={onGenerate}
+              disabled={disabled || column.isGenerating || !hasPromptsForImageGen}
+              className="h-7 text-xs"
+            >
+              {column.isGenerating && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+              {column.isGenerating ? '生成中...' : allCompleted ? '画像再生成' : '画像一括生成'}
+            </Button>
+          </div>
+        ) : (
+          <Button
+            size="sm"
+            variant={allCompleted ? 'outline' : 'default'}
+            onClick={onGenerate}
+            disabled={disabled || column.isGenerating || !column.canGenerate}
+            className="h-7 text-xs"
+          >
+            {column.isGenerating && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+            {column.isGenerating ? '生成中...' : allCompleted ? '再生成' : '一括生成'}
+          </Button>
+        )}
       </div>
 
       {totalCount > 0 && needsGenerationCount > 0 && (
@@ -206,12 +253,14 @@ export function AssetGenerationStep({
   onAllVoicesGenerate,
   onAllSubtitlesGenerate,
   onAllImagesGenerate,
+  onAllImagePromptsGenerate,
 }: AssetGenerationStepProps) {
   const {
     state,
     columns,
     overallStatus,
     isAllCompleted,
+    isGeneratingImagePrompts,
     generateVoice,
     generateSubtitle,
     generateImage,
@@ -219,6 +268,7 @@ export function AssetGenerationStep({
     generateAllVoices,
     generateAllSubtitles,
     generateAllImages,
+    generateAllImagePrompts,
     loadExistingAssets,
     reset,
   } = useAssetGeneration({
@@ -231,6 +281,7 @@ export function AssetGenerationStep({
     onAllVoicesGenerate,
     onAllSubtitlesGenerate,
     onAllImagesGenerate,
+    onAllImagePromptsGenerate,
   });
 
   useEffect(() => {
@@ -333,6 +384,12 @@ export function AssetGenerationStep({
                 imagePromptStates={column.id === 'image' ? state.imagePrompt : undefined}
                 onGenerateImagePrompt={column.id === 'image' ? generateImagePrompt : undefined}
                 onGenerateImage={column.id === 'image' ? generateImage : undefined}
+                onGenerateAllImagePrompts={
+                  column.id === 'image' ? generateAllImagePrompts : undefined
+                }
+                isGeneratingImagePrompts={
+                  column.id === 'image' ? isGeneratingImagePrompts : undefined
+                }
               />
             ))}
           </div>

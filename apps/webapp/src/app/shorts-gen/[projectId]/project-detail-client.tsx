@@ -4,6 +4,7 @@ import {
   AssetGenerationStep,
   ComposeStep,
   type GenerateAllAssetsResponse,
+  type GenerateAllImagePromptsResponse,
   type GenerateImagePromptResponse,
   type GenerateImageResponse,
   type GenerateSubtitleResponse,
@@ -499,6 +500,49 @@ export function ProjectDetailClient({
     []
   );
 
+  // All image prompts generation handler
+  const handleAllImagePromptsGenerate =
+    useCallback(async (): Promise<GenerateAllImagePromptsResponse> => {
+      if (!script) throw new Error('Script not found');
+      const response = await fetch(`/api/shorts-gen/scripts/${script.id}/image-prompts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(error.error || 'Failed to generate image prompts');
+      }
+      const data = await response.json();
+
+      // Update scenes with generated prompts
+      if (data.results) {
+        setScenes((prev) =>
+          prev.map((s) => {
+            const result = data.results.find(
+              (r: { sceneId: string; imagePrompt?: string }) => r.sceneId === s.id
+            );
+            if (result?.imagePrompt) {
+              return { ...s, imagePrompt: result.imagePrompt };
+            }
+            return s;
+          })
+        );
+      }
+
+      return {
+        success: data.success ?? true,
+        results:
+          data.results?.map(
+            (r: { sceneId: string; success: boolean; imagePrompt?: string; error?: string }) => ({
+              sceneId: r.sceneId,
+              success: r.success,
+              imagePrompt: r.imagePrompt,
+              error: r.error,
+            })
+          ) || [],
+      };
+    }, [script]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -636,6 +680,7 @@ export function ProjectDetailClient({
           onAllVoicesGenerate={handleAllVoicesGenerate}
           onAllSubtitlesGenerate={handleAllSubtitlesGenerate}
           onAllImagesGenerate={handleAllImagesGenerate}
+          onAllImagePromptsGenerate={handleAllImagePromptsGenerate}
         />
 
         {/* Step 8: Compose */}

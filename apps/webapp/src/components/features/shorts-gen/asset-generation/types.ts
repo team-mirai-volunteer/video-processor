@@ -127,3 +127,16 @@ export interface ImagePromptState {
   imagePrompt?: string;
   error?: string;
 }
+
+/**
+ * Batch image prompt generation response
+ */
+export interface GenerateAllImagePromptsResponse {
+  success: boolean;
+  results: {
+    sceneId: string;
+    success: boolean;
+    imagePrompt?: string;
+    error?: string;
+  }[];
+}
