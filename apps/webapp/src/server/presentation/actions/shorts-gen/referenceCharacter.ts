@@ -1,17 +1,8 @@
 'use server';
 
 import { backendClient } from '@/server/infrastructure/clients/backend-client';
-import type {
-  CreateReferenceCharacterResponse,
-  GetReferenceCharactersResponse,
-} from '@video-processor/shared';
+import type { CreateReferenceCharacterResponse } from '@video-processor/shared';
 import { revalidatePath } from 'next/cache';
-
-export async function getReferenceCharacters(
-  projectId: string
-): Promise<GetReferenceCharactersResponse> {
-  return backendClient.getReferenceCharacters(projectId, { revalidate: false });
-}
 
 export interface CreateReferenceCharacterResult {
   success: boolean;
