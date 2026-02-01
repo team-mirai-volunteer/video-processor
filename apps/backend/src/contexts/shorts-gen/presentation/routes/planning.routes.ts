@@ -6,7 +6,7 @@ import {
   GeneratePlanningUseCase,
 } from '@shorts-gen/application/usecases/generate-planning.usecase.js';
 import type { ChatMessage } from '@shorts-gen/domain/gateways/agentic-ai.gateway.js';
-import { OpenAiAgenticClient } from '@shorts-gen/infrastructure/clients/openai-agentic.client.js';
+import { AnthropicAgenticClient } from '@shorts-gen/infrastructure/clients/anthropic-agentic.client.js';
 import { ShortsPlanningRepository } from '@shorts-gen/infrastructure/repositories/planning.repository.js';
 import { ShortsProjectRepository } from '@shorts-gen/infrastructure/repositories/project.repository.js';
 import { type Router as ExpressRouter, Router } from 'express';
@@ -18,7 +18,7 @@ const router: ExpressRouter = Router();
 // Initialize repositories and clients
 const projectRepository = new ShortsProjectRepository(prisma);
 const planningRepository = new ShortsPlanningRepository(prisma);
-const agenticAiGateway = new OpenAiAgenticClient();
+const agenticAiGateway = new AnthropicAgenticClient();
 
 // Initialize use cases
 const generatePlanningUseCase = new GeneratePlanningUseCase({

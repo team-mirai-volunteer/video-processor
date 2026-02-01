@@ -177,13 +177,16 @@ export class AgenticClientCore {
             role: 'assistant',
             content: contentParts,
           });
-        } else {
+        } else if (msg.content) {
+          // Anthropic requires non-empty content for assistant messages
           messages.push({
             role: 'assistant',
             content: msg.content,
           });
         }
       } else if (msg.role === 'tool' && msg.toolCallId && msg.toolName) {
+        // Anthropic requires non-empty content for tool results
+        const toolResultContent = msg.content || '(empty result)';
         messages.push({
           role: 'tool',
           content: [
@@ -191,7 +194,7 @@ export class AgenticClientCore {
               type: 'tool-result',
               toolCallId: msg.toolCallId,
               toolName: msg.toolName,
-              output: { type: 'text', value: msg.content },
+              output: { type: 'text', value: toolResultContent },
             },
           ],
         });
