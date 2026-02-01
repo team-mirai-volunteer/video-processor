@@ -38,7 +38,7 @@ function StreamingIndicator() {
   );
 }
 
-export function ChatMessage({ message, className }: ChatMessageProps) {
+function ChatMessage({ message, className }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
 
