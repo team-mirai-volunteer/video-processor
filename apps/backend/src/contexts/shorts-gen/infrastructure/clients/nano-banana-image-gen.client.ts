@@ -186,7 +186,7 @@ export class NanoBananaImageGenClient implements ImageGenGateway {
       if (!imagePart?.inlineData) {
         return err({
           type: 'GENERATION_FAILED',
-          message: 'No image data found in response',
+          message: `No image data found in response. Parts: ${JSON.stringify(parts.map((p) => ({ hasText: !!p.text, hasImage: !!p.inlineData })))}`,
         });
       }
 
@@ -225,12 +225,12 @@ export class NanoBananaImageGenClient implements ImageGenGateway {
 
   /**
    * Build request body for Nano Banana API
-   * If reference images are provided, uses multi-turn conversation format
+   * Reference images and prompt are combined in a single user turn
    */
   private buildRequest(
     prompt: string,
     aspectRatio: string,
-    referenceImages: { imageBuffer: Buffer; mimeType: string }[]
+    referenceImages: { imageBuffer: Buffer; mimeType: string; description?: string }[]
   ): NanoBananaRequest {
     const generationConfig = {
       responseModalities: ['TEXT', 'IMAGE'],
@@ -251,19 +251,28 @@ export class NanoBananaImageGenClient implements ImageGenGateway {
       };
     }
 
-    // Build multi-turn conversation format with reference images
-    // First turn: user provides reference images
-    const referenceImageParts: Array<{
+    // Combine reference images and prompt in a single turn
+    // This ensures the model generates an image rather than just acknowledging
+    const parts: Array<{
       text?: string;
       inline_data?: { mime_type: string; data: string };
-    }> = [
-      {
-        text: 'Use the following reference images to maintain visual consistency (character appearance, art style, color palette) when generating the next image:',
-      },
-    ];
+    }> = [];
 
-    for (const ref of referenceImages) {
-      referenceImageParts.push({
+    // Build character descriptions from reference images
+    const characterDescriptions = referenceImages
+      .filter((ref) => ref.description)
+      .map((ref, idx) => `Character ${idx + 1}: ${ref.description}`)
+      .join('\n');
+
+    // Add reference images with their descriptions
+    for (const [i, ref] of referenceImages.entries()) {
+      // Add description text before each image if available
+      if (ref.description) {
+        parts.push({
+          text: `Reference image ${i + 1} - ${ref.description}:`,
+        });
+      }
+      parts.push({
         inline_data: {
           mime_type: ref.mimeType,
           data: ref.imageBuffer.toString('base64'),
@@ -271,23 +280,26 @@ export class NanoBananaImageGenClient implements ImageGenGateway {
       });
     }
 
+    // Add prompt with strong reference instruction including character descriptions
+    const characterContext = characterDescriptions
+      ? `\n\nCharacter reference:\n${characterDescriptions}\n`
+      : '';
+
+    parts.push({
+      text: `IMPORTANT: The reference image(s) above show the EXACT character(s) that MUST appear in the generated image. You MUST replicate:
+- The exact same character design, face, hair, and clothing
+- The same art style and visual aesthetics
+- The same color palette
+${characterContext}
+Generate an image based on the following description, featuring the SAME character(s) from the reference image(s):
+
+${prompt}`,
+    });
+
     return {
       contents: [
         {
-          role: 'user',
-          parts: referenceImageParts,
-        },
-        {
-          role: 'model',
-          parts: [
-            {
-              text: 'I understand. I will use these reference images to maintain visual consistency in terms of character appearance, art style, and color palette for the next image generation.',
-            },
-          ],
-        },
-        {
-          role: 'user',
-          parts: [{ text: prompt }],
+          parts,
         },
       ],
       generationConfig,
