@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { ReferenceCharacter } from '@video-processor/shared';
 import {
@@ -52,7 +53,7 @@ export interface AssetGenerationStepProps {
   onAllVoicesGenerate?: () => Promise<GenerateAllAssetsResponse>;
   onAllSubtitlesGenerate?: () => Promise<GenerateAllAssetsResponse>;
   onAllImagesGenerate?: () => Promise<GenerateAllAssetsResponse>;
-  onAllImagePromptsGenerate?: () => Promise<GenerateAllImagePromptsResponse>;
+  onAllImagePromptsGenerate?: (styleHint?: string) => Promise<GenerateAllImagePromptsResponse>;
 }
 
 function StatusIcon({ status }: { status: AssetGenerationStatus }) {
@@ -96,6 +97,9 @@ interface AssetColumnProps {
   onGenerateImage?: (sceneId: string) => void;
   onGenerateAllImagePrompts?: () => void;
   isGeneratingImagePrompts?: boolean;
+  // 追加指示用
+  styleHint?: string;
+  onStyleHintChange?: (value: string) => void;
 }
 
 function AssetColumn({
@@ -109,6 +113,8 @@ function AssetColumn({
   onGenerateImage,
   onGenerateAllImagePrompts,
   isGeneratingImagePrompts,
+  styleHint,
+  onStyleHintChange,
 }: AssetColumnProps) {
   const completedCount = column.scenes.filter((s) => s.status === 'completed').length;
   const totalCount = column.scenes.length;
@@ -186,6 +192,18 @@ function AssetColumn({
         )}
       </div>
 
+      {isImageColumn && onStyleHintChange && (
+        <div className="mb-3">
+          <Textarea
+            placeholder="追加の指示（例：アニメ調で、明るい雰囲気で、キャラクターは黒髪のショートカット等）"
+            value={styleHint ?? ''}
+            onChange={(e) => onStyleHintChange(e.target.value)}
+            className="text-xs min-h-[60px] resize-none"
+            disabled={disabled || isGeneratingImagePrompts}
+          />
+        </div>
+      )}
+
       {totalCount > 0 && needsGenerationCount > 0 && (
         <div className="mb-3 space-y-1">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -262,6 +280,7 @@ export function AssetGenerationStep({
   const [referenceCharacters, setReferenceCharacters] = useState<ReferenceCharacter[]>(
     initialReferenceCharacters
   );
+  const [styleHint, setStyleHint] = useState<string>('');
 
   const {
     state,
@@ -400,11 +419,13 @@ export function AssetGenerationStep({
                 onGenerateImagePrompt={column.id === 'image' ? generateImagePrompt : undefined}
                 onGenerateImage={column.id === 'image' ? generateImage : undefined}
                 onGenerateAllImagePrompts={
-                  column.id === 'image' ? generateAllImagePrompts : undefined
+                  column.id === 'image' ? () => generateAllImagePrompts(styleHint) : undefined
                 }
                 isGeneratingImagePrompts={
                   column.id === 'image' ? isGeneratingImagePrompts : undefined
                 }
+                styleHint={column.id === 'image' ? styleHint : undefined}
+                onStyleHintChange={column.id === 'image' ? setStyleHint : undefined}
               />
             ))}
           </div>

@@ -26,7 +26,7 @@ interface UseAssetGenerationOptions {
   onAllVoicesGenerate?: () => Promise<GenerateAllAssetsResponse>;
   onAllSubtitlesGenerate?: () => Promise<GenerateAllAssetsResponse>;
   onAllImagesGenerate?: () => Promise<GenerateAllAssetsResponse>;
-  onAllImagePromptsGenerate?: () => Promise<GenerateAllImagePromptsResponse>;
+  onAllImagePromptsGenerate?: (styleHint?: string) => Promise<GenerateAllImagePromptsResponse>;
 }
 
 interface AssetGenerationState {
@@ -353,62 +353,65 @@ export function useAssetGeneration({
     }
   }, [scenes, onAllImagesGenerate, onImageGenerate, generateImage, updateSceneState]);
 
-  const generateAllImagePrompts = useCallback(async () => {
-    if (!onAllImagePromptsGenerate) {
-      // フォールバック: 個別に直列で生成
-      if (!onImagePromptGenerate) return;
+  const generateAllImagePrompts = useCallback(
+    async (styleHint?: string) => {
+      if (!onAllImagePromptsGenerate) {
+        // フォールバック: 個別に直列で生成
+        if (!onImagePromptGenerate) return;
+        setState((prev) => ({ ...prev, isGeneratingImagePrompt: true }));
+        for (const scene of scenes) {
+          if (scene.visualType === 'image_gen') {
+            await generateImagePrompt(scene.id);
+          }
+        }
+        setState((prev) => ({ ...prev, isGeneratingImagePrompt: false }));
+        return;
+      }
+
       setState((prev) => ({ ...prev, isGeneratingImagePrompt: true }));
+      // image_gen シーンのみ running 状態に
       for (const scene of scenes) {
         if (scene.visualType === 'image_gen') {
-          await generateImagePrompt(scene.id);
+          updateImagePromptState(scene.id, { status: 'running', error: undefined });
         }
       }
-      setState((prev) => ({ ...prev, isGeneratingImagePrompt: false }));
-      return;
-    }
 
-    setState((prev) => ({ ...prev, isGeneratingImagePrompt: true }));
-    // image_gen シーンのみ running 状態に
-    for (const scene of scenes) {
-      if (scene.visualType === 'image_gen') {
-        updateImagePromptState(scene.id, { status: 'running', error: undefined });
-      }
-    }
-
-    try {
-      const response = await onAllImagePromptsGenerate();
-      for (const result of response.results) {
-        if (result.success && result.imagePrompt) {
-          updateImagePromptState(result.sceneId, {
-            status: 'completed',
-            imagePrompt: result.imagePrompt,
-          });
-        } else {
-          updateImagePromptState(result.sceneId, {
-            status: 'error',
-            error: result.error || 'プロンプト生成に失敗しました',
-          });
+      try {
+        const response = await onAllImagePromptsGenerate(styleHint);
+        for (const result of response.results) {
+          if (result.success && result.imagePrompt) {
+            updateImagePromptState(result.sceneId, {
+              status: 'completed',
+              imagePrompt: result.imagePrompt,
+            });
+          } else {
+            updateImagePromptState(result.sceneId, {
+              status: 'error',
+              error: result.error || 'プロンプト生成に失敗しました',
+            });
+          }
         }
-      }
-    } catch (error) {
-      for (const scene of scenes) {
-        if (scene.visualType === 'image_gen') {
-          updateImagePromptState(scene.id, {
-            status: 'error',
-            error: error instanceof Error ? error.message : 'プロンプト生成に失敗しました',
-          });
+      } catch (error) {
+        for (const scene of scenes) {
+          if (scene.visualType === 'image_gen') {
+            updateImagePromptState(scene.id, {
+              status: 'error',
+              error: error instanceof Error ? error.message : 'プロンプト生成に失敗しました',
+            });
+          }
         }
+      } finally {
+        setState((prev) => ({ ...prev, isGeneratingImagePrompt: false }));
       }
-    } finally {
-      setState((prev) => ({ ...prev, isGeneratingImagePrompt: false }));
-    }
-  }, [
-    scenes,
-    onAllImagePromptsGenerate,
-    onImagePromptGenerate,
-    generateImagePrompt,
-    updateImagePromptState,
-  ]);
+    },
+    [
+      scenes,
+      onAllImagePromptsGenerate,
+      onImagePromptGenerate,
+      generateImagePrompt,
+      updateImagePromptState,
+    ]
+  );
 
   const loadExistingAssets = useCallback(
     (assets: { voice: SceneAsset[]; subtitle: SceneAsset[]; image: SceneAsset[] }) => {

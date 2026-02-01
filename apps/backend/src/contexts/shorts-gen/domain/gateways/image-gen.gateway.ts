@@ -8,6 +8,8 @@ export interface ReferenceImage {
   imageBuffer: Buffer;
   /** MIMEタイプ（例: 'image/png', 'image/jpeg'） */
   mimeType: string;
+  /** キャラクターの説明（プロンプトに含める） */
+  description?: string;
 }
 
 /**

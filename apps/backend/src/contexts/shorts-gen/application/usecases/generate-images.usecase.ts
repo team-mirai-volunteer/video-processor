@@ -396,12 +396,14 @@ export class GenerateImagesUseCase {
         referenceImages.push({
           imageBuffer,
           mimeType,
+          description: character.description,
         });
 
         log.debug('Downloaded reference image', {
           characterId: character.id,
           mimeType,
           bufferSize: imageBuffer.length,
+          description: character.description,
         });
       } catch (error) {
         log.warn('Failed to download reference image', {

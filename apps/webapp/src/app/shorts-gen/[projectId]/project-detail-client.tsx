@@ -519,12 +519,13 @@ export function ProjectDetailClient({
   );
 
   // All image prompts generation handler
-  const handleAllImagePromptsGenerate =
-    useCallback(async (): Promise<GenerateAllImagePromptsResponse> => {
+  const handleAllImagePromptsGenerate = useCallback(
+    async (styleHint?: string): Promise<GenerateAllImagePromptsResponse> => {
       if (!script) throw new Error('Script not found');
       const response = await fetch(`/api/shorts-gen/scripts/${script.id}/image-prompts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ styleHint: styleHint || undefined }),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -561,7 +562,9 @@ export function ProjectDetailClient({
           imagePrompt: r.imagePrompt,
         })),
       };
-    }, [script]);
+    },
+    [script]
+  );
 
   return (
     <div className="space-y-6">
