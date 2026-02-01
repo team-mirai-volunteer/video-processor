@@ -3,7 +3,8 @@ import * as path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { NanoBananaImageGenClient } from '../../../../../src/contexts/shorts-gen/infrastructure/clients/nano-banana-image-gen.client.js';
 
-const OUTPUT_DIR = path.join(__dirname, '../../fixtures/output/nano-banana');
+const FIXTURES_DIR = path.join(__dirname, '../../fixtures');
+const OUTPUT_DIR = path.join(FIXTURES_DIR, 'output/nano-banana');
 
 /**
  * Check if Gemini API key is configured
@@ -129,6 +130,81 @@ describe.skipIf(!runIntegrationTests)('NanoBananaImageGenClient Integration', ()
         expect(result.error.type).toBe('INVALID_DIMENSIONS');
       }
     });
+
+    it('should generate image with reference image from fixture', async () => {
+      // fixture画像を読み込み
+      const referenceImagePath = path.join(FIXTURES_DIR, 'input/images/scene1.png');
+      const referenceImageBuffer = await fs.promises.readFile(referenceImagePath);
+
+      // 参照画像のスタイルを引き継いで新しい画像を生成
+      const result = await client.generate({
+        prompt: 'A similar night sky scene with a full moon over mountains',
+        width: 1080,
+        height: 1920,
+        referenceImages: [
+          {
+            imageBuffer: referenceImageBuffer,
+            mimeType: 'image/png',
+          },
+        ],
+      });
+
+      if (!result.success) {
+        console.error('Reference image generation failed:', result.error);
+      }
+      expect(result.success).toBe(true);
+      if (result.success) {
+        // 出力を保存して目視確認可能に
+        const outputPath = path.join(OUTPUT_DIR, `test-reference-single.${result.value.format}`);
+        await fs.promises.writeFile(outputPath, result.value.imageBuffer);
+        console.log(`Generated image with reference saved to: ${outputPath}`);
+      }
+    }, 60000);
+
+    it('should generate image with multiple reference images from fixtures', async () => {
+      // 複数のfixture画像を読み込み
+      const ref1 = await fs.promises.readFile(path.join(FIXTURES_DIR, 'input/images/scene1.png'));
+      const ref2 = await fs.promises.readFile(path.join(FIXTURES_DIR, 'input/images/scene2.png'));
+
+      const result = await client.generate({
+        prompt: 'A new scene combining the visual style of these reference images',
+        width: 1080,
+        height: 1920,
+        referenceImages: [
+          { imageBuffer: ref1, mimeType: 'image/png' },
+          { imageBuffer: ref2, mimeType: 'image/png' },
+        ],
+      });
+
+      if (!result.success) {
+        console.error('Multiple reference image generation failed:', result.error);
+      }
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const outputPath = path.join(OUTPUT_DIR, `test-reference-multiple.${result.value.format}`);
+        await fs.promises.writeFile(outputPath, result.value.imageBuffer);
+        console.log(`Generated image with multiple references saved to: ${outputPath}`);
+      }
+    }, 60000);
+
+    it('should work with empty reference images array', async () => {
+      const result = await client.generate({
+        prompt: 'A simple test image of a blue circle',
+        width: 1024,
+        height: 1024,
+        referenceImages: [], // 空配列
+      });
+
+      if (!result.success) {
+        console.error('Empty reference images generation failed:', result.error);
+      }
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const outputPath = path.join(OUTPUT_DIR, `test-reference-empty.${result.value.format}`);
+        await fs.promises.writeFile(outputPath, result.value.imageBuffer);
+        console.log(`Generated image with empty references saved to: ${outputPath}`);
+      }
+    }, 60000);
   });
 
   describe('getSupportedDimensions', () => {
@@ -234,6 +310,34 @@ describe('NanoBananaImageGenClient Unit Tests', () => {
 
       expect(styles.length).toBeGreaterThan(0);
       expect(styles).toContain('photorealistic');
+    });
+  });
+
+  describe('reference images validation', () => {
+    it('should return INVALID_PROMPT error when too many reference images are provided', async () => {
+      const client = new NanoBananaImageGenClient({ apiKey: 'test-key' });
+
+      // Create 4 dummy reference images (exceeds MAX_REFERENCE_IMAGES of 3)
+      const dummyBuffer = Buffer.from('dummy image data');
+      const result = await client.generate({
+        prompt: 'A test image',
+        width: 1024,
+        height: 1024,
+        referenceImages: [
+          { imageBuffer: dummyBuffer, mimeType: 'image/png' },
+          { imageBuffer: dummyBuffer, mimeType: 'image/png' },
+          { imageBuffer: dummyBuffer, mimeType: 'image/png' },
+          { imageBuffer: dummyBuffer, mimeType: 'image/png' },
+        ],
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe('INVALID_PROMPT');
+        if (result.error.type === 'INVALID_PROMPT') {
+          expect(result.error.message).toContain('Too many reference images');
+        }
+      }
     });
   });
 });

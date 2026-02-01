@@ -1,6 +1,16 @@
 import type { Result } from '@shared/domain/types/result.js';
 
 /**
+ * 参照画像（スタイル・キャラクター一貫性のため）
+ */
+export interface ReferenceImage {
+  /** 画像データ（Buffer） */
+  imageBuffer: Buffer;
+  /** MIMEタイプ（例: 'image/png', 'image/jpeg'） */
+  mimeType: string;
+}
+
+/**
  * 画像生成リクエストパラメータ
  */
 export interface ImageGenParams {
@@ -16,6 +26,8 @@ export interface ImageGenParams {
   style?: string;
   /** シード値（再現性のため） */
   seed?: number;
+  /** 参照画像（スタイル・キャラクター一貫性のため） */
+  referenceImages?: ReferenceImage[];
 }
 
 /**
