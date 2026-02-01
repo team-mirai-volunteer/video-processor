@@ -244,7 +244,6 @@ export function ProjectDetailClient({
 
   const handleSaveScene = useCallback(
     async (sceneId: string, params: UpdateSceneParams) => {
-      // TODO: Call API to save scene
       const response = await fetch(`/api/shorts-gen/projects/${project.id}/scenes/${sceneId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -253,6 +252,10 @@ export function ProjectDetailClient({
       if (!response.ok) {
         throw new Error('Failed to save scene');
       }
+      // API成功後、ローカル状態を更新（④素材生成画面からの呼び出しにも対応）
+      setScenes((prev) =>
+        prev.map((scene) => (scene.id === sceneId ? { ...scene, ...params } : scene))
+      );
     },
     [project.id]
   );
@@ -705,6 +708,7 @@ export function ProjectDetailClient({
           onAllSubtitlesGenerate={handleAllSubtitlesGenerate}
           onAllImagesGenerate={handleAllImagesGenerate}
           onAllImagePromptsGenerate={handleAllImagePromptsGenerate}
+          onSceneUpdate={handleSaveScene}
         />
 
         {/* Step 8: Compose */}

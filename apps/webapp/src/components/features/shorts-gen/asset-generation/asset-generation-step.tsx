@@ -54,6 +54,8 @@ export interface AssetGenerationStepProps {
   onAllSubtitlesGenerate?: () => Promise<GenerateAllAssetsResponse>;
   onAllImagesGenerate?: () => Promise<GenerateAllAssetsResponse>;
   onAllImagePromptsGenerate?: (styleHint?: string) => Promise<GenerateAllImagePromptsResponse>;
+  // シーン更新コールバック（音声テキスト編集用）
+  onSceneUpdate?: (sceneId: string, params: { voiceText?: string }) => Promise<void>;
 }
 
 function StatusIcon({ status }: { status: AssetGenerationStatus }) {
@@ -100,6 +102,9 @@ interface AssetColumnProps {
   // 追加指示用
   styleHint?: string;
   onStyleHintChange?: (value: string) => void;
+  // 音声テキスト編集用
+  onVoiceTextSave?: (sceneId: string, newVoiceText: string) => Promise<void>;
+  savingVoiceTextSceneIds?: Set<string>;
 }
 
 function AssetColumn({
@@ -115,6 +120,8 @@ function AssetColumn({
   isGeneratingImagePrompts,
   styleHint,
   onStyleHintChange,
+  onVoiceTextSave,
+  savingVoiceTextSceneIds,
 }: AssetColumnProps) {
   const completedCount = column.scenes.filter((s) => s.status === 'completed').length;
   const totalCount = column.scenes.length;
@@ -229,6 +236,7 @@ function AssetColumn({
           const sceneState = column.scenes[index];
           if (!sceneState) return null;
           const isImageColumn = column.id === 'image';
+          const isVoiceColumn = column.id === 'voice';
           return (
             <SceneAssetItem
               key={scene.id}
@@ -247,6 +255,9 @@ function AssetColumn({
               onGenerateImage={
                 isImageColumn && onGenerateImage ? () => onGenerateImage(scene.id) : undefined
               }
+              // 音声カラム専用props
+              onVoiceTextSave={isVoiceColumn ? onVoiceTextSave : undefined}
+              isVoiceTextSaving={isVoiceColumn && savingVoiceTextSceneIds?.has(scene.id)}
             />
           );
         })}
@@ -276,11 +287,13 @@ export function AssetGenerationStep({
   onAllSubtitlesGenerate,
   onAllImagesGenerate,
   onAllImagePromptsGenerate,
+  onSceneUpdate,
 }: AssetGenerationStepProps) {
   const [referenceCharacters, setReferenceCharacters] = useState<ReferenceCharacter[]>(
     initialReferenceCharacters
   );
   const [styleHint, setStyleHint] = useState<string>('');
+  const [savingVoiceTextSceneIds, setSavingVoiceTextSceneIds] = useState<Set<string>>(new Set());
 
   const {
     state,
@@ -361,6 +374,26 @@ export function AssetGenerationStep({
     reset();
   }, [reset]);
 
+  // 音声テキスト保存ハンドラー
+  const handleVoiceTextSave = useCallback(
+    async (sceneId: string, newVoiceText: string) => {
+      if (!onSceneUpdate) return;
+
+      setSavingVoiceTextSceneIds((prev) => new Set(prev).add(sceneId));
+      try {
+        await onSceneUpdate(sceneId, { voiceText: newVoiceText });
+        // 親コンポーネントがonSceneUpdate内でscenesを更新する
+      } finally {
+        setSavingVoiceTextSceneIds((prev) => {
+          const next = new Set(prev);
+          next.delete(sceneId);
+          return next;
+        });
+      }
+    },
+    [onSceneUpdate]
+  );
+
   const stepStatus = mapToStepStatus(overallStatus, canStart);
 
   const getProgressMessage = (): string | null => {
@@ -426,6 +459,11 @@ export function AssetGenerationStep({
                 }
                 styleHint={column.id === 'image' ? styleHint : undefined}
                 onStyleHintChange={column.id === 'image' ? setStyleHint : undefined}
+                // 音声カラム専用props
+                onVoiceTextSave={column.id === 'voice' ? handleVoiceTextSave : undefined}
+                savingVoiceTextSceneIds={
+                  column.id === 'voice' ? savingVoiceTextSceneIds : undefined
+                }
               />
             ))}
           </div>

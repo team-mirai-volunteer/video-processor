@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import {
   AlertCircle,
@@ -11,10 +12,11 @@ import {
   Pencil,
   Play,
   RefreshCw,
+  Save,
   Type,
   Volume2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AssetColumnData, ImagePromptState, Scene, SceneAssetState } from './types';
 
 interface SceneAssetItemProps {
@@ -28,6 +30,9 @@ interface SceneAssetItemProps {
   imagePromptState?: ImagePromptState;
   onGeneratePrompt?: () => void;
   onGenerateImage?: () => void;
+  // 音声カラム用の編集機能
+  onVoiceTextSave?: (sceneId: string, newVoiceText: string) => Promise<void>;
+  isVoiceTextSaving?: boolean;
 }
 
 function StatusIcon({ status }: { status: SceneAssetState['status'] }) {
@@ -85,8 +90,24 @@ export function SceneAssetItem({
   imagePromptState,
   onGeneratePrompt,
   onGenerateImage,
+  onVoiceTextSave,
+  isVoiceTextSaving,
 }: SceneAssetItemProps) {
   const [showPreview, setShowPreview] = useState(false);
+  // 音声テキスト編集用のローカル状態
+  const [editingVoiceText, setEditingVoiceText] = useState(scene.voiceText ?? '');
+  const hasVoiceTextChanges = editingVoiceText !== (scene.voiceText ?? '');
+
+  // scene.voiceText が外部から変更された場合に同期
+  useEffect(() => {
+    setEditingVoiceText(scene.voiceText ?? '');
+  }, [scene.voiceText]);
+
+  const handleVoiceTextSave = async () => {
+    if (onVoiceTextSave && hasVoiceTextChanges) {
+      await onVoiceTextSave(scene.id, editingVoiceText);
+    }
+  };
 
   // 画像カラムでimage_gen以外の場合はスキップ
   const isImageColumn = columnType === 'image';
@@ -319,7 +340,105 @@ export function SceneAssetItem({
     );
   }
 
-  // 画像カラム以外（voice, subtitle）または画像カラムでimage_gen以外の場合
+  // 音声カラムの場合は編集可能なUIを表示
+  if (columnType === 'voice') {
+    return (
+      <div
+        className={cn(
+          'p-2 rounded-md text-sm border',
+          state.status === 'error' && 'border-destructive bg-destructive/5',
+          state.status === 'completed' && 'border-green-200 bg-green-50/50',
+          state.status === 'running' && 'border-blue-200 bg-blue-50/50',
+          isSkipped && 'border-dashed opacity-60'
+        )}
+      >
+        {/* ヘッダー */}
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-1.5">
+            <StatusIcon status={isSkipped ? 'completed' : state.status} />
+            <ColumnIcon type={columnType} />
+            <span className="font-medium text-xs">シーン {scene.order + 1}</span>
+            {state.asset?.durationMs && (
+              <span className="text-xs text-muted-foreground">
+                ({formatDuration(state.asset.durationMs)})
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            {/* 保存ボタン（変更がある場合のみ表示） */}
+            {onVoiceTextSave && hasVoiceTextChanges && (
+              <Button
+                size="sm"
+                variant="default"
+                className="h-6 px-2 text-xs"
+                onClick={handleVoiceTextSave}
+                disabled={isVoiceTextSaving}
+                title="保存"
+              >
+                {isVoiceTextSaving ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <>
+                    <Save className="h-3 w-3 mr-1" />
+                    保存
+                  </>
+                )}
+              </Button>
+            )}
+            {/* 再生成ボタン（保存済みで変更がない場合のみ有効） */}
+            {state.status === 'completed' && onRegenerate && !isSkipped && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0"
+                onClick={onRegenerate}
+                disabled={hasVoiceTextChanges}
+                title={hasVoiceTextChanges ? '先に保存してください' : '再生成'}
+              >
+                <RefreshCw className="h-3 w-3" />
+              </Button>
+            )}
+            {state.status === 'error' && onRetry && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0"
+                onClick={onRetry}
+                title="再試行"
+              >
+                <RefreshCw className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* 編集可能なテキストエリア */}
+        <Textarea
+          value={editingVoiceText}
+          onChange={(e) => setEditingVoiceText(e.target.value)}
+          placeholder="読み上げるテキストを入力..."
+          className="text-xs min-h-[60px] resize-none"
+          disabled={isVoiceTextSaving || state.status === 'running'}
+        />
+
+        {state.error && (
+          <div className="mt-1.5 text-xs text-destructive bg-destructive/10 p-1.5 rounded">
+            {state.error}
+          </div>
+        )}
+
+        {/* 音声プレーヤー */}
+        {state.status === 'completed' && state.asset && (
+          <div className="mt-2">
+            {/* biome-ignore lint/a11y/useMediaCaption: Captions not available for generated audio preview */}
+            <audio src={state.asset.fileUrl} controls className="w-full h-8" preload="metadata" />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 画像カラム以外（subtitle）または画像カラムでimage_gen以外の場合
   return (
     <div
       className={cn(
@@ -350,8 +469,8 @@ export function SceneAssetItem({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          {/* プレビューボタン (voiceは別でaudioプレーヤー表示) */}
-          {state.status === 'completed' && state.asset && columnType !== 'voice' && (
+          {/* プレビューボタン */}
+          {state.status === 'completed' && state.asset && (
             <Button
               size="sm"
               variant="ghost"
@@ -394,14 +513,7 @@ export function SceneAssetItem({
         </div>
       )}
 
-      {columnType === 'voice' && state.status === 'completed' && state.asset && (
-        <div className="mt-2">
-          {/* biome-ignore lint/a11y/useMediaCaption: Captions not available for generated audio preview */}
-          <audio src={state.asset.fileUrl} controls className="w-full h-8" preload="metadata" />
-        </div>
-      )}
-
-      {showPreview && state.asset && columnType !== 'voice' && (
+      {showPreview && state.asset && (
         <div className="mt-2 p-2 bg-muted/50 rounded">
           {getPreviewContent()}
           <Button
