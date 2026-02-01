@@ -84,6 +84,13 @@ infrastructure/→ repositories, clients (throw errors)
 - [docs/backend-architecture-guide.md](docs/backend-architecture-guide.md) - バックエンドアーキテクチャルール
 - [docs/backend-testing-guide.md](docs/backend-testing-guide.md) - テストガイドライン
 - [docs/shorts-gen-feature-spec.md](docs/shorts-gen-feature-spec.md) - ショート動画生成機能仕様
-- [docs/shorts-gen-implementation-plan.md](docs/shorts-gen-implementation-plan.md) - ショート動画生成実装計画
-- [apps/backend/src/infrastructure/database/prisma/schema.prisma](apps/backend/src/infrastructure/database/prisma/schema.prisma) - DB schema
 - [biome.json](biome.json) - lint/format設定
+
+### shorts-gen機能の修正時に読むべきガイド
+
+| 修正対象 | 読むべきガイド |
+|----------|----------------|
+| バックエンド (API, UseCase, Repository等) | [docs/backend-shorts-gen-guide.md](docs/backend-shorts-gen-guide.md) |
+| フロントエンド (UI, 状態管理, Server Action等) | [docs/frontend-shorts-gen-guide.md](docs/frontend-shorts-gen-guide.md) |
+
+これらのガイドには、ディレクトリ構成・レイヤー間依存・主要な型・修正時のポイントがまとまっている。

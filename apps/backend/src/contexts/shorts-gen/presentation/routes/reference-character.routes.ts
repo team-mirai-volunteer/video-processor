@@ -117,17 +117,23 @@ router.post('/:projectId/reference-characters', upload.single('image'), async (r
       return;
     }
 
-    // Upload image to storage
+    // Upload image to storage using uploadFromStream to control the path
     const storage = getStorageGateway();
     const fileExtension = file.mimetype === 'image/png' ? 'png' : 'jpg';
-    const storagePath = `shorts-gen/${projectId}/reference-characters/${uuidv4()}.${fileExtension}`;
+    const fileName = `${uuidv4()}.${fileExtension}`;
+    const videoId = `shorts-gen/${projectId}/reference-characters`;
 
-    const uploadResult = await storage.upload({
-      videoId: storagePath,
-      content: file.buffer,
-    });
+    const { Readable } = await import('node:stream');
+    const uploadResult = await storage.uploadFromStream(
+      {
+        videoId,
+        path: fileName,
+        contentType: file.mimetype,
+      },
+      Readable.from(file.buffer)
+    );
 
-    log.info('Image uploaded to storage', { storagePath, gcsUri: uploadResult.gcsUri });
+    log.info('Image uploaded to storage', { videoId, fileName, gcsUri: uploadResult.gcsUri });
 
     // Create domain model
     const characterResult = ShortsReferenceCharacter.create(
