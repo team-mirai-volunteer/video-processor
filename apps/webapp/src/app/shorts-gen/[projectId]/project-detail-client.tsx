@@ -30,6 +30,7 @@ import type {
   GetShortsImagesResponse,
   GetShortsSubtitlesResponse,
   GetShortsVoiceResponse,
+  ReferenceCharacter,
   ShortsProject,
 } from '@video-processor/shared';
 import { ArrowLeft, Settings } from 'lucide-react';
@@ -48,6 +49,7 @@ interface ProjectDetailClientProps {
   initialScript?: Script | null;
   initialScenes?: Scene[];
   initialAssets?: InitialAssets | null;
+  initialReferenceCharacters?: ReferenceCharacter[];
 }
 
 interface StepState {
@@ -79,6 +81,7 @@ export function ProjectDetailClient({
   initialScript = null,
   initialScenes = [],
   initialAssets = null,
+  initialReferenceCharacters = [],
 }: ProjectDetailClientProps) {
   const [steps, setSteps] = useState<StepsState>(() =>
     getInitialSteps(!!initialPlanning, !!initialScript)
@@ -690,6 +693,7 @@ export function ProjectDetailClient({
           onComplete={handleAssetsComplete}
           canStart={steps.assets.status === 'ready' || steps.assets.status === 'completed'}
           existingAssets={existingAssets}
+          initialReferenceCharacters={initialReferenceCharacters}
           onVoiceGenerate={handleVoiceGenerate}
           onSubtitleGenerate={handleSubtitleGenerate}
           onImageGenerate={handleImageGenerate}

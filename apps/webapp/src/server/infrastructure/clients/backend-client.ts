@@ -3,8 +3,10 @@ import type {
   ComposeVideoAcceptedResponse,
   ComposeVideoRequest,
   ComposeVideoResponse,
+  CreateReferenceCharacterResponse,
   CreateShortsProjectRequest,
   CreateShortsProjectResponse,
+  DeleteReferenceCharacterResponse,
   ExtractAudioResponse,
   ExtractClipsRequest,
   ExtractClipsResponse,
@@ -13,6 +15,7 @@ import type {
   GetClipsResponse,
   GetComposedVideoResponse,
   GetPublishTextResponse,
+  GetReferenceCharactersResponse,
   GetRefinedTranscriptionResponse,
   GetShortsImagesResponse,
   GetShortsPlanningResponse,
@@ -414,6 +417,48 @@ export const backendClient = {
       }
       throw error;
     }
+  },
+
+  // Shorts Gen - Reference Characters
+  async getReferenceCharacters(
+    projectId: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetReferenceCharactersResponse> {
+    return fetchBackend<GetReferenceCharactersResponse>(
+      `/api/shorts-gen/projects/${projectId}/reference-characters`,
+      options
+    );
+  },
+
+  async createReferenceCharacter(
+    projectId: string,
+    formData: FormData
+  ): Promise<CreateReferenceCharacterResponse> {
+    const url = `${BACKEND_URL}/api/shorts-gen/projects/${projectId}/reference-characters`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-API-Key': BACKEND_API_KEY,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new BackendApiError(response.status, error.error || 'Request failed');
+    }
+
+    return response.json();
+  },
+
+  async deleteReferenceCharacter(
+    projectId: string,
+    characterId: string
+  ): Promise<DeleteReferenceCharacterResponse> {
+    return fetchBackend<DeleteReferenceCharacterResponse>(
+      `/api/shorts-gen/projects/${projectId}/reference-characters/${characterId}`,
+      { method: 'DELETE' }
+    );
   },
 };
 

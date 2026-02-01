@@ -13,11 +13,13 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
   const { projectId } = await params;
 
   try {
-    const [projectResponse, planningResponse, scriptResponse] = await Promise.all([
-      loadShortsProject(projectId),
-      getBackendClient().getShortsPlanning(projectId, { revalidate: false }),
-      getBackendClient().getShortsScript(projectId, { revalidate: false }),
-    ]);
+    const [projectResponse, planningResponse, scriptResponse, referenceCharactersResponse] =
+      await Promise.all([
+        loadShortsProject(projectId),
+        getBackendClient().getShortsPlanning(projectId, { revalidate: false }),
+        getBackendClient().getShortsScript(projectId, { revalidate: false }),
+        getBackendClient().getReferenceCharacters(projectId, { revalidate: false }),
+      ]);
 
     const initialPlanning = planningResponse ?? null;
     const initialScenes = scriptResponse
@@ -57,6 +59,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
         initialScript={initialScript}
         initialScenes={initialScenes}
         initialAssets={initialAssets}
+        initialReferenceCharacters={referenceCharactersResponse?.characters ?? []}
       />
     );
   } catch {

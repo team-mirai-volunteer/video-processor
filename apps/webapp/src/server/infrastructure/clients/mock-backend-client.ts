@@ -1,10 +1,13 @@
 import type {
   CacheVideoResponse,
+  CreateReferenceCharacterResponse,
   CreateShortsProjectRequest,
   CreateShortsProjectResponse,
+  DeleteReferenceCharacterResponse,
   ExtractAudioResponse,
   ExtractClipsRequest,
   ExtractClipsResponse,
+  GetReferenceCharactersResponse,
   GetRefinedTranscriptionResponse,
   GetShortsImagesResponse,
   GetShortsPlanningResponse,
@@ -280,6 +283,34 @@ Mock transcription subtitle 2`;
 
   async getShortsImages(_scriptId: string): Promise<GetShortsImagesResponse | null> {
     return null;
+  },
+
+  // Shorts Gen - Reference Characters
+  async getReferenceCharacters(projectId: string): Promise<GetReferenceCharactersResponse> {
+    return {
+      projectId,
+      characters: [],
+    };
+  },
+
+  async createReferenceCharacter(
+    projectId: string,
+    _formData: FormData
+  ): Promise<CreateReferenceCharacterResponse> {
+    return {
+      id: `ref-char-${Date.now()}`,
+      projectId,
+      description: 'Mock character',
+      imageUrl: 'https://via.placeholder.com/150',
+      order: 0,
+    };
+  },
+
+  async deleteReferenceCharacter(
+    _projectId: string,
+    _characterId: string
+  ): Promise<DeleteReferenceCharacterResponse> {
+    return { success: true };
   },
 };
 
