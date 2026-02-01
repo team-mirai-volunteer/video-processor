@@ -65,13 +65,17 @@ export function ChatMessage({ message, className }: ChatMessageProps) {
         <div
           className={cn(
             'inline-block rounded-lg px-4 py-2 text-sm',
-            isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'
+            isUser ? 'bg-primary text-white' : 'bg-muted'
           )}
         >
-          <div className="prose prose-sm dark:prose-invert max-w-none break-words">
-            <Markdown>{message.content}</Markdown>
-            {message.isStreaming && <StreamingIndicator />}
-          </div>
+          {isUser ? (
+            <div className="whitespace-pre-wrap break-words">{message.content}</div>
+          ) : (
+            <div className="prose prose-sm max-w-none break-words [&_*]:text-inherit">
+              <Markdown>{message.content}</Markdown>
+              {message.isStreaming && <StreamingIndicator />}
+            </div>
+          )}
         </div>
       </div>
     </div>
