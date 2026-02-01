@@ -34,6 +34,7 @@ interface NanoBananaResponse {
  */
 interface NanoBananaRequest {
   contents: Array<{
+    role?: 'user' | 'model';
     parts: Array<{
       text?: string;
       inline_data?: {
@@ -49,6 +50,9 @@ interface NanoBananaRequest {
     };
   };
 }
+
+/** 参照画像の最大枚数（gemini-2.5-flash-imageの推奨上限） */
+const MAX_REFERENCE_IMAGES = 3;
 
 /**
  * Supported aspect ratios and their corresponding dimensions
@@ -119,6 +123,15 @@ export class NanoBananaImageGenClient implements ImageGenGateway {
       });
     }
 
+    // Validate reference images count
+    const referenceImages = params.referenceImages ?? [];
+    if (referenceImages.length > MAX_REFERENCE_IMAGES) {
+      return err({
+        type: 'INVALID_PROMPT',
+        message: `Too many reference images: ${referenceImages.length}. Maximum allowed: ${MAX_REFERENCE_IMAGES}`,
+      });
+    }
+
     // Build prompt
     let fullPrompt = params.prompt;
     if (params.negativePrompt) {
@@ -129,19 +142,7 @@ export class NanoBananaImageGenClient implements ImageGenGateway {
     }
 
     // Build request
-    const request: NanoBananaRequest = {
-      contents: [
-        {
-          parts: [{ text: fullPrompt }],
-        },
-      ],
-      generationConfig: {
-        responseModalities: ['TEXT', 'IMAGE'],
-        imageConfig: {
-          aspectRatio,
-        },
-      },
-    };
+    const request = this.buildRequest(fullPrompt, aspectRatio, referenceImages);
 
     try {
       const url = `${this.baseUrl}/${this.model}:generateContent`;
@@ -220,6 +221,77 @@ export class NanoBananaImageGenClient implements ImageGenGateway {
         message: error instanceof Error ? error.message : String(error),
       });
     }
+  }
+
+  /**
+   * Build request body for Nano Banana API
+   * If reference images are provided, uses multi-turn conversation format
+   */
+  private buildRequest(
+    prompt: string,
+    aspectRatio: string,
+    referenceImages: { imageBuffer: Buffer; mimeType: string }[]
+  ): NanoBananaRequest {
+    const generationConfig = {
+      responseModalities: ['TEXT', 'IMAGE'],
+      imageConfig: {
+        aspectRatio,
+      },
+    };
+
+    // If no reference images, use simple single-turn format
+    if (referenceImages.length === 0) {
+      return {
+        contents: [
+          {
+            parts: [{ text: prompt }],
+          },
+        ],
+        generationConfig,
+      };
+    }
+
+    // Build multi-turn conversation format with reference images
+    // First turn: user provides reference images
+    const referenceImageParts: Array<{
+      text?: string;
+      inline_data?: { mime_type: string; data: string };
+    }> = [
+      {
+        text: 'Use the following reference images to maintain visual consistency (character appearance, art style, color palette) when generating the next image:',
+      },
+    ];
+
+    for (const ref of referenceImages) {
+      referenceImageParts.push({
+        inline_data: {
+          mime_type: ref.mimeType,
+          data: ref.imageBuffer.toString('base64'),
+        },
+      });
+    }
+
+    return {
+      contents: [
+        {
+          role: 'user',
+          parts: referenceImageParts,
+        },
+        {
+          role: 'model',
+          parts: [
+            {
+              text: 'I understand. I will use these reference images to maintain visual consistency in terms of character appearance, art style, and color palette for the next image generation.',
+            },
+          ],
+        },
+        {
+          role: 'user',
+          parts: [{ text: prompt }],
+        },
+      ],
+      generationConfig,
+    };
   }
 
   /**

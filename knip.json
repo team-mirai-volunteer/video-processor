@@ -3,13 +3,7 @@
   "workspaces": {
     "apps/backend": {
       "project": ["src/**/*.ts"],
-      "entry": [
-        "src/contexts/*/presentation/routes/*.ts",
-        "src/contexts/*/application/index.ts",
-        "src/contexts/*/application/usecases/index.ts",
-        "src/contexts/*/application/errors/index.ts",
-        "src/contexts/*/domain/models/index.ts"
-      ],
+      "entry": ["src/index.ts"],
       "ignore": [
         "src/**/*.test.ts",
         "test/**/*.ts",
@@ -18,11 +12,7 @@
       "vitest": true
     },
     "apps/webapp": {
-      "entry": [
-        "src/app/**/*.{ts,tsx}",
-        "src/components/**/*.{ts,tsx}",
-        "src/server/presentation/actions/**/*.ts"
-      ],
+      "entry": ["src/app/**/page.tsx", "src/app/**/layout.tsx", "src/app/**/route.ts"],
       "project": ["src/**/*.{ts,tsx}"],
       "ignore": ["src/**/*.test.{ts,tsx}"],
       "ignoreBinaries": ["dot"],

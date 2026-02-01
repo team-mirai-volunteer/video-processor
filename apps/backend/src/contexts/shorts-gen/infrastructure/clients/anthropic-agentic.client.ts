@@ -1,4 +1,4 @@
-import { openai } from '@ai-sdk/openai';
+import { anthropic } from '@ai-sdk/anthropic';
 import type { Result } from '@shared/domain/types/result.js';
 import type {
   AgenticAiGateway,
@@ -10,24 +10,24 @@ import type {
 import { AgenticClientCore } from './agentic-client-core.js';
 
 /**
- * OpenAI Agentic Client
- * OpenAIモデルを使用するファサードクラス
+ * Anthropic Agentic Client
+ * Anthropic Claude モデルを使用するファサードクラス
  * 共通処理はAgenticClientCoreに委譲
  */
-export class OpenAiAgenticClient implements AgenticAiGateway {
+export class AnthropicAgenticClient implements AgenticAiGateway {
   private readonly core: AgenticClientCore;
 
   /**
-   * @param model OpenAIモデル名（省略時は環境変数または'gpt-4o'）
+   * @param model Anthropicモデル名（省略時は環境変数または'claude-sonnet-4-20250514'）
    */
   constructor(model?: string) {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      throw new Error('OPENAI_API_KEY environment variable is required');
+      throw new Error('ANTHROPIC_API_KEY environment variable is required');
     }
 
-    const modelName = model ?? process.env.OPENAI_MODEL ?? 'gpt-4o';
-    this.core = new AgenticClientCore(openai(modelName));
+    const modelName = model ?? process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-20250514';
+    this.core = new AgenticClientCore(anthropic(modelName));
   }
 
   /**
