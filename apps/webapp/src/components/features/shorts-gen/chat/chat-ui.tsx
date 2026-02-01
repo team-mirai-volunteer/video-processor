@@ -53,7 +53,7 @@ export function ChatUI({
   headers,
 }: ChatUIProps) {
   const [input, setInput] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { messages, status, error, toolCalls, sendMessage, clearMessages, abort } = useSSEChat({
@@ -66,11 +66,17 @@ export function ChatUI({
 
   const isLoading = status === 'connecting' || status === 'streaming';
 
-  // メッセージが更新されたら自動スクロール
+  // メッセージが更新されたらコンテナ内でスクロール（ページ全体ではなくインナースクロール）
   const lastMessage = messages.at(-1);
   // biome-ignore lint/correctness/useExhaustiveDependencies: メッセージ更新時にスクロールするため意図的に依存
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
   }, [messages.length, lastMessage?.content]);
 
   const handleSubmit = useCallback(
@@ -128,7 +134,7 @@ export function ChatUI({
 
       <CardContent className="flex flex-1 flex-col gap-4 p-4 pt-0 overflow-hidden">
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto min-h-0 pr-2">
+        <div ref={messagesContainerRef} className="flex-1 overflow-y-auto min-h-0 pr-2">
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
               メッセージがありません
@@ -136,7 +142,6 @@ export function ChatUI({
           ) : (
             <ChatMessageList messages={messages} />
           )}
-          <div ref={messagesEndRef} />
         </div>
 
         {/* Tool call indicator */}
