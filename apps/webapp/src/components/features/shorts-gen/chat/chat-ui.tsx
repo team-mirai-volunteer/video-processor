@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { AlertCircle, Loader2, Send, Square, Trash2 } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChatMessageList } from './chat-message';
 import type { ChatUIProps, ToolCall } from './types';
 import { useSSEChat } from './use-sse-chat';
@@ -65,6 +65,13 @@ export function ChatUI({
   });
 
   const isLoading = status === 'connecting' || status === 'streaming';
+
+  // メッセージが更新されたら自動スクロール
+  const lastMessage = messages.at(-1);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: メッセージ更新時にスクロールするため意図的に依存
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length, lastMessage?.content]);
 
   const handleSubmit = useCallback(
     async (e?: React.FormEvent) => {
