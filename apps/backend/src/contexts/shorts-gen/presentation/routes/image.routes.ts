@@ -19,6 +19,7 @@ import {
 } from '@shorts-gen/application/usecases/generate-images.usecase.js';
 import { NanoBananaImageGenClient } from '@shorts-gen/infrastructure/clients/nano-banana-image-gen.client.js';
 import { OpenAiAgenticClient } from '@shorts-gen/infrastructure/clients/openai-agentic.client.js';
+import { ShortsReferenceCharacterRepository } from '@shorts-gen/infrastructure/repositories/reference-character.repository.js';
 import { ShortsSceneAssetRepository } from '@shorts-gen/infrastructure/repositories/scene-asset.repository.js';
 import { ShortsSceneRepository } from '@shorts-gen/infrastructure/repositories/scene.repository.js';
 import { ShortsScriptRepository } from '@shorts-gen/infrastructure/repositories/script.repository.js';
@@ -31,6 +32,7 @@ const router: ExpressRouter = Router();
 const scriptRepository = new ShortsScriptRepository(prisma);
 const sceneRepository = new ShortsSceneRepository(prisma);
 const sceneAssetRepository = new ShortsSceneAssetRepository(prisma);
+const referenceCharacterRepository = new ShortsReferenceCharacterRepository(prisma);
 
 // Initialize gateways based on environment
 function createTempStorageGateway(): TempStorageGateway {
@@ -83,6 +85,9 @@ function createImageStorageGateway(): ImageStorageGateway {
         webViewLink: result.gcsUri, // Return GCS URI (will be converted to signed URL later)
       };
     },
+    async downloadFile(gcsUri: string) {
+      return tempStorage.download(gcsUri);
+    },
   };
 }
 
@@ -98,6 +103,7 @@ function getGenerateImagePromptsUseCase(): GenerateImagePromptsUseCase {
       sceneRepository,
       scriptRepository,
       agenticAiGateway,
+      referenceCharacterRepository,
     });
   }
   return generateImagePromptsUseCase;
@@ -106,14 +112,16 @@ function getGenerateImagePromptsUseCase(): GenerateImagePromptsUseCase {
 function getGenerateImagesUseCase(): GenerateImagesUseCase {
   if (!generateImagesUseCase) {
     const imageGenGateway = new NanoBananaImageGenClient();
-    const storageGateway = createImageStorageGateway();
+    const imageStorageGateway = createImageStorageGateway();
 
     generateImagesUseCase = new GenerateImagesUseCase({
       sceneRepository,
       sceneAssetRepository,
       imageGenGateway,
-      storageGateway,
+      storageGateway: imageStorageGateway,
       generateId: () => uuidv4(),
+      scriptRepository,
+      referenceCharacterRepository,
     });
   }
   return generateImagesUseCase;
