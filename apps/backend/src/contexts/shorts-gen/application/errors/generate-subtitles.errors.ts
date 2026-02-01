@@ -27,14 +27,3 @@ export class GenerateSubtitlesError extends Error {
     this.name = 'GenerateSubtitlesError';
   }
 }
-
-/**
- * ヘルパー関数: エラー生成
- */
-export function createGenerateSubtitlesError(
-  code: GenerateSubtitlesErrorCode,
-  message: string,
-  cause?: unknown
-): GenerateSubtitlesError {
-  return new GenerateSubtitlesError(code, message, cause);
-}

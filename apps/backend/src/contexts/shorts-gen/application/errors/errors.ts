@@ -19,13 +19,6 @@ export class NotFoundError extends ApplicationError {
 }
 
 /**
- * Conflict error (409 Conflict)
- */
-export class ConflictError extends ApplicationError {
-  readonly statusCode = 409;
-}
-
-/**
  * AI generation error (500 Internal Server Error)
  */
 export class AiGenerationError extends ApplicationError {
