@@ -22,6 +22,7 @@
     "dep-cruise": "depcruise src --config .dependency-cruiser.cjs"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.34",
     "@ai-sdk/openai": "^3.0.21",
     "@google-cloud/speech": "^6.7.0",
     "@google-cloud/storage": "^7.18.0",
