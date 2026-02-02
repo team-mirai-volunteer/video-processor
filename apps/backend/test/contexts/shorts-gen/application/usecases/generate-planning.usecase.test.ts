@@ -15,6 +15,7 @@ import type {
 } from '@shorts-gen/domain/gateways/agentic-ai.gateway.js';
 import type { ShortsPlanningRepositoryGateway } from '@shorts-gen/domain/gateways/planning-repository.gateway.js';
 import type { ShortsProjectRepositoryGateway } from '@shorts-gen/domain/gateways/project-repository.gateway.js';
+import type { UrlContentFetcherGateway } from '@shorts-gen/domain/gateways/url-content-fetcher.gateway.js';
 import { ShortsPlanning } from '@shorts-gen/domain/models/planning.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -23,12 +24,14 @@ describe('GeneratePlanningUseCase', () => {
   let agenticAiGateway: AgenticAiGateway;
   let planningRepository: ShortsPlanningRepositoryGateway;
   let projectRepository: ShortsProjectRepositoryGateway;
+  let urlContentFetcherGateway: UrlContentFetcherGateway;
   let idCounter: number;
 
   const createDeps = (): GeneratePlanningUseCaseDeps => ({
     agenticAiGateway,
     planningRepository,
     projectRepository,
+    urlContentFetcherGateway,
     generateId: () => `planning-${++idCounter}`,
   });
 
@@ -58,6 +61,11 @@ describe('GeneratePlanningUseCase', () => {
       findMany: vi.fn().mockResolvedValue({ projects: [], total: 0 }),
       delete: vi.fn().mockResolvedValue(undefined),
       exists: vi.fn().mockResolvedValue(true),
+    };
+
+    // Mock UrlContentFetcherGateway
+    urlContentFetcherGateway = {
+      fetchContent: vi.fn().mockResolvedValue(ok({ content: 'Fetched content' })),
     };
 
     useCase = new GeneratePlanningUseCase(createDeps());
