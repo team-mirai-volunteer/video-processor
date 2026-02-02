@@ -44,7 +44,7 @@ apps/backend/src/contexts/shorts-gen/
 │       ├── planning-repository.gateway.ts
 │       ├── script-repository.gateway.ts
 │       ├── scene-repository.gateway.ts
-│       ├── scene-asset-repository.gateway.ts   # ←存在しない場合あり
+│       ├── scene-asset-repository.gateway.ts
 │       ├── composed-video-repository.gateway.ts
 │       ├── publish-text-repository.gateway.ts
 │       ├── agentic-ai.gateway.ts        # LLM対話
