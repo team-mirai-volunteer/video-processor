@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import {
   createReferenceCharacter,
   deleteReferenceCharacter,
-} from '@/server/presentation/actions/shorts-gen';
+} from '@/server/presentation/shorts-gen/actions';
 import type { ReferenceCharacter } from '@video-processor/shared';
 import { Loader2, Plus, X } from 'lucide-react';
 import Image from 'next/image';

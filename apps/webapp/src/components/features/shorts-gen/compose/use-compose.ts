@@ -1,6 +1,6 @@
 'use client';
 
-import { composeVideo, getComposedVideoByProject } from '@/server/presentation/actions/shorts-gen';
+import { composeVideo, getComposedVideoByProject } from '@/server/presentation/shorts-gen/actions';
 import type { GetComposedVideoResponse } from '@video-processor/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ComposeState } from './types';

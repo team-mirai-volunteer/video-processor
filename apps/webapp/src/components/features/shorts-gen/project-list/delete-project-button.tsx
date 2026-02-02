@@ -12,7 +12,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { deleteShortsProject } from '@/server/presentation/actions/deleteShortsProject';
+import { deleteShortsProject } from '@/server/presentation/shorts-gen/actions/deleteShortsProject';
 import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
 

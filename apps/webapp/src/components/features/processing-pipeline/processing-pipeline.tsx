@@ -7,11 +7,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate, formatDuration } from '@/lib/utils';
-import { cacheVideo } from '@/server/presentation/actions/cacheVideo';
-import { extractAudio } from '@/server/presentation/actions/extractAudio';
-import { refineTranscript } from '@/server/presentation/actions/refineTranscript';
-import { transcribeAudio } from '@/server/presentation/actions/transcribeAudio';
-import { transcribeVideo } from '@/server/presentation/actions/transcribeVideo';
+import { cacheVideo } from '@/server/presentation/clip-video/actions/cacheVideo';
+import { extractAudio } from '@/server/presentation/clip-video/actions/extractAudio';
+import { refineTranscript } from '@/server/presentation/clip-video/actions/refineTranscript';
+import { transcribeAudio } from '@/server/presentation/clip-video/actions/transcribeAudio';
+import { transcribeVideo } from '@/server/presentation/clip-video/actions/transcribeVideo';
 import type {
   CacheVideoResponse,
   ExtractAudioResponse,

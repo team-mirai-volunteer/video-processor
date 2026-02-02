@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { createShortsProject } from '@/server/presentation/actions/createShortsProject';
+import { createShortsProject } from '@/server/presentation/shorts-gen/actions/createShortsProject';
 import { Loader2, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';

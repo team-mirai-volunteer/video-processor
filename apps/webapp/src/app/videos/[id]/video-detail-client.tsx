@@ -10,9 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { formatBytes, formatDate, formatDuration } from '@/lib/utils';
-import { extractClips } from '@/server/presentation/actions/extractClips';
-import { getVideoStatus } from '@/server/presentation/actions/getVideoStatus';
-import { refineTranscript } from '@/server/presentation/actions/refineTranscript';
+import { extractClips } from '@/server/presentation/clip-video/actions/extractClips';
+import { getVideoStatus } from '@/server/presentation/clip-video/actions/getVideoStatus';
+import { refineTranscript } from '@/server/presentation/clip-video/actions/refineTranscript';
 import type {
   GetRefinedTranscriptionResponse,
   GetTranscriptionResponse,
