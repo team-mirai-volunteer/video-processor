@@ -37,3 +37,8 @@ output "fish_audio_api_key_secret_id" {
   description = "Secret Manager secret ID for Fish Audio API key"
   value       = google_secret_manager_secret.fish_audio_api_key.secret_id
 }
+
+output "anthropic_api_key_secret_id" {
+  description = "Secret Manager secret ID for Anthropic API key"
+  value       = google_secret_manager_secret.anthropic_api_key.secret_id
+}

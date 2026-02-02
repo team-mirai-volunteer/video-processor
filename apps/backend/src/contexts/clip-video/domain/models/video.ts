@@ -20,6 +20,7 @@ export interface VideoProps {
   progressMessage: string | null;
   gcsUri: string | null;
   gcsExpiresAt: Date | null;
+  audioGcsUri: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -53,6 +54,7 @@ export class Video {
   readonly progressMessage: string | null;
   readonly gcsUri: string | null;
   readonly gcsExpiresAt: Date | null;
+  readonly audioGcsUri: string | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 
@@ -70,6 +72,7 @@ export class Video {
     this.progressMessage = props.progressMessage;
     this.gcsUri = props.gcsUri;
     this.gcsExpiresAt = props.gcsExpiresAt;
+    this.audioGcsUri = props.audioGcsUri;
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
   }
@@ -109,6 +112,7 @@ export class Video {
         progressMessage: null,
         gcsUri: null,
         gcsExpiresAt: null,
+        audioGcsUri: null,
         createdAt: now,
         updatedAt: now,
       })
@@ -193,6 +197,7 @@ export class Video {
       progressMessage: this.progressMessage,
       gcsUri: this.gcsUri,
       gcsExpiresAt: this.gcsExpiresAt,
+      audioGcsUri: this.audioGcsUri,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };
@@ -217,6 +222,34 @@ export class Video {
       ...this.toProps(),
       gcsUri,
       gcsExpiresAt,
+      updatedAt: new Date(),
+    });
+  }
+
+  /**
+   * Reset video to pending state, clearing all processing data
+   */
+  reset(): Video {
+    return new Video({
+      ...this.toProps(),
+      status: 'pending',
+      transcriptionPhase: null,
+      errorMessage: null,
+      progressMessage: null,
+      gcsUri: null,
+      gcsExpiresAt: null,
+      audioGcsUri: null,
+      updatedAt: new Date(),
+    });
+  }
+
+  /**
+   * Update video with audio GCS URI (from ExtractAudioUseCase)
+   */
+  withAudioGcsUri(audioGcsUri: string): Video {
+    return new Video({
+      ...this.toProps(),
+      audioGcsUri,
       updatedAt: new Date(),
     });
   }

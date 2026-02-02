@@ -130,3 +130,25 @@ resource "google_secret_manager_secret_iam_member" "fish_audio_api_key_access" {
   member    = "serviceAccount:${var.cloud_run_service_account_email}"
   project   = var.project_id
 }
+
+# Secret: Anthropic API Key
+resource "google_secret_manager_secret" "anthropic_api_key" {
+  secret_id = "${var.project_name}-anthropic-api-key"
+  project   = var.project_id
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "anthropic_api_key" {
+  secret      = google_secret_manager_secret.anthropic_api_key.id
+  secret_data = var.anthropic_api_key
+}
+
+resource "google_secret_manager_secret_iam_member" "anthropic_api_key_access" {
+  secret_id = google_secret_manager_secret.anthropic_api_key.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.cloud_run_service_account_email}"
+  project   = var.project_id
+}

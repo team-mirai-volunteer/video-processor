@@ -10,6 +10,7 @@ import { formatDate, formatDuration } from '@/lib/utils';
 import { cacheVideo } from '@/server/presentation/clip-video/actions/cacheVideo';
 import { extractAudio } from '@/server/presentation/clip-video/actions/extractAudio';
 import { refineTranscript } from '@/server/presentation/clip-video/actions/refineTranscript';
+import { type ResetStep, resetVideo } from '@/server/presentation/clip-video/actions/resetVideo';
 import { transcribeAudio } from '@/server/presentation/clip-video/actions/transcribeAudio';
 import { transcribeVideo } from '@/server/presentation/clip-video/actions/transcribeVideo';
 import type {
@@ -21,7 +22,7 @@ import type {
   TranscriptionPhase,
   VideoWithRelations,
 } from '@video-processor/shared';
-import { Loader2, PlayCircle } from 'lucide-react';
+import { Loader2, PlayCircle, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface ProcessingPipelineProps {
@@ -50,6 +51,7 @@ interface StepsState {
 function deriveStepStatuses(
   phase: TranscriptionPhase | null,
   hasGcsUri: boolean,
+  hasAudioGcsUri: boolean,
   hasTranscription: boolean,
   hasRefinedTranscription: boolean
 ): {
@@ -98,8 +100,8 @@ function deriveStepStatuses(
   // フェーズがない場合、完了データの有無で判定
   return {
     cache: hasGcsUri ? 'completed' : 'ready',
-    extractAudio: hasTranscription ? 'completed' : hasGcsUri ? 'ready' : 'pending',
-    transcribe: hasTranscription ? 'completed' : 'pending',
+    extractAudio: hasAudioGcsUri ? 'completed' : hasGcsUri ? 'ready' : 'pending',
+    transcribe: hasTranscription ? 'completed' : hasAudioGcsUri ? 'ready' : 'pending',
     refine: hasRefinedTranscription ? 'completed' : hasTranscription ? 'ready' : 'pending',
   };
 }
@@ -112,16 +114,20 @@ export function ProcessingPipeline({
 }: ProcessingPipelineProps) {
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
   const [runningAllSteps, setRunningAllSteps] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resettingStep, setResettingStep] = useState<ResetStep | null>(null);
 
   // Initialize step states based on video/transcription data and transcriptionPhase
   const initialSteps = useMemo((): StepsState => {
     const hasGcsUri = Boolean(video.gcsUri);
+    const hasAudioGcsUri = Boolean(video.audioGcsUri);
     const hasTranscription = Boolean(transcription);
     const hasRefinedTranscription = Boolean(refinedTranscription);
 
     const statuses = deriveStepStatuses(
       video.transcriptionPhase,
       hasGcsUri,
+      hasAudioGcsUri,
       hasTranscription,
       hasRefinedTranscription
     );
@@ -172,9 +178,12 @@ export function ProcessingPipeline({
     const hasTranscription = Boolean(transcription);
     const hasRefinedTranscription = Boolean(refinedTranscription);
 
+    const hasAudioGcsUri = Boolean(video.audioGcsUri);
+
     const statuses = deriveStepStatuses(
       video.transcriptionPhase,
       hasGcsUri,
+      hasAudioGcsUri,
       hasTranscription,
       hasRefinedTranscription
     );
@@ -333,6 +342,97 @@ export function ProcessingPipeline({
     }
   }, [video.id, updateStepState, onStepComplete]);
 
+  // Reset video to initial state (full reset)
+  const handleReset = useCallback(async () => {
+    if (
+      !confirm(
+        '処理状態をリセットしますか？\nキャッシュと文字起こしデータが削除され、最初からやり直せます。'
+      )
+    ) {
+      return;
+    }
+    setResetting(true);
+    try {
+      await resetVideo(video.id, 'all');
+      // Reset local state
+      setSteps({
+        cache: { status: 'ready' },
+        extractAudio: { status: 'pending' },
+        transcribe: { status: 'pending' },
+        refine: { status: 'pending' },
+      });
+      setProgressMessage(null);
+      onStepComplete();
+    } catch (err) {
+      console.error('Failed to reset video:', err);
+      alert('リセットに失敗しました');
+    } finally {
+      setResetting(false);
+    }
+  }, [video.id, onStepComplete]);
+
+  // Reset a specific step
+  const handleStepReset = useCallback(
+    async (step: ResetStep, confirmMessage: string) => {
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+      setResettingStep(step);
+      try {
+        await resetVideo(video.id, step);
+        // Update local state based on reset step
+        switch (step) {
+          case 'cache':
+            setSteps({
+              cache: { status: 'ready' },
+              extractAudio: { status: 'pending' },
+              transcribe: { status: 'pending' },
+              refine: { status: 'pending' },
+            });
+            break;
+          case 'audio':
+          case 'transcribe':
+            setSteps((prev) => ({
+              ...prev,
+              extractAudio: { status: 'ready' },
+              transcribe: { status: 'pending' },
+              refine: { status: 'pending' },
+            }));
+            break;
+          case 'refine':
+            setSteps((prev) => ({
+              ...prev,
+              refine: { status: 'ready' },
+            }));
+            break;
+        }
+        setProgressMessage(null);
+        onStepComplete();
+      } catch (err) {
+        console.error('Failed to reset step:', err);
+        alert('リセットに失敗しました');
+      } finally {
+        setResettingStep(null);
+      }
+    },
+    [video.id, onStepComplete]
+  );
+
+  const handleResetCache = useCallback(() => {
+    handleStepReset('cache', 'キャッシュをリセットしますか？\n動画の読み込みからやり直します。');
+  }, [handleStepReset]);
+
+  const handleResetTranscribe = useCallback(() => {
+    handleStepReset(
+      'transcribe',
+      '文字起こしをリセットしますか？\n音声の取り出しからやり直します。'
+    );
+  }, [handleStepReset]);
+
+  const handleResetRefine = useCallback(() => {
+    handleStepReset('refine', '字幕整形をリセットしますか？\n整形処理をやり直します。');
+  }, [handleStepReset]);
+
   // Run all steps using existing transcribeVideo action
   const handleRunAllSteps = useCallback(async () => {
     setRunningAllSteps(true);
@@ -455,19 +555,41 @@ export function ProcessingPipeline({
             <CardTitle>動画の準備</CardTitle>
             <CardDescription>文字起こしと字幕作成のための前処理を行います</CardDescription>
           </div>
-          <Button onClick={handleRunAllSteps} disabled={isAnyStepRunning || runningAllSteps}>
-            {runningAllSteps ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                処理中...
-              </>
-            ) : (
-              <>
-                <PlayCircle className="mr-2 h-4 w-4" />
-                全ステップ実行
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleReset}
+              disabled={resetting || resettingStep !== null}
+            >
+              {resetting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  リセット中...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  リセット
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={handleRunAllSteps}
+              disabled={isAnyStepRunning || runningAllSteps || resetting}
+            >
+              {runningAllSteps ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  処理中...
+                </>
+              ) : (
+                <>
+                  <PlayCircle className="mr-2 h-4 w-4" />
+                  全ステップ実行
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -480,9 +602,17 @@ export function ProcessingPipeline({
           isExpanded={expandedStep === 'cache'}
           onToggle={() => toggleStep('cache')}
           onExecute={handleCacheVideo}
-          canExecute={!isAnyStepRunning}
+          canExecute={!isAnyStepRunning && !resettingStep}
           error={steps.cache.error}
           progressMessage={steps.cache.status === 'running' ? progressMessage : undefined}
+          onReset={handleResetCache}
+          canReset={
+            !resettingStep &&
+            (steps.cache.status === 'completed' ||
+              steps.cache.status === 'error' ||
+              steps.cache.status === 'running')
+          }
+          isResetting={resettingStep === 'cache'}
         >
           {renderCacheDetails()}
         </PipelineStep>
@@ -496,9 +626,17 @@ export function ProcessingPipeline({
           isExpanded={expandedStep === 'extractAudio'}
           onToggle={() => toggleStep('extractAudio')}
           onExecute={handleExtractAudio}
-          canExecute={!isAnyStepRunning && steps.cache.status === 'completed'}
+          canExecute={!isAnyStepRunning && !resettingStep && steps.cache.status === 'completed'}
           error={steps.extractAudio.error}
           progressMessage={steps.extractAudio.status === 'running' ? progressMessage : undefined}
+          onReset={handleResetTranscribe}
+          canReset={
+            !resettingStep &&
+            (steps.extractAudio.status === 'completed' ||
+              steps.extractAudio.status === 'error' ||
+              steps.extractAudio.status === 'running')
+          }
+          isResetting={resettingStep === 'transcribe'}
         >
           {renderExtractAudioDetails()}
         </PipelineStep>
@@ -514,10 +652,19 @@ export function ProcessingPipeline({
           onExecute={handleTranscribeAudio}
           canExecute={
             !isAnyStepRunning &&
+            !resettingStep &&
             (steps.extractAudio.status === 'completed' || steps.cache.status === 'completed')
           }
           error={steps.transcribe.error}
           progressMessage={steps.transcribe.status === 'running' ? progressMessage : undefined}
+          onReset={handleResetTranscribe}
+          canReset={
+            !resettingStep &&
+            (steps.transcribe.status === 'completed' ||
+              steps.transcribe.status === 'error' ||
+              steps.transcribe.status === 'running')
+          }
+          isResetting={resettingStep === 'transcribe'}
         >
           {renderTranscribeDetails()}
         </PipelineStep>
@@ -531,9 +678,19 @@ export function ProcessingPipeline({
           isExpanded={expandedStep === 'refine'}
           onToggle={() => toggleStep('refine')}
           onExecute={handleRefineTranscript}
-          canExecute={!isAnyStepRunning && steps.transcribe.status === 'completed'}
+          canExecute={
+            !isAnyStepRunning && !resettingStep && steps.transcribe.status === 'completed'
+          }
           error={steps.refine.error}
           progressMessage={steps.refine.status === 'running' ? progressMessage : undefined}
+          onReset={handleResetRefine}
+          canReset={
+            !resettingStep &&
+            (steps.refine.status === 'completed' ||
+              steps.refine.status === 'error' ||
+              steps.refine.status === 'running')
+          }
+          isResetting={resettingStep === 'refine'}
         >
           {renderRefineDetails()}
         </PipelineStep>

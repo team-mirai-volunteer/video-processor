@@ -22,6 +22,7 @@ describe('GetVideosUseCase', () => {
       errorMessage: null,
       gcsUri: null,
       gcsExpiresAt: null,
+      audioGcsUri: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     });

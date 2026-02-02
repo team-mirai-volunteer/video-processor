@@ -64,6 +64,12 @@ variable "fish_audio_default_voice_model_id" {
   type        = string
 }
 
+variable "anthropic_api_key" {
+  description = "Anthropic API key"
+  type        = string
+  sensitive   = true
+}
+
 # Application
 variable "container_image" {
   description = "Container image URL"

@@ -15,6 +15,7 @@ webapp_api_key = "${WEBAPP_API_KEY}"
 gemini_api_key = "${GEMINI_API_KEY}"
 fish_audio_api_key = "${FISH_AUDIO_API_KEY}"
 fish_audio_default_voice_model_id = "${FISH_AUDIO_DEFAULT_VOICE_MODEL_ID}"
+anthropic_api_key = "${ANTHROPIC_API_KEY}"
 
 # Application
 container_image               = "${CONTAINER_IMAGE}"

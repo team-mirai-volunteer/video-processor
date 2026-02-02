@@ -1,7 +1,6 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { pipeline } from 'node:stream/promises';
 import type { TempStorageGateway } from '@clip-video/domain/gateways/temp-storage.gateway.js';
 import type { VideoProcessingGateway } from '@clip-video/domain/gateways/video-processing.gateway.js';
 import type { VideoRepositoryGateway } from '@clip-video/domain/gateways/video-repository.gateway.js';
@@ -50,8 +49,8 @@ export class ExtractAudioUseCase {
    * Memory efficient: suitable for large videos (1GB+)
    *
    * Flow:
-   * 1. Stream download from GCS to temp file
-   * 2. FFmpeg file-to-file conversion
+   * 1. Get signed URL for GCS video (no download)
+   * 2. FFmpeg streams directly from URL to temp file
    * 3. Stream upload from temp file to GCS
    */
   async execute(videoId: string, format: 'wav' | 'flac' = 'flac'): Promise<ExtractAudioResult> {
@@ -77,22 +76,45 @@ export class ExtractAudioUseCase {
       );
     }
 
-    // Create temp directory for processing
+    // Create temp directory for output only
     const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'extract-audio-'));
-    const inputPath = path.join(tempDir, 'input.mp4');
     const outputPath = path.join(tempDir, `output.${format}`);
 
     try {
-      // 1. Stream download from GCS to temp file (no memory buffer)
-      log.info('Downloading video from GCS to temp file...', { gcsUri: video.gcsUri });
-      const downloadStream = this.tempStorageGateway.downloadAsStream(video.gcsUri);
-      await pipeline(downloadStream, fs.createWriteStream(inputPath));
-      const inputStats = await fs.promises.stat(inputPath);
-      log.info('Video downloaded to temp file', { sizeBytes: inputStats.size });
+      // 1. Get signed URL for direct FFmpeg access (valid for 60 minutes)
+      log.info('Getting signed URL for video...', { gcsUri: video.gcsUri });
+      const signedUrl = await this.tempStorageGateway.getSignedUrl(video.gcsUri, 60);
+      log.info('Got signed URL for video');
 
-      // 2. FFmpeg file-to-file conversion (no buffer loading)
-      log.info('Extracting audio from file to file...', { format });
-      await this.videoProcessingGateway.extractAudioFromFile(inputPath, outputPath, format);
+      // 2. FFmpeg streams directly from URL to temp file (no video download!)
+      log.info('Extracting audio from URL directly...', { format });
+      let lastSavedPercent = 0;
+      await this.videoProcessingGateway.extractAudioFromUrl(
+        signedUrl,
+        outputPath,
+        format,
+        async (progress) => {
+          // Update progress every 10%
+          const percent = progress.percent ?? 0;
+          if (percent >= lastSavedPercent + 10 || (percent >= 100 && lastSavedPercent < 100)) {
+            const roundedPercent = Math.round(percent);
+            log.info('Audio extraction progress', {
+              timemark: progress.timemark,
+              percent: roundedPercent,
+            });
+            lastSavedPercent = Math.floor(percent / 10) * 10;
+
+            // Save progress to DB for UI polling
+            const currentVideo = await this.videoRepository.findById(videoId);
+            if (currentVideo) {
+              const updatedVideo = currentVideo.withProgressMessage(
+                `音声抽出中... ${roundedPercent}% (${progress.timemark})`
+              );
+              await this.videoRepository.save(updatedVideo);
+            }
+          }
+        }
+      );
       const outputStats = await fs.promises.stat(outputPath);
       log.info('Audio extracted to temp file', { sizeBytes: outputStats.size });
 
@@ -105,6 +127,13 @@ export class ExtractAudioUseCase {
         uploadStream
       );
       log.info('Audio uploaded to GCS', { audioGcsUri });
+
+      // 4. Save audioGcsUri to video for later use
+      const updatedVideo = await this.videoRepository.findById(videoId);
+      if (updatedVideo) {
+        await this.videoRepository.save(updatedVideo.withAudioGcsUri(audioGcsUri));
+        log.info('Audio GCS URI saved to video', { audioGcsUri });
+      }
 
       return {
         videoId: video.id,

@@ -1,6 +1,3 @@
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { NotFoundError } from '@clip-video/application/errors/errors.js';
 import { CacheVideoUseCase } from '@clip-video/application/usecases/cache-video.usecase.js';
 import { CreateTranscriptUseCase } from '@clip-video/application/usecases/create-transcript.usecase.js';
@@ -10,6 +7,7 @@ import { ExtractClipsUseCase } from '@clip-video/application/usecases/extract-cl
 import { GetVideoUseCase } from '@clip-video/application/usecases/get-video.usecase.js';
 import { GetVideosUseCase } from '@clip-video/application/usecases/get-videos.usecase.js';
 import { RefineTranscriptUseCase } from '@clip-video/application/usecases/refine-transcript.usecase.js';
+import { ResetVideoUseCase } from '@clip-video/application/usecases/reset-video.usecase.js';
 import { SubmitVideoUseCase } from '@clip-video/application/usecases/submit-video.usecase.js';
 import { TranscribeAudioUseCase } from '@clip-video/application/usecases/transcribe-audio.usecase.js';
 import type { TempStorageGateway } from '@clip-video/domain/gateways/temp-storage.gateway.js';
@@ -28,6 +26,7 @@ import { GcsClient } from '@shared/infrastructure/clients/gcs.client.js';
 import { GoogleDriveClient } from '@shared/infrastructure/clients/google-drive.client.js';
 import { LocalTempStorageClient } from '@shared/infrastructure/clients/local-temp-storage.client.js';
 import { OpenAIClient } from '@shared/infrastructure/clients/openai.client.js';
+import { properNounDictionary } from '@shared/infrastructure/clients/proper-noun-dictionary.js';
 import { SpeechToTextClient } from '@shared/infrastructure/clients/speech-to-text.client.js';
 import { prisma } from '@shared/infrastructure/database/connection.js';
 import { logger } from '@shared/infrastructure/logging/logger.js';
@@ -47,16 +46,12 @@ import type {
 import { type Router as ExpressRouter, Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 async function loadDictionary(): Promise<ProperNounDictionary> {
-  const dictionaryPath = path.resolve(
-    __dirname,
-    '../../infrastructure/data/proper-noun-dictionary.json'
-  );
-  const content = await readFile(dictionaryPath, 'utf-8');
-  return JSON.parse(content) as ProperNounDictionary;
+  return {
+    version: '1.0.0',
+    description: 'チームみらい固有名詞辞書',
+    entries: properNounDictionary,
+  };
 }
 
 const router: ExpressRouter = Router();
@@ -155,6 +150,12 @@ const createTranscriptUseCase = new CreateTranscriptUseCase({
 
 const deleteVideoUseCase = new DeleteVideoUseCase({
   videoRepository,
+});
+
+const resetVideoUseCase = new ResetVideoUseCase({
+  videoRepository,
+  transcriptionRepository,
+  refinedTranscriptionRepository,
 });
 
 /**
@@ -331,6 +332,26 @@ router.delete('/:id', async (req, res, next) => {
     const { id } = req.params;
     await deleteVideoUseCase.execute(id ?? '');
     res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/videos/:videoId/reset
+ * Reset a video to a specific step, clearing processing data from that step onwards
+ * Query params:
+ *   - step: 'cache' | 'audio' | 'transcribe' | 'refine' | 'all' (default: 'all')
+ */
+router.post('/:videoId/reset', async (req, res, next) => {
+  try {
+    const { videoId } = req.params;
+    const step = (req.query.step as string) || 'all';
+    const result = await resetVideoUseCase.execute(
+      videoId ?? '',
+      step as 'cache' | 'audio' | 'transcribe' | 'refine' | 'all'
+    );
+    res.status(200).json(result);
   } catch (error) {
     next(error);
   }

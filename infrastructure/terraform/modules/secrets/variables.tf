@@ -53,3 +53,9 @@ variable "fish_audio_default_voice_model_id" {
   description = "Fish Audio default voice model ID"
   type        = string
 }
+
+variable "anthropic_api_key" {
+  description = "Anthropic API key"
+  type        = string
+  sensitive   = true
+}

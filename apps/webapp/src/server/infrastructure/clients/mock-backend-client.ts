@@ -44,6 +44,7 @@ const mockVideos: GetVideoResponse[] = [
     progressMessage: null,
     gcsUri: null,
     gcsExpiresAt: null,
+    audioGcsUri: null,
     clips: [],
     processingJobs: [
       {
@@ -137,6 +138,13 @@ export const mockBackendClient = {
 
   async deleteVideo(_id: string): Promise<void> {
     // Mock deletion - do nothing
+  },
+
+  async resetVideo(
+    videoId: string,
+    step: 'cache' | 'audio' | 'transcribe' | 'refine' | 'all' = 'all'
+  ): Promise<{ videoId: string; status: string; resetStep: string }> {
+    return { videoId, status: 'pending', resetStep: step };
   },
 
   // Transcription

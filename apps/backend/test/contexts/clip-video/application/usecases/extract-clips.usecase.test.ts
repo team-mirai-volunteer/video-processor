@@ -69,6 +69,7 @@ describe('ExtractClipsUseCase', () => {
     extractClipFromFile: vi.fn(),
     getVideoDuration: vi.fn(),
     extractAudioFromFile: vi.fn(),
+    extractAudioFromUrl: vi.fn(),
   };
 
   const mockRefinedTranscriptionRepository: RefinedTranscriptionRepositoryGateway = {
@@ -124,6 +125,7 @@ describe('ExtractClipsUseCase', () => {
       errorMessage: null,
       gcsUri: null,
       gcsExpiresAt: null,
+      audioGcsUri: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     });

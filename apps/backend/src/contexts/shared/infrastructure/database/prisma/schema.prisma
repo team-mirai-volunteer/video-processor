@@ -21,6 +21,7 @@ model Video {
   progressMessage      String?   @map("progress_message")
   gcsUri               String?   @map("gcs_uri")
   gcsExpiresAt         DateTime? @map("gcs_expires_at")
+  audioGcsUri          String?   @map("audio_gcs_uri")
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
