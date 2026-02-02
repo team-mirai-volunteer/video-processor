@@ -481,6 +481,284 @@ describe.skipIf(!runIntegrationTests)('FFmpegComposeClient Integration', () => {
       }
     });
 
+    it('should compose a scene with Ken Burns zoom_in effect', async () => {
+      const testImagePath = path.join(tempDir, 'kb_test_image.png');
+      createTestImage(testImagePath, 1080, 1920, '#3498db');
+
+      const outputPath = path.join(tempDir, 'ken_burns_zoom_in.mp4');
+
+      const params: VideoComposeParams = {
+        outputPath,
+        width: 1080,
+        height: 1920,
+        frameRate: 30,
+        scenes: [
+          {
+            sceneId: 'scene-1',
+            order: 0,
+            durationMs: 3000,
+            visual: {
+              type: 'image',
+              filePath: testImagePath,
+              kenBurns: {
+                type: 'zoom_in',
+              },
+            },
+            audioPath: null,
+            subtitles: [],
+          },
+        ],
+      };
+
+      const result = await client.compose(params);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.value.durationSeconds).toBeCloseTo(3, 0);
+        expect(fs.existsSync(outputPath)).toBe(true);
+      }
+    });
+
+    it('should compose with custom zoomScale', async () => {
+      const testImagePath = path.join(tempDir, 'kb_custom_zoom.png');
+      createTestImage(testImagePath, 1080, 1920, '#e74c3c');
+
+      const outputPath = path.join(tempDir, 'ken_burns_custom_zoom.mp4');
+
+      const params: VideoComposeParams = {
+        outputPath,
+        width: 1080,
+        height: 1920,
+        frameRate: 30,
+        scenes: [
+          {
+            sceneId: 'scene-1',
+            order: 0,
+            durationMs: 2000,
+            visual: {
+              type: 'image',
+              filePath: testImagePath,
+              kenBurns: {
+                type: 'zoom_in',
+                zoomScale: 1.5,
+              },
+            },
+            audioPath: null,
+            subtitles: [],
+          },
+        ],
+      };
+
+      const result = await client.compose(params);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.value.durationSeconds).toBeCloseTo(2, 0);
+        expect(fs.existsSync(outputPath)).toBe(true);
+      }
+    });
+
+    it('should compose with pan_left effect', async () => {
+      const testImagePath = path.join(tempDir, 'kb_pan_left.png');
+      createTestImage(testImagePath, 1080, 1920, '#2ecc71');
+
+      const outputPath = path.join(tempDir, 'ken_burns_pan_left.mp4');
+
+      const params: VideoComposeParams = {
+        outputPath,
+        width: 1080,
+        height: 1920,
+        frameRate: 30,
+        scenes: [
+          {
+            sceneId: 'scene-1',
+            order: 0,
+            durationMs: 2000,
+            visual: {
+              type: 'image',
+              filePath: testImagePath,
+              kenBurns: {
+                type: 'pan_left',
+                panAmount: 0.2,
+              },
+            },
+            audioPath: null,
+            subtitles: [],
+          },
+        ],
+      };
+
+      const result = await client.compose(params);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.value.durationSeconds).toBeCloseTo(2, 0);
+        expect(fs.existsSync(outputPath)).toBe(true);
+      }
+    });
+
+    it('should compose multiple scenes with different Ken Burns effects', async () => {
+      const image1Path = path.join(tempDir, 'kb_multi_1.png');
+      const image2Path = path.join(tempDir, 'kb_multi_2.png');
+      const image3Path = path.join(tempDir, 'kb_multi_3.png');
+
+      createTestImage(image1Path, 1080, 1920, '#3498db');
+      createTestImage(image2Path, 1080, 1920, '#e74c3c');
+      createTestImage(image3Path, 1080, 1920, '#2ecc71');
+
+      const outputPath = path.join(tempDir, 'ken_burns_multi.mp4');
+
+      const params: VideoComposeParams = {
+        outputPath,
+        width: 1080,
+        height: 1920,
+        frameRate: 30,
+        scenes: [
+          {
+            sceneId: 'scene-1',
+            order: 0,
+            durationMs: 2000,
+            visual: {
+              type: 'image',
+              filePath: image1Path,
+              kenBurns: {
+                type: 'zoom_in',
+              },
+            },
+            audioPath: null,
+            subtitles: [],
+          },
+          {
+            sceneId: 'scene-2',
+            order: 1,
+            durationMs: 2000,
+            visual: {
+              type: 'image',
+              filePath: image2Path,
+              kenBurns: {
+                type: 'pan_right',
+              },
+            },
+            audioPath: null,
+            subtitles: [],
+          },
+          {
+            sceneId: 'scene-3',
+            order: 2,
+            durationMs: 2000,
+            visual: {
+              type: 'image',
+              filePath: image3Path,
+              // 効果なし（通常の静止画）
+            },
+            audioPath: null,
+            subtitles: [],
+          },
+        ],
+      };
+
+      const result = await client.compose(params);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        // Total duration should be approximately 6 seconds
+        expect(result.value.durationSeconds).toBeGreaterThanOrEqual(5);
+        expect(result.value.durationSeconds).toBeLessThanOrEqual(7);
+        expect(fs.existsSync(outputPath)).toBe(true);
+      }
+    }, 60000);
+
+    it('should compose Ken Burns effect with subtitle overlays', async () => {
+      const testImagePath = path.join(tempDir, 'kb_subtitle.png');
+      createTestImage(testImagePath, 1080, 1920, '#9b59b6');
+
+      const subtitleImagePath = path.join(tempDir, 'kb_subtitle_overlay.png');
+      createSubtitleImage(subtitleImagePath, 1080, 200, 'テスト字幕');
+
+      const outputPath = path.join(tempDir, 'ken_burns_with_subtitle.mp4');
+
+      const params: VideoComposeParams = {
+        outputPath,
+        width: 1080,
+        height: 1920,
+        frameRate: 30,
+        scenes: [
+          {
+            sceneId: 'scene-1',
+            order: 0,
+            durationMs: 3000,
+            visual: {
+              type: 'image',
+              filePath: testImagePath,
+              kenBurns: {
+                type: 'zoom_out',
+                zoomScale: 1.4,
+              },
+            },
+            audioPath: null,
+            subtitles: [
+              {
+                imagePath: subtitleImagePath,
+                startMs: 500,
+                endMs: 2500,
+              },
+            ],
+          },
+        ],
+      };
+
+      const result = await client.compose(params);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.value.durationSeconds).toBeCloseTo(3, 0);
+        expect(fs.existsSync(outputPath)).toBe(true);
+      }
+    });
+
+    it('should ignore kenBurns for video type', async () => {
+      const videoPath = path.join(TEST_FIXTURES_DIR, 'sample.mp4');
+
+      // Skip if sample.mp4 doesn't exist
+      if (!fs.existsSync(videoPath)) {
+        console.log('Skipping video kenBurns ignore test: sample.mp4 not found');
+        return;
+      }
+
+      const outputPath = path.join(tempDir, 'video_ignore_ken_burns.mp4');
+
+      const params: VideoComposeParams = {
+        outputPath,
+        width: 1080,
+        height: 1920,
+        frameRate: 30,
+        scenes: [
+          {
+            sceneId: 'scene-1',
+            order: 0,
+            durationMs: 2000,
+            visual: {
+              type: 'video',
+              filePath: videoPath,
+              // kenBurnsを指定してもvideoタイプでは無視される
+              kenBurns: {
+                type: 'zoom_in',
+              },
+            },
+            audioPath: null,
+            subtitles: [],
+          },
+        ],
+      };
+
+      const result = await client.compose(params);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(fs.existsSync(outputPath)).toBe(true);
+      }
+    });
+
     it('should compose 3-scene video with real fixtures (images, subtitles, audio)', async () => {
       // 3シーン分のfixture
       const scene1ImagePath = path.join(TEST_FIXTURES_DIR, 'images', 'scene1.png');
