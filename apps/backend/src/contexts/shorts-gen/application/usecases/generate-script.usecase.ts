@@ -570,6 +570,19 @@ ${planningContent}`;
 
     log.info('Saving script', { projectId, planningId, sceneCount: args.scenes.length });
 
+    // stockVideoKeyのバリデーション
+    const validVideoKeys = this.assetRegistryGateway.listVideoAssetKeys();
+    for (let i = 0; i < args.scenes.length; i++) {
+      const scene = args.scenes[i];
+      if (scene?.visualType === 'stock_video' && scene.stockVideoKey) {
+        if (!validVideoKeys.includes(scene.stockVideoKey)) {
+          throw new ValidationError(
+            `シーン${i + 1}のストック動画キー「${scene.stockVideoKey}」は無効です。利用可能なキー: ${validVideoKeys.join(', ')}`
+          );
+        }
+      }
+    }
+
     // 1. 既存の台本を削除（再生成の場合）
     const existingScript = await this.scriptRepository.findByProjectId(projectId);
     if (existingScript) {

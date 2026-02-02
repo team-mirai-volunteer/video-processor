@@ -55,7 +55,7 @@ describe('GenerateScriptUseCase', () => {
       visualType: 'stock_video',
       voiceText: '政治について考えてみましょう。',
       subtitles: ['政治について', '考えてみましょう'],
-      stockVideoKey: 'politician-speech-1',
+      stockVideoKey: 'speech_exciting',
     },
     {
       summary: 'エンディング',
@@ -189,7 +189,7 @@ describe('GenerateScriptUseCase', () => {
       if (savedScenes) {
         expect(savedScenes[0]?.summary).toBe('オープニング');
         expect(savedScenes[0]?.visualType).toBe('image_gen');
-        expect(savedScenes[1]?.stockVideoKey).toBe('politician-speech-1');
+        expect(savedScenes[1]?.stockVideoKey).toBe('speech_exciting');
         expect(savedScenes[2]?.solidColor).toBe('#000000');
       }
     });
