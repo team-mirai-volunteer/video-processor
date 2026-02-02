@@ -23,6 +23,7 @@ interface UseAssetGenerationOptions {
   onSubtitleGenerate?: (sceneId: string) => Promise<GenerateSubtitleResponse>;
   onImageGenerate?: (sceneId: string) => Promise<GenerateImageResponse>;
   onImagePromptGenerate?: (sceneId: string) => Promise<GenerateImagePromptResponse>;
+  onImageUpload?: (sceneId: string, file: File) => Promise<GenerateImageResponse>;
   onAllVoicesGenerate?: () => Promise<GenerateAllAssetsResponse>;
   onAllSubtitlesGenerate?: () => Promise<GenerateAllAssetsResponse>;
   onAllImagesGenerate?: () => Promise<GenerateAllAssetsResponse>;
@@ -38,6 +39,7 @@ interface AssetGenerationState {
   isGeneratingSubtitle: boolean;
   isGeneratingImage: boolean;
   isGeneratingImagePrompt: boolean;
+  uploadingImageSceneIds: Set<string>;
 }
 
 function createInitialSceneState(sceneId: string): SceneAssetState {
@@ -76,6 +78,7 @@ function initializeState(scenes: Scene[]): AssetGenerationState {
     isGeneratingSubtitle: false,
     isGeneratingImage: false,
     isGeneratingImagePrompt: false,
+    uploadingImageSceneIds: new Set<string>(),
   };
 }
 
@@ -86,6 +89,7 @@ export function useAssetGeneration({
   onSubtitleGenerate,
   onImageGenerate,
   onImagePromptGenerate,
+  onImageUpload,
   onAllVoicesGenerate,
   onAllSubtitlesGenerate,
   onAllImagesGenerate,
@@ -169,10 +173,18 @@ export function useAssetGeneration({
   const generateImage = useCallback(
     async (sceneId: string) => {
       if (!onImageGenerate) return;
-      updateSceneState('image', sceneId, { status: 'running', error: undefined });
+      updateSceneState('image', sceneId, {
+        status: 'running',
+        error: undefined,
+        sourceType: undefined,
+      });
       try {
         const response = await onImageGenerate(sceneId);
-        updateSceneState('image', sceneId, { status: 'completed', asset: response.asset });
+        updateSceneState('image', sceneId, {
+          status: 'completed',
+          asset: response.asset,
+          sourceType: 'generated',
+        });
       } catch (error) {
         updateSceneState('image', sceneId, {
           status: 'error',
@@ -181,6 +193,44 @@ export function useAssetGeneration({
       }
     },
     [onImageGenerate, updateSceneState]
+  );
+
+  const uploadImage = useCallback(
+    async (sceneId: string, file: File) => {
+      if (!onImageUpload) return;
+
+      // Set uploading state
+      setState((prev) => ({
+        ...prev,
+        uploadingImageSceneIds: new Set(prev.uploadingImageSceneIds).add(sceneId),
+      }));
+      updateSceneState('image', sceneId, {
+        status: 'running',
+        error: undefined,
+        sourceType: undefined,
+      });
+
+      try {
+        const response = await onImageUpload(sceneId, file);
+        updateSceneState('image', sceneId, {
+          status: 'completed',
+          asset: response.asset,
+          sourceType: 'uploaded',
+        });
+      } catch (error) {
+        updateSceneState('image', sceneId, {
+          status: 'error',
+          error: error instanceof Error ? error.message : '画像アップロードに失敗しました',
+        });
+      } finally {
+        setState((prev) => {
+          const newSet = new Set(prev.uploadingImageSceneIds);
+          newSet.delete(sceneId);
+          return { ...prev, uploadingImageSceneIds: newSet };
+        });
+      }
+    },
+    [onImageUpload, updateSceneState]
   );
 
   const generateImagePrompt = useCallback(
@@ -331,7 +381,11 @@ export function useAssetGeneration({
       const response = await onAllImagesGenerate();
       for (const result of response.results) {
         if (result.success && result.asset) {
-          updateSceneState('image', result.sceneId, { status: 'completed', asset: result.asset });
+          updateSceneState('image', result.sceneId, {
+            status: 'completed',
+            asset: result.asset,
+            sourceType: 'generated',
+          });
         } else {
           updateSceneState('image', result.sceneId, {
             status: 'error',
@@ -519,10 +573,12 @@ export function useAssetGeneration({
     overallStatus: getOverallStatus(),
     isAllCompleted: isAllCompleted(),
     isGeneratingImagePrompts: state.isGeneratingImagePrompt,
+    uploadingImageSceneIds: state.uploadingImageSceneIds,
     generateVoice,
     generateSubtitle,
     generateImage,
     generateImagePrompt,
+    uploadImage,
     generateAllVoices,
     generateAllSubtitles,
     generateAllImages,

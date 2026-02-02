@@ -52,6 +52,9 @@ export type {
 
 // Shorts-gen types
 export type {
+  AssetSourceType,
+  MediaType,
+  MediaValidationConfig,
   ShortsProject,
   ShortsProjectSummary,
   CreateShortsProjectRequest,
@@ -96,3 +99,6 @@ export type {
   CreateReferenceCharacterResponse,
   DeleteReferenceCharacterResponse,
 } from './shorts-gen.js';
+
+// Re-export const values
+export { MEDIA_VALIDATION } from './shorts-gen.js';

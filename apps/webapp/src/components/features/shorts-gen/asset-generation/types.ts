@@ -7,6 +7,9 @@ export type {
   GenerateImagePromptResponse,
 } from '@/lib/types/asset-generation';
 
+// Re-export AssetSourceType for convenience
+export type { AssetSourceType } from '@video-processor/shared';
+
 // Import shared types for use in local interfaces
 import type { SceneAsset } from '@/lib/types/asset-generation';
 
@@ -44,6 +47,8 @@ export interface SceneAssetState {
   /** 字幕など複数アセットを持つ場合に使用 */
   assets?: SceneAsset[];
   error?: string;
+  /** アセットのソース種別（生成 or アップロード） */
+  sourceType?: 'generated' | 'uploaded';
 }
 
 /**
@@ -96,4 +101,12 @@ export interface GenerateAllImagePromptsResponse {
     imagePrompt?: string;
     error?: string;
   }[];
+}
+
+/**
+ * Image upload response
+ */
+export interface UploadImageResponse {
+  asset: SceneAsset;
+  sourceType: 'uploaded';
 }

@@ -1,3 +1,26 @@
+// Asset Source Types (for distinguishing AI-generated vs user-uploaded)
+export type AssetSourceType = 'generated' | 'uploaded';
+
+// Media Types (for future video upload support)
+export type MediaType = 'image' | 'video';
+
+// Media validation configuration
+export interface MediaValidationConfig {
+  maxSizeBytes: number;
+  allowedMimeTypes: string[];
+}
+
+export const MEDIA_VALIDATION: Record<MediaType, MediaValidationConfig> = {
+  image: {
+    maxSizeBytes: 10 * 1024 * 1024, // 10MB
+    allowedMimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
+  },
+  video: {
+    maxSizeBytes: 100 * 1024 * 1024, // 100MB (for future use)
+    allowedMimeTypes: ['video/mp4', 'video/webm'],
+  },
+};
+
 // ShortsProject types
 export interface ShortsProject {
   id: string;
@@ -248,6 +271,8 @@ export interface SceneImage {
   asset: {
     assetId: string;
     fileUrl: string;
+    sourceType?: AssetSourceType;
+    mimeType?: string;
   } | null;
 }
 

@@ -16,7 +16,8 @@ import {
   Type,
   Volume2,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { MediaUploadButton, type UploadableMedia } from './media-upload-button';
 import type { AssetColumnData, ImagePromptState, Scene, SceneAssetState } from './types';
 
 interface SceneAssetItemProps {
@@ -30,6 +31,8 @@ interface SceneAssetItemProps {
   imagePromptState?: ImagePromptState;
   onGeneratePrompt?: () => void;
   onGenerateImage?: () => void;
+  onUploadImage?: (sceneId: string, file: File) => Promise<void>;
+  isUploadingImage?: boolean;
   // 音声カラム用の編集機能
   onVoiceTextSave?: (sceneId: string, newVoiceText: string) => Promise<void>;
   isVoiceTextSaving?: boolean;
@@ -90,6 +93,8 @@ export function SceneAssetItem({
   imagePromptState,
   onGeneratePrompt,
   onGenerateImage,
+  onUploadImage,
+  isUploadingImage,
   onVoiceTextSave,
   isVoiceTextSaving,
 }: SceneAssetItemProps) {
@@ -108,6 +113,16 @@ export function SceneAssetItem({
       await onVoiceTextSave(scene.id, editingVoiceText);
     }
   };
+
+  // 画像アップロードハンドラー
+  const handleImageUpload = useCallback(
+    async (media: UploadableMedia) => {
+      if (onUploadImage) {
+        await onUploadImage(scene.id, media.file);
+      }
+    },
+    [onUploadImage, scene.id]
+  );
 
   // 画像カラムでimage_gen以外の場合はスキップ
   const isImageColumn = columnType === 'image';
@@ -291,36 +306,55 @@ export function SceneAssetItem({
                 )}
                 <span className="text-xs text-muted-foreground">②</span>
               </div>
-              {onGenerateImage && (
-                <Button
-                  size="sm"
-                  variant={hasImage ? 'ghost' : 'outline'}
-                  className={hasImage ? 'h-6 px-2 text-xs' : 'h-7 text-xs'}
-                  onClick={onGenerateImage}
-                  disabled={!hasImagePrompt || isPromptGenerating || isImageGenerating}
-                  title={hasImage ? '画像再生成' : undefined}
-                >
-                  {isImageGenerating ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : hasImage ? (
-                    <RefreshCw className="h-3 w-3" />
-                  ) : (
-                    <>
-                      <ImageIcon className="h-3 w-3" />
-                      <span className="ml-1">生成</span>
-                    </>
-                  )}
-                </Button>
-              )}
+              <div className="flex items-center gap-1">
+                {onGenerateImage && (
+                  <Button
+                    size="sm"
+                    variant={hasImage ? 'ghost' : 'outline'}
+                    className={hasImage ? 'h-6 px-2 text-xs' : 'h-7 text-xs'}
+                    onClick={onGenerateImage}
+                    disabled={
+                      !hasImagePrompt || isPromptGenerating || isImageGenerating || isUploadingImage
+                    }
+                    title={hasImage ? '画像再生成' : undefined}
+                  >
+                    {isImageGenerating ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : hasImage ? (
+                      <RefreshCw className="h-3 w-3" />
+                    ) : (
+                      <>
+                        <ImageIcon className="h-3 w-3" />
+                        <span className="ml-1">生成</span>
+                      </>
+                    )}
+                  </Button>
+                )}
+                {onUploadImage && (
+                  <MediaUploadButton
+                    mediaType="image"
+                    onUpload={handleImageUpload}
+                    disabled={isPromptGenerating || isImageGenerating}
+                    isUploading={isUploadingImage}
+                    className="h-7 text-xs"
+                  />
+                )}
+              </div>
             </div>
             {/* 画像プレビュー */}
-            <div className="flex justify-center">
+            <div className="flex flex-col items-center gap-1">
               {hasImage && state.asset ? (
-                <img
-                  src={state.asset.fileUrl}
-                  alt={`シーン ${scene.order + 1} - 画像`}
-                  className="h-auto rounded object-contain max-h-28 border"
-                />
+                <>
+                  <img
+                    src={state.asset.fileUrl}
+                    alt={`シーン ${scene.order + 1} - 画像`}
+                    className="h-auto rounded object-contain max-h-28 border"
+                  />
+                  {/* ソースラベル */}
+                  <span className="text-[10px] text-muted-foreground">
+                    {state.sourceType === 'uploaded' ? 'アップロード' : '生成'}
+                  </span>
+                </>
               ) : (
                 <div className="w-full h-[4rem] rounded border border-dashed flex items-center justify-center bg-muted/30">
                   <ImageIcon className="h-6 w-6 text-muted-foreground/50" />
