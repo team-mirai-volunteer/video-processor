@@ -17,7 +17,8 @@ export type ShortsSceneError =
   | { type: 'MISSING_SOLID_COLOR'; message: string }
   | { type: 'INVALID_SILENCE_DURATION'; message: string }
   | { type: 'MISSING_VOICE_OR_SILENCE'; message: string }
-  | { type: 'SUBTITLE_TOO_LONG'; message: string };
+  | { type: 'SUBTITLE_TOO_LONG'; message: string }
+  | { type: 'INVALID_VOICE_SPEED'; message: string };
 
 export interface ShortsSceneProps {
   id: string;
@@ -32,6 +33,8 @@ export interface ShortsSceneProps {
   solidColor: string | null;
   imagePrompt: string | null;
   imageStyleHint: string | null;
+  voiceKey: string | null;
+  voiceSpeed: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -47,6 +50,8 @@ export interface CreateShortsSceneParams {
   stockVideoKey?: string | null;
   solidColor?: string | null;
   imageStyleHint?: string | null;
+  voiceKey?: string | null;
+  voiceSpeed?: number | null;
 }
 
 const VALID_VISUAL_TYPES: VisualType[] = ['image_gen', 'stock_video', 'solid_color'];
@@ -73,6 +78,11 @@ function isValidHexColor(color: string): boolean {
   return /^#[0-9A-Fa-f]{6}$/.test(color);
 }
 
+/** 音声スピードの最小値 */
+const MIN_VOICE_SPEED = 0.5;
+/** 音声スピードの最大値 */
+const MAX_VOICE_SPEED = 2.0;
+
 export class ShortsScene {
   readonly id: string;
   readonly scriptId: string;
@@ -86,6 +96,8 @@ export class ShortsScene {
   readonly solidColor: string | null;
   readonly imagePrompt: string | null;
   readonly imageStyleHint: string | null;
+  readonly voiceKey: string | null;
+  readonly voiceSpeed: number | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 
@@ -102,6 +114,8 @@ export class ShortsScene {
     this.solidColor = props.solidColor;
     this.imagePrompt = props.imagePrompt;
     this.imageStyleHint = props.imageStyleHint;
+    this.voiceKey = props.voiceKey;
+    this.voiceSpeed = props.voiceSpeed;
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
   }
@@ -193,6 +207,18 @@ export class ShortsScene {
       return subtitlesValidation;
     }
 
+    // Validate voiceSpeed range
+    if (
+      params.voiceSpeed !== undefined &&
+      params.voiceSpeed !== null &&
+      (params.voiceSpeed < MIN_VOICE_SPEED || params.voiceSpeed > MAX_VOICE_SPEED)
+    ) {
+      return err({
+        type: 'INVALID_VOICE_SPEED',
+        message: `Voice speed must be between ${MIN_VOICE_SPEED} and ${MAX_VOICE_SPEED}`,
+      });
+    }
+
     const now = new Date();
     return ok(
       new ShortsScene({
@@ -208,6 +234,8 @@ export class ShortsScene {
         solidColor: params.solidColor ?? null,
         imagePrompt: null,
         imageStyleHint: params.imageStyleHint ?? null,
+        voiceKey: params.voiceKey ?? null,
+        voiceSpeed: params.voiceSpeed ?? null,
         createdAt: now,
         updatedAt: now,
       })
@@ -325,6 +353,37 @@ export class ShortsScene {
   }
 
   /**
+   * Update scene voice key
+   */
+  withVoiceKey(voiceKey: string | null): ShortsScene {
+    return new ShortsScene({
+      ...this.toProps(),
+      voiceKey: voiceKey?.trim() ?? null,
+      updatedAt: new Date(),
+    });
+  }
+
+  /**
+   * Update scene voice speed
+   */
+  withVoiceSpeed(voiceSpeed: number | null): Result<ShortsScene, ShortsSceneError> {
+    if (voiceSpeed !== null && (voiceSpeed < MIN_VOICE_SPEED || voiceSpeed > MAX_VOICE_SPEED)) {
+      return err({
+        type: 'INVALID_VOICE_SPEED',
+        message: `Voice speed must be between ${MIN_VOICE_SPEED} and ${MAX_VOICE_SPEED}`,
+      });
+    }
+
+    return ok(
+      new ShortsScene({
+        ...this.toProps(),
+        voiceSpeed,
+        updatedAt: new Date(),
+      })
+    );
+  }
+
+  /**
    * Convert to plain object
    */
   toProps(): ShortsSceneProps {
@@ -341,6 +400,8 @@ export class ShortsScene {
       solidColor: this.solidColor,
       imagePrompt: this.imagePrompt,
       imageStyleHint: this.imageStyleHint,
+      voiceKey: this.voiceKey,
+      voiceSpeed: this.voiceSpeed,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

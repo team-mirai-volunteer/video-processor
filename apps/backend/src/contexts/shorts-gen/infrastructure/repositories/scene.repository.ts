@@ -19,6 +19,8 @@ type ShortsSceneRecord = {
   solidColor: string | null;
   imagePrompt: string | null;
   imageStyleHint: string | null;
+  voiceKey: string | null;
+  voiceSpeed: number | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -43,6 +45,8 @@ export class ShortsSceneRepository implements ShortsSceneRepositoryGateway {
         solidColor: props.solidColor,
         imagePrompt: props.imagePrompt,
         imageStyleHint: props.imageStyleHint,
+        voiceKey: props.voiceKey,
+        voiceSpeed: props.voiceSpeed,
         createdAt: props.createdAt,
         updatedAt: props.updatedAt,
       },
@@ -57,6 +61,8 @@ export class ShortsSceneRepository implements ShortsSceneRepositoryGateway {
         solidColor: props.solidColor,
         imagePrompt: props.imagePrompt,
         imageStyleHint: props.imageStyleHint,
+        voiceKey: props.voiceKey,
+        voiceSpeed: props.voiceSpeed,
         updatedAt: props.updatedAt,
       },
     });
@@ -83,6 +89,8 @@ export class ShortsSceneRepository implements ShortsSceneRepositoryGateway {
             solidColor: props.solidColor,
             imagePrompt: props.imagePrompt,
             imageStyleHint: props.imageStyleHint,
+            voiceKey: props.voiceKey,
+            voiceSpeed: props.voiceSpeed,
             createdAt: props.createdAt,
             updatedAt: props.updatedAt,
           },
@@ -97,6 +105,8 @@ export class ShortsSceneRepository implements ShortsSceneRepositoryGateway {
             solidColor: props.solidColor,
             imagePrompt: props.imagePrompt,
             imageStyleHint: props.imageStyleHint,
+            voiceKey: props.voiceKey,
+            voiceSpeed: props.voiceSpeed,
             updatedAt: props.updatedAt,
           },
         });
@@ -169,6 +179,8 @@ export class ShortsSceneRepository implements ShortsSceneRepositoryGateway {
       solidColor: record.solidColor,
       imagePrompt: record.imagePrompt,
       imageStyleHint: record.imageStyleHint,
+      voiceKey: record.voiceKey,
+      voiceSpeed: record.voiceSpeed,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     };

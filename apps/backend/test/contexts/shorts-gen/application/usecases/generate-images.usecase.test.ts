@@ -29,6 +29,8 @@ function createTestScene(overrides: Partial<ShortsSceneProps> = {}): ShortsScene
     solidColor: null,
     imagePrompt: 'A beautiful sunset over the ocean',
     imageStyleHint: 'photorealistic',
+    voiceKey: null,
+    voiceSpeed: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

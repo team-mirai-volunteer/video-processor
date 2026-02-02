@@ -73,6 +73,8 @@ describe('SynthesizeVoiceUseCase', () => {
       solidColor: null,
       imagePrompt: null,
       imageStyleHint: null,
+      voiceKey: null,
+      voiceSpeed: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

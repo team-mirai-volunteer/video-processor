@@ -7,6 +7,7 @@ import {
   type SynthesizeVoiceInput,
   SynthesizeVoiceUseCase,
 } from '@shorts-gen/application/usecases/synthesize-voice.usecase.js';
+import { AssetRegistryClient } from '@shorts-gen/infrastructure/clients/asset-registry.client.js';
 import { FishAudioTtsClient } from '@shorts-gen/infrastructure/clients/fish-audio-tts.client.js';
 import { ShortsSceneAssetRepository } from '@shorts-gen/infrastructure/repositories/scene-asset.repository.js';
 import { ShortsSceneRepository } from '@shorts-gen/infrastructure/repositories/scene.repository.js';
@@ -56,6 +57,7 @@ function getSynthesizeVoiceUseCase(): SynthesizeVoiceUseCase {
   if (!synthesizeVoiceUseCase) {
     const ttsGateway = new FishAudioTtsClient();
     const storageGateway = createTempStorageGateway();
+    const assetRegistryGateway = new AssetRegistryClient();
 
     // Read delay between requests from environment variable
     const delayBetweenRequestsMs = process.env.VOICE_SYNTHESIS_DELAY_MS
@@ -67,6 +69,7 @@ function getSynthesizeVoiceUseCase(): SynthesizeVoiceUseCase {
       sceneRepository,
       sceneAssetRepository,
       storageGateway,
+      assetRegistryGateway,
       generateId: () => uuidv4(),
       delayBetweenRequestsMs,
     });

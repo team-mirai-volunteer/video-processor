@@ -7,6 +7,7 @@ import type {
   AssetRegistryGateway,
   BgmAssetInfo,
   VideoAssetInfo,
+  VoiceAssetInfo,
 } from '../../domain/gateways/asset-registry.gateway.js';
 
 /**
@@ -27,11 +28,21 @@ interface BgmAssetDefinition {
 }
 
 /**
+ * asset-registry.json の声アセット定義
+ */
+interface VoiceAssetDefinition {
+  envKey: string;
+  name: string;
+  description: string;
+}
+
+/**
  * asset-registry.json のスキーマ
  */
 interface AssetRegistry {
   videos: Record<string, VideoAssetDefinition>;
   bgm: Record<string, BgmAssetDefinition>;
+  voices: Record<string, VoiceAssetDefinition>;
 }
 
 /**
@@ -171,6 +182,75 @@ export class AssetRegistryClient implements AssetRegistryGateway {
       return [];
     }
     return Object.keys(registryResult.value.bgm);
+  }
+
+  /**
+   * 声アセットを取得する
+   */
+  getVoiceAsset(key: string): Result<VoiceAssetInfo, AssetRegistryError> {
+    const registryResult = this.loadRegistry();
+    if (!registryResult.success) {
+      return registryResult;
+    }
+
+    const registry = registryResult.value;
+    const voiceDefinition = registry.voices?.[key];
+
+    if (!voiceDefinition) {
+      return err({
+        type: 'ASSET_NOT_FOUND',
+        key,
+        assetType: 'voice',
+      });
+    }
+
+    // 環境変数からモデルIDを取得
+    const modelId = process.env[voiceDefinition.envKey];
+    if (!modelId) {
+      // フォールバック: 既存の FISH_AUDIO_DEFAULT_VOICE_MODEL_ID を使用
+      const fallbackModelId = process.env.FISH_AUDIO_DEFAULT_VOICE_MODEL_ID;
+      if (!fallbackModelId) {
+        return err({
+          type: 'ENV_VAR_NOT_FOUND',
+          envKey: voiceDefinition.envKey,
+        });
+      }
+      return ok({
+        key,
+        modelId: fallbackModelId,
+        name: voiceDefinition.name,
+        description: voiceDefinition.description,
+      });
+    }
+
+    return ok({
+      key,
+      modelId,
+      name: voiceDefinition.name,
+      description: voiceDefinition.description,
+    });
+  }
+
+  /**
+   * 利用可能な全声アセット一覧を取得する
+   */
+  listVoiceAssets(): VoiceAssetInfo[] {
+    const registryResult = this.loadRegistry();
+    if (!registryResult.success) {
+      return [];
+    }
+
+    const voices = registryResult.value.voices ?? {};
+    const result: VoiceAssetInfo[] = [];
+
+    for (const key of Object.keys(voices)) {
+      const voiceResult = this.getVoiceAsset(key);
+      if (voiceResult.success) {
+        result.push(voiceResult.value);
+      }
+    }
+
+    return result;
   }
 
   /**

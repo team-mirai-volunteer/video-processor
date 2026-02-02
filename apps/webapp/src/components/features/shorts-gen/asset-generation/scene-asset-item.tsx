@@ -397,6 +397,11 @@ export function SceneAssetItem({
                 ({formatDuration(state.asset.durationMs)})
               </span>
             )}
+            {scene.voiceSpeed !== null && scene.voiceSpeed !== 1.0 && (
+              <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
+                {scene.voiceSpeed.toFixed(1)}x
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1">
             {/* 保存ボタン（変更がある場合のみ表示） */}

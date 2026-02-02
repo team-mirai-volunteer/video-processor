@@ -22,6 +22,8 @@ export interface Scene {
   solidColor: string | null;
   imagePrompt: string | null;
   imageStyleHint: string | null;
+  voiceKey: string | null;
+  voiceSpeed: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -51,6 +53,8 @@ export interface UpdateSceneParams {
   stockVideoKey?: string | null;
   solidColor?: string | null;
   imageStyleHint?: string | null;
+  voiceKey?: string | null;
+  voiceSpeed?: number | null;
 }
 
 /**

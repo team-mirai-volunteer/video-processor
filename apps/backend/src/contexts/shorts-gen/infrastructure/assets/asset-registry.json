@@ -27,5 +27,12 @@
       "durationMs": 10000
     }
   },
-  "bgm": {}
+  "bgm": {},
+  "voices": {
+    "default": {
+      "envKey": "FISH_AUDIO_VOICE_DEFAULT",
+      "name": "デフォルト",
+      "description": "標準的な声"
+    }
+  }
 }

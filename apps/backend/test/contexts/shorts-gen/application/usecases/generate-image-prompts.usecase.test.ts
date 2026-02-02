@@ -56,6 +56,8 @@ describe('GenerateImagePromptsUseCase', () => {
       solidColor: visualType === 'solid_color' ? '#000000' : null,
       imagePrompt: null,
       imageStyleHint: null,
+      voiceKey: null,
+      voiceSpeed: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

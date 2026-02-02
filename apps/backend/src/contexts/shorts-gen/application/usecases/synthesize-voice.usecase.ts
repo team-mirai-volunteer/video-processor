@@ -1,6 +1,7 @@
 import { Readable } from 'node:stream';
 import type { TempStorageGateway } from '@shared/domain/gateways/temp-storage.gateway.js';
 import { createLogger } from '@shared/infrastructure/logging/logger.js';
+import type { AssetRegistryGateway } from '@shorts-gen/domain/gateways/asset-registry.gateway.js';
 import type { ShortsSceneAssetRepositoryGateway } from '@shorts-gen/domain/gateways/scene-asset-repository.gateway.js';
 import type { ShortsSceneRepositoryGateway } from '@shorts-gen/domain/gateways/scene-repository.gateway.js';
 import type { TtsGateway, TtsGatewayError } from '@shorts-gen/domain/gateways/tts.gateway.js';
@@ -26,6 +27,8 @@ export interface SynthesizeVoiceUseCaseDeps {
   sceneAssetRepository: ShortsSceneAssetRepositoryGateway;
   /** Storage gateway for uploading audio files */
   storageGateway: TempStorageGateway;
+  /** Asset registry gateway for resolving voice model IDs */
+  assetRegistryGateway?: AssetRegistryGateway;
   /** ID generator function */
   generateId: () => string;
   /** Delay between consecutive TTS requests in milliseconds (default: 500) */
@@ -135,6 +138,7 @@ export class SynthesizeVoiceUseCase {
   private readonly sceneRepository: ShortsSceneRepositoryGateway;
   private readonly sceneAssetRepository: ShortsSceneAssetRepositoryGateway;
   private readonly storageGateway: TempStorageGateway;
+  private readonly assetRegistryGateway?: AssetRegistryGateway;
   private readonly generateId: () => string;
   private readonly delayBetweenRequestsMs: number;
 
@@ -143,6 +147,7 @@ export class SynthesizeVoiceUseCase {
     this.sceneRepository = deps.sceneRepository;
     this.sceneAssetRepository = deps.sceneAssetRepository;
     this.storageGateway = deps.storageGateway;
+    this.assetRegistryGateway = deps.assetRegistryGateway;
     this.generateId = deps.generateId;
     this.delayBetweenRequestsMs = deps.delayBetweenRequestsMs ?? DEFAULT_DELAY_BETWEEN_REQUESTS_MS;
   }
@@ -283,10 +288,31 @@ export class SynthesizeVoiceUseCase {
     // Delete existing voice asset for this scene (for regeneration)
     await this.sceneAssetRepository.deleteBySceneIdAndType(scene.id, 'voice');
 
-    // Synthesize voice
+    // Resolve voice model ID from scene's voiceKey or use the provided voiceModelId
+    let resolvedVoiceModelId = voiceModelId;
+    if (scene.voiceKey && this.assetRegistryGateway) {
+      const voiceResult = this.assetRegistryGateway.getVoiceAsset(scene.voiceKey);
+      if (voiceResult.success) {
+        resolvedVoiceModelId = voiceResult.value.modelId;
+        log.debug('Resolved voice model ID from scene voiceKey', {
+          sceneId: scene.id,
+          voiceKey: scene.voiceKey,
+          modelId: resolvedVoiceModelId,
+        });
+      } else {
+        log.warn('Failed to resolve voiceKey, using fallback', {
+          sceneId: scene.id,
+          voiceKey: scene.voiceKey,
+          error: voiceResult.error,
+        });
+      }
+    }
+
+    // Synthesize voice with scene's voiceSpeed if set
     const synthesisResult = await this.ttsGateway.synthesize({
       text: scene.voiceText,
-      voiceModelId,
+      voiceModelId: resolvedVoiceModelId,
+      speed: scene.voiceSpeed ?? undefined,
     });
 
     if (!synthesisResult.success) {

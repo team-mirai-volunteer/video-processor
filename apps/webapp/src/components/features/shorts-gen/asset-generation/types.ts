@@ -32,6 +32,8 @@ export interface Scene {
   subtitles: string[];
   silenceDurationMs: number | null;
   imagePrompt: string | null;
+  voiceKey: string | null;
+  voiceSpeed: number | null;
 }
 
 /**
