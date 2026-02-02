@@ -7,9 +7,6 @@ export type {
   GenerateImagePromptResponse,
 } from '@/lib/types/asset-generation';
 
-// Re-export AssetSourceType for convenience
-export type { AssetSourceType } from '@video-processor/shared';
-
 // Import shared types for use in local interfaces
 import type { SceneAsset } from '@/lib/types/asset-generation';
 
@@ -101,12 +98,4 @@ export interface GenerateAllImagePromptsResponse {
     imagePrompt?: string;
     error?: string;
   }[];
-}
-
-/**
- * Image upload response
- */
-export interface UploadImageResponse {
-  asset: SceneAsset;
-  sourceType: 'uploaded';
 }
