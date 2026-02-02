@@ -59,6 +59,8 @@ describe('GenerateSubtitlesUseCase', () => {
     solidColor: null,
     imagePrompt: null,
     imageStyleHint: null,
+    voiceKey: null,
+    voiceSpeed: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   });
@@ -76,6 +78,8 @@ describe('GenerateSubtitlesUseCase', () => {
     solidColor: null,
     imagePrompt: null,
     imageStyleHint: null,
+    voiceKey: null,
+    voiceSpeed: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   });
@@ -93,6 +97,8 @@ describe('GenerateSubtitlesUseCase', () => {
     solidColor: '#000000',
     imagePrompt: null,
     imageStyleHint: null,
+    voiceKey: null,
+    voiceSpeed: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   });

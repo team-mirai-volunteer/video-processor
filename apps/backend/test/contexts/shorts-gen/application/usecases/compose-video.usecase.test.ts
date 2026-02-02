@@ -78,6 +78,8 @@ describe('ComposeVideoUseCase', () => {
       solidColor: visualType === 'solid_color' ? '#FF0000' : null,
       imagePrompt: visualType === 'image_gen' ? 'A beautiful scene' : null,
       imageStyleHint: null,
+      voiceKey: null,
+      voiceSpeed: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -200,8 +202,24 @@ describe('ComposeVideoUseCase', () => {
           description: 'Background music',
         } as BgmAssetInfo)
       ),
+      getVoiceAsset: vi.fn().mockReturnValue(
+        ok({
+          key: 'default',
+          modelId: 'test-voice-model-id',
+          name: 'デフォルト',
+          description: '標準的な声',
+        })
+      ),
       listVideoAssetKeys: vi.fn().mockReturnValue(['intro-video']),
       listBgmAssetKeys: vi.fn().mockReturnValue(['background-music']),
+      listVoiceAssets: vi.fn().mockReturnValue([
+        {
+          key: 'default',
+          modelId: 'test-voice-model-id',
+          name: 'デフォルト',
+          description: '標準的な声',
+        },
+      ]),
       assetExists: vi.fn().mockReturnValue(true),
     };
 
@@ -398,6 +416,8 @@ describe('ComposeVideoUseCase', () => {
         solidColor: '#000000',
         imagePrompt: null,
         imageStyleHint: null,
+        voiceKey: null,
+        voiceSpeed: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       });

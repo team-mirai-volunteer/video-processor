@@ -117,10 +117,27 @@ describe('GenerateScriptUseCase', () => {
         success: false,
         error: { type: 'ASSET_NOT_FOUND', key: 'test', assetType: 'bgm' },
       }),
+      getVoiceAsset: vi.fn().mockReturnValue({
+        success: true,
+        value: {
+          key: 'default',
+          modelId: 'test-voice-model-id',
+          name: 'デフォルト',
+          description: '標準的な声',
+        },
+      }),
       listVideoAssetKeys: vi
         .fn()
         .mockReturnValue(['speech_exciting', 'speech_serious', 'family_financial_struggle']),
       listBgmAssetKeys: vi.fn().mockReturnValue([]),
+      listVoiceAssets: vi.fn().mockReturnValue([
+        {
+          key: 'default',
+          modelId: 'test-voice-model-id',
+          name: 'デフォルト',
+          description: '標準的な声',
+        },
+      ]),
       assetExists: vi.fn().mockReturnValue(true),
     };
 
@@ -491,6 +508,8 @@ describe('GenerateScriptUseCase', () => {
           solidColor: null,
           imagePrompt: null,
           imageStyleHint: 'アニメ風',
+          voiceKey: null,
+          voiceSpeed: null,
           createdAt: new Date(),
           updatedAt: new Date(),
         }),
@@ -507,6 +526,8 @@ describe('GenerateScriptUseCase', () => {
           solidColor: '#000000',
           imagePrompt: null,
           imageStyleHint: null,
+          voiceKey: null,
+          voiceSpeed: null,
           createdAt: new Date(),
           updatedAt: new Date(),
         }),

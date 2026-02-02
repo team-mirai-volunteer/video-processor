@@ -72,6 +72,8 @@ interface UpdateSceneRequest {
   solidColor?: string | null;
   imagePrompt?: string | null;
   imageStyleHint?: string | null;
+  voiceKey?: string | null;
+  voiceSpeed?: number | null;
   order?: number;
 }
 
@@ -370,6 +372,8 @@ router.get('/:projectId/script', async (req, res, next) => {
         solidColor: s.solidColor,
         imagePrompt: s.imagePrompt,
         imageStyleHint: s.imageStyleHint,
+        voiceKey: s.voiceKey,
+        voiceSpeed: s.voiceSpeed,
         createdAt: s.createdAt,
         updatedAt: s.updatedAt,
       })),
@@ -416,6 +420,8 @@ router.get('/:projectId/script/scenes/:sceneId', async (req, res, next) => {
       solidColor: scene.solidColor,
       imagePrompt: scene.imagePrompt,
       imageStyleHint: scene.imageStyleHint,
+      voiceKey: scene.voiceKey,
+      voiceSpeed: scene.voiceSpeed,
       createdAt: scene.createdAt,
       updatedAt: scene.updatedAt,
     });
@@ -484,6 +490,18 @@ router.patch('/:projectId/script/scenes/:sceneId', async (req, res, next) => {
       updatedScene = updatedScene.withImageStyleHint(body.imageStyleHint);
     }
 
+    if (body.voiceKey !== undefined) {
+      updatedScene = updatedScene.withVoiceKey(body.voiceKey);
+    }
+
+    if (body.voiceSpeed !== undefined) {
+      const result = updatedScene.withVoiceSpeed(body.voiceSpeed);
+      if (!result.success) {
+        throw new ValidationError(result.error.message);
+      }
+      updatedScene = result.value;
+    }
+
     if (body.order !== undefined) {
       const result = updatedScene.withOrder(body.order);
       if (!result.success) {
@@ -514,6 +532,8 @@ router.patch('/:projectId/script/scenes/:sceneId', async (req, res, next) => {
       solidColor: updatedScene.solidColor,
       imagePrompt: updatedScene.imagePrompt,
       imageStyleHint: updatedScene.imageStyleHint,
+      voiceKey: updatedScene.voiceKey,
+      voiceSpeed: updatedScene.voiceSpeed,
       createdAt: updatedScene.createdAt,
       updatedAt: updatedScene.updatedAt,
     });

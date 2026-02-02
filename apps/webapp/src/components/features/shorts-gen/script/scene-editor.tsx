@@ -51,6 +51,12 @@ function VisualTypeButton({
   );
 }
 
+/** 声の種類オプション */
+const VOICE_OPTIONS = [{ key: 'default', label: 'デフォルト' }];
+
+/** スピードのデフォルト値 */
+const DEFAULT_VOICE_SPEED = 1.0;
+
 export function SceneEditor({
   scene,
   onSave,
@@ -68,6 +74,8 @@ export function SceneEditor({
   const [stockVideoKey, setStockVideoKey] = useState(scene.stockVideoKey || '');
   const [solidColor, setSolidColor] = useState(scene.solidColor || '#000000');
   const [imageStyleHint, setImageStyleHint] = useState(scene.imageStyleHint || '');
+  const [voiceKey, setVoiceKey] = useState(scene.voiceKey || 'default');
+  const [voiceSpeed, setVoiceSpeed] = useState(scene.voiceSpeed ?? DEFAULT_VOICE_SPEED);
 
   const handleAddSubtitle = useCallback(() => {
     setSubtitles((prev) => [...prev, '']);
@@ -91,6 +99,8 @@ export function SceneEditor({
       stockVideoKey: visualType === 'stock_video' ? stockVideoKey.trim() || null : null,
       solidColor: visualType === 'solid_color' ? solidColor : null,
       imageStyleHint: visualType === 'image_gen' ? imageStyleHint.trim() || null : null,
+      voiceKey: voiceKey || null,
+      voiceSpeed: voiceSpeed !== DEFAULT_VOICE_SPEED ? voiceSpeed : null,
     };
 
     await onSave(scene.id, params);
@@ -104,6 +114,8 @@ export function SceneEditor({
     stockVideoKey,
     solidColor,
     imageStyleHint,
+    voiceKey,
+    voiceSpeed,
     onSave,
   ]);
 
@@ -211,6 +223,50 @@ export function SceneEditor({
           <p className="text-xs text-muted-foreground">
             音声テキストがない場合は、無音区間を設定してください
           </p>
+        </div>
+
+        {/* Voice Settings */}
+        <div className="space-y-4 border-t pt-4">
+          <h4 className="text-sm font-medium">音声設定</h4>
+
+          {/* Voice Key */}
+          <div className="space-y-2">
+            <Label htmlFor="voiceKey">声の種類</Label>
+            <select
+              id="voiceKey"
+              value={voiceKey}
+              onChange={(e) => setVoiceKey(e.target.value)}
+              disabled={isSaving}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {VOICE_OPTIONS.map((option) => (
+                <option key={option.key} value={option.key}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Voice Speed */}
+          <div className="space-y-2">
+            <Label htmlFor="voiceSpeed">音声スピード: {voiceSpeed.toFixed(1)}x</Label>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">0.5x</span>
+              <input
+                type="range"
+                id="voiceSpeed"
+                min={0.5}
+                max={2.0}
+                step={0.1}
+                value={voiceSpeed}
+                onChange={(e) => setVoiceSpeed(Number.parseFloat(e.target.value))}
+                disabled={isSaving}
+                className="flex-1 h-2 bg-secondary rounded-lg appearance-none cursor-pointer"
+              />
+              <span className="text-xs text-muted-foreground">2.0x</span>
+            </div>
+            <p className="text-xs text-muted-foreground">1.0が標準速度です</p>
+          </div>
         </div>
 
         {/* Silence Duration */}

@@ -143,6 +143,13 @@ export class FishAudioTtsClient implements TtsGateway {
       streaming: false,
     };
 
+    // Add speed if specified
+    if (params.speed !== undefined && params.speed !== null) {
+      requestBody.prosody = {
+        speed: params.speed,
+      };
+    }
+
     let lastError: TtsGatewayError | null = null;
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {

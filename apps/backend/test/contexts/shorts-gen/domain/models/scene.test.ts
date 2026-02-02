@@ -311,6 +311,8 @@ describe('ShortsScene', () => {
         solidColor: null,
         imagePrompt: 'A cat explaining AI',
         imageStyleHint: 'anime style',
+        voiceKey: null,
+        voiceSpeed: null,
         createdAt: now,
         updatedAt: now,
       });

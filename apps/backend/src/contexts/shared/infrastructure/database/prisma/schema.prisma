@@ -193,6 +193,8 @@ model ShortsScene {
   solidColor        String?  @map("solid_color") // 塗りつぶし色（#RRGGBB）
   imagePrompt       String?  @map("image_prompt") // ⑥ 画像プロンプト（編集可能）
   imageStyleHint    String?  @map("image_style_hint") // スタイル指定文章
+  voiceKey          String?  @map("voice_key") // 声の種類キー（nullの場合は"default"）
+  voiceSpeed        Float?   @map("voice_speed") // 音声スピード（nullの場合は1.0、有効範囲: 0.5〜2.0）
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 

@@ -10,6 +10,8 @@ export interface TtsSynthesizeParams {
   voiceModelId?: string;
   /** 参照音声URL（STS用、話者の声をクローン） */
   referenceAudioUrl?: string;
+  /** 音声スピード（0.5〜2.0、デフォルト: 1.0） */
+  speed?: number;
 }
 
 /**

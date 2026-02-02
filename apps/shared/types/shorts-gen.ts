@@ -170,6 +170,8 @@ export interface ShortsScene {
   solidColor: string | null;
   imagePrompt: string | null;
   imageStyleHint: string | null;
+  voiceKey: string | null;
+  voiceSpeed: number | null;
   createdAt: string;
   updatedAt: string;
 }
