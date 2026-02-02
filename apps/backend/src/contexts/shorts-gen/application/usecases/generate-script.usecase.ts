@@ -147,6 +147,10 @@ const SYSTEM_PROMPT_BASE = `あなたはショート動画の台本作成アシ�
 
 4. **修正対応**: 保存後「修正があれば教えてください」と伝える
 
+5. **既存台本の修正時**
+   - 既存の台本を修正する場合は、必ず load_script ツールで現状を確認してください
+   - 現状を把握した上で、ユーザーの修正要望に応じた変更を行ってください
+
 ## 台本の要件
 
 1. **シーン構成**: 各シーンは以下の要素を含みます
@@ -239,6 +243,20 @@ const SAVE_SCRIPT_TOOL: ToolDefinition = {
       },
     },
     required: ['scenes'],
+  },
+};
+
+/**
+ * load_script ツールの定義
+ */
+const LOAD_SCRIPT_TOOL: ToolDefinition = {
+  name: 'load_script',
+  description:
+    '現在保存されている台本（シーン一覧）を読み込みます。既存の台本を修正する場合は、必ずこのツールで現状を確認してから save_script を呼んでください。',
+  parameters: {
+    type: 'object',
+    properties: {},
+    required: [],
   },
 };
 
@@ -337,7 +355,7 @@ ${planningContent}`;
 
     const streamResult = await this.agenticAiGateway.chatStream({
       messages,
-      tools: [SAVE_SCRIPT_TOOL],
+      tools: [SAVE_SCRIPT_TOOL, LOAD_SCRIPT_TOOL],
       systemPrompt,
       temperature: 0.7,
     });
@@ -407,7 +425,7 @@ ${planningContent}`;
     // 3. AI呼び出し（企画書をシステムプロンプトに含める）
     const result = await this.agenticAiGateway.chat({
       messages,
-      tools: [SAVE_SCRIPT_TOOL],
+      tools: [SAVE_SCRIPT_TOOL, LOAD_SCRIPT_TOOL],
       systemPrompt: this.buildSystemPrompt(planning.content),
       temperature: 0.7,
     });
@@ -506,6 +524,31 @@ ${planningContent}`;
               error: `台本の保存に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
             };
           }
+        } else if (chunk.toolCall.name === 'load_script') {
+          try {
+            const loadResult = await this.handleLoadScript(projectId);
+
+            // 読み込み結果をUIに送信
+            yield {
+              type: 'tool_call',
+              toolCall: {
+                ...chunk.toolCall,
+                arguments: { ...chunk.toolCall.arguments, result: 'loaded' },
+              },
+            };
+
+            // ツール結果のテキストも返す
+            yield {
+              type: 'text_delta',
+              textDelta: `\n\n${loadResult}`,
+            };
+          } catch (error) {
+            log.error('Failed to load script', error as Error);
+            yield {
+              type: 'error',
+              error: `台本の読み込みに失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            };
+          }
         }
       }
     }
@@ -593,5 +636,56 @@ ${planningContent}`;
     log.info('Scenes created', { count: scenes.length });
 
     return { scriptId: script.id, scenes };
+  }
+
+  /**
+   * load_script ツールの処理
+   */
+  private async handleLoadScript(projectId: string): Promise<string> {
+    log.info('Loading script', { projectId });
+
+    // 1. 台本を取得
+    const existingScript = await this.scriptRepository.findByProjectId(projectId);
+    if (!existingScript) {
+      return '台本はまだ作成されていません。';
+    }
+
+    // 2. シーン一覧を取得
+    const scenes = await this.sceneRepository.findByScriptId(existingScript.id);
+    if (scenes.length === 0) {
+      return '台本はまだ作成されていません。';
+    }
+
+    // 3. シーン情報を整形
+    const formattedScenes = scenes
+      .map((scene, index) => {
+        const lines = [`## シーン${index + 1}`];
+        lines.push(`- 概要: ${scene.summary}`);
+        lines.push(`- 映像タイプ: ${scene.visualType}`);
+        if (scene.voiceText) {
+          lines.push(`- ナレーション: ${scene.voiceText}`);
+        }
+        if (scene.subtitles.length > 0) {
+          lines.push(`- 字幕: ${scene.subtitles.join(' / ')}`);
+        }
+        if (scene.silenceDurationMs !== null) {
+          lines.push(`- 無音長さ: ${scene.silenceDurationMs}ms`);
+        }
+        if (scene.stockVideoKey) {
+          lines.push(`- ストック動画: ${scene.stockVideoKey}`);
+        }
+        if (scene.solidColor) {
+          lines.push(`- 背景色: ${scene.solidColor}`);
+        }
+        if (scene.imageStyleHint) {
+          lines.push(`- スタイルヒント: ${scene.imageStyleHint}`);
+        }
+        return lines.join('\n');
+      })
+      .join('\n\n');
+
+    log.info('Script loaded', { projectId, sceneCount: scenes.length });
+
+    return `現在の台本:\n\n${formattedScenes}`;
   }
 }
