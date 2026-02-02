@@ -57,3 +57,34 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* 企画書チャットのMarkdown見出しサイズ調整 */
+/* ジャンプ率をマイルドに: h1 1.3em, h2 1.15em, h3 1.05em */
+@layer components {
+  .prose-mild-headings h1 {
+    font-size: 1.3em;
+    margin-top: 1.2em;
+    margin-bottom: 0.6em;
+  }
+  .prose-mild-headings h2 {
+    font-size: 1.15em;
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+  }
+  .prose-mild-headings h3 {
+    font-size: 1.05em;
+    margin-top: 0.8em;
+    margin-bottom: 0.4em;
+  }
+}
+
+/* BlockNoteエディター見出しサイズ調整 */
+.bn-editor [data-content-type='heading'][data-level='1'] {
+  font-size: 1.3em !important;
+}
+.bn-editor [data-content-type='heading'][data-level='2'] {
+  font-size: 1.15em !important;
+}
+.bn-editor [data-content-type='heading'][data-level='3'] {
+  font-size: 1.05em !important;
+}

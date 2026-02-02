@@ -71,7 +71,7 @@ function ChatMessage({ message, className }: ChatMessageProps) {
           {isUser ? (
             <div className="whitespace-pre-wrap break-words">{message.content}</div>
           ) : (
-            <div className="prose prose-sm max-w-none break-words [&_*]:text-inherit">
+            <div className="prose prose-sm prose-mild-headings max-w-none break-words [&_*]:text-inherit">
               <Markdown>{message.content}</Markdown>
               {message.isStreaming && <StreamingIndicator />}
             </div>
