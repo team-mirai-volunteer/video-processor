@@ -4,6 +4,7 @@ import {
   type CreateProjectInput,
   CreateProjectUseCase,
 } from '@shorts-gen/application/usecases/create-project.usecase.js';
+import { GetProjectSummariesUseCase } from '@shorts-gen/application/usecases/get-project-summaries.usecase.js';
 import { ShortsComposedVideoRepository } from '@shorts-gen/infrastructure/repositories/composed-video.repository.js';
 import { ShortsPlanningRepository } from '@shorts-gen/infrastructure/repositories/planning.repository.js';
 import { ShortsProjectRepository } from '@shorts-gen/infrastructure/repositories/project.repository.js';
@@ -25,6 +26,13 @@ const composedVideoRepository = new ShortsComposedVideoRepository(prisma);
 const createProjectUseCase = new CreateProjectUseCase({
   projectRepository,
   generateId: () => uuidv4(),
+});
+
+const getProjectSummariesUseCase = new GetProjectSummariesUseCase({
+  projectRepository,
+  planningRepository,
+  scriptRepository,
+  composedVideoRepository,
 });
 
 /**
@@ -94,39 +102,13 @@ router.get('/', async (req, res, next) => {
     const limit = query.limit ? Number.parseInt(query.limit, 10) : 20;
     const titleFilter = query.title;
 
-    if (page < 1 || limit < 1 || limit > 100) {
-      throw new ValidationError('Invalid pagination parameters');
-    }
-
-    const result = await projectRepository.findMany({
+    const result = await getProjectSummariesUseCase.execute({
       page,
       limit,
       titleFilter,
     });
 
-    // Get related data existence for each project
-    const projectSummaries = await Promise.all(
-      result.projects.map(async (p) => {
-        const [planning, script, composedVideo] = await Promise.all([
-          planningRepository.findByProjectId(p.id),
-          scriptRepository.findByProjectId(p.id),
-          composedVideoRepository.findByProjectId(p.id),
-        ]);
-
-        return {
-          id: p.id,
-          title: p.title,
-          aspectRatio: p.aspectRatio,
-          createdAt: p.createdAt,
-          updatedAt: p.updatedAt,
-          hasPlan: planning !== null,
-          hasScript: script !== null,
-          hasComposedVideo: composedVideo !== null,
-        };
-      })
-    );
-
-    res.json({ data: projectSummaries });
+    res.json({ data: result.summaries });
   } catch (error) {
     next(error);
   }
