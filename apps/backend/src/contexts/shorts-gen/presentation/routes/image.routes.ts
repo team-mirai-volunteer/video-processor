@@ -17,6 +17,7 @@ import {
   GenerateImagesUseCase,
   type ImageStorageGateway,
 } from '@shorts-gen/application/usecases/generate-images.usecase.js';
+import { UploadSceneImageUseCase } from '@shorts-gen/application/usecases/upload-scene-image.usecase.js';
 import { NanoBananaImageGenClient } from '@shorts-gen/infrastructure/clients/nano-banana-image-gen.client.js';
 import { OpenAiAgenticClient } from '@shorts-gen/infrastructure/clients/openai-agentic.client.js';
 import { ShortsReferenceCharacterRepository } from '@shorts-gen/infrastructure/repositories/reference-character.repository.js';
@@ -24,9 +25,26 @@ import { ShortsSceneAssetRepository } from '@shorts-gen/infrastructure/repositor
 import { ShortsSceneRepository } from '@shorts-gen/infrastructure/repositories/scene.repository.js';
 import { ShortsScriptRepository } from '@shorts-gen/infrastructure/repositories/script.repository.js';
 import { type Router as ExpressRouter, Router } from 'express';
+import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 
 const router: ExpressRouter = Router();
+
+// Multer configuration for image upload
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (_req, file, cb) => {
+    const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only PNG, JPEG, and WebP are allowed.'));
+    }
+  },
+});
 
 // Initialize repositories
 const scriptRepository = new ShortsScriptRepository(prisma);
@@ -125,6 +143,21 @@ function getGenerateImagesUseCase(): GenerateImagesUseCase {
     });
   }
   return generateImagesUseCase;
+}
+
+// Upload scene image use case (lazy initialization)
+let uploadSceneImageUseCase: UploadSceneImageUseCase | null = null;
+
+function getUploadSceneImageUseCase(): UploadSceneImageUseCase {
+  if (!uploadSceneImageUseCase) {
+    uploadSceneImageUseCase = new UploadSceneImageUseCase({
+      sceneRepository,
+      sceneAssetRepository,
+      tempStorageGateway: getStorageGateway(),
+      generateId: () => uuidv4(),
+    });
+  }
+  return uploadSceneImageUseCase;
 }
 
 /**
@@ -455,5 +488,78 @@ router.get('/scripts/:scriptId/image-prompts', async (req, res, next) => {
     next(error);
   }
 });
+
+/**
+ * POST /api/shorts-gen/scenes/:sceneId/images/upload
+ * Upload a background image for a scene
+ */
+router.post(
+  '/scenes/:sceneId/images/upload',
+  imageUpload.single('image'),
+  async (req, res, next) => {
+    try {
+      const sceneId = req.params.sceneId as string;
+      const file = req.file;
+
+      // Validate file presence
+      if (!file) {
+        res.status(400).json({
+          error: 'VALIDATION_ERROR',
+          message: 'Image file is required',
+        });
+        return;
+      }
+
+      const useCase = getUploadSceneImageUseCase();
+      const result = await useCase.execute({
+        sceneId: sceneId ?? '',
+        file: {
+          buffer: file.buffer,
+          mimetype: file.mimetype,
+          originalname: file.originalname,
+        },
+      });
+
+      res.status(200).json(result);
+    } catch (error) {
+      if (error instanceof multer.MulterError) {
+        if (error.code === 'LIMIT_FILE_SIZE') {
+          res.status(400).json({
+            error: 'VALIDATION_ERROR',
+            message: 'File size exceeds 10MB limit',
+          });
+          return;
+        }
+        res.status(400).json({
+          error: 'UPLOAD_ERROR',
+          message: error.message,
+        });
+        return;
+      }
+      if (error instanceof Error && error.message.includes('Invalid file type')) {
+        res.status(400).json({
+          error: 'VALIDATION_ERROR',
+          message: error.message,
+        });
+        return;
+      }
+      if (error instanceof NotFoundError) {
+        res.status(404).json({
+          error: 'NOT_FOUND',
+          message: error.message,
+        });
+        return;
+      }
+      if (error instanceof ValidationError) {
+        res.status(400).json({
+          error: 'INVALID_SCENE_TYPE',
+          message: error.message,
+        });
+        return;
+      }
+      next(error);
+    }
+  }
+);
 
 export default router;
