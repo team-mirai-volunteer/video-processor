@@ -50,6 +50,7 @@ export interface AssetGenerationStepProps {
   onSubtitleGenerate?: (sceneId: string) => Promise<GenerateSubtitleResponse>;
   onImageGenerate?: (sceneId: string) => Promise<GenerateImageResponse>;
   onImagePromptGenerate?: (sceneId: string) => Promise<GenerateImagePromptResponse>;
+  onImageUpload?: (sceneId: string, file: File) => Promise<GenerateImageResponse>;
   onAllVoicesGenerate?: () => Promise<GenerateAllAssetsResponse>;
   onAllSubtitlesGenerate?: () => Promise<GenerateAllAssetsResponse>;
   onAllImagesGenerate?: () => Promise<GenerateAllAssetsResponse>;
@@ -97,6 +98,8 @@ interface AssetColumnProps {
   imagePromptStates?: Record<string, ImagePromptState>;
   onGenerateImagePrompt?: (sceneId: string) => void;
   onGenerateImage?: (sceneId: string) => void;
+  onUploadImage?: (sceneId: string, file: File) => Promise<void>;
+  uploadingImageSceneIds?: Set<string>;
   onGenerateAllImagePrompts?: () => void;
   isGeneratingImagePrompts?: boolean;
   // 追加指示用
@@ -116,6 +119,8 @@ function AssetColumn({
   imagePromptStates,
   onGenerateImagePrompt,
   onGenerateImage,
+  onUploadImage,
+  uploadingImageSceneIds,
   onGenerateAllImagePrompts,
   isGeneratingImagePrompts,
   styleHint,
@@ -255,6 +260,8 @@ function AssetColumn({
               onGenerateImage={
                 isImageColumn && onGenerateImage ? () => onGenerateImage(scene.id) : undefined
               }
+              onUploadImage={isImageColumn ? onUploadImage : undefined}
+              isUploadingImage={isImageColumn && uploadingImageSceneIds?.has(scene.id)}
               // 音声カラム専用props
               onVoiceTextSave={isVoiceColumn ? onVoiceTextSave : undefined}
               isVoiceTextSaving={isVoiceColumn && savingVoiceTextSceneIds?.has(scene.id)}
@@ -283,6 +290,7 @@ export function AssetGenerationStep({
   onSubtitleGenerate,
   onImageGenerate,
   onImagePromptGenerate,
+  onImageUpload,
   onAllVoicesGenerate,
   onAllSubtitlesGenerate,
   onAllImagesGenerate,
@@ -301,10 +309,12 @@ export function AssetGenerationStep({
     overallStatus,
     isAllCompleted,
     isGeneratingImagePrompts,
+    uploadingImageSceneIds,
     generateVoice,
     generateSubtitle,
     generateImage,
     generateImagePrompt,
+    uploadImage,
     generateAllVoices,
     generateAllSubtitles,
     generateAllImages,
@@ -318,6 +328,7 @@ export function AssetGenerationStep({
     onSubtitleGenerate,
     onImageGenerate,
     onImagePromptGenerate,
+    onImageUpload,
     onAllVoicesGenerate,
     onAllSubtitlesGenerate,
     onAllImagesGenerate,
@@ -451,6 +462,8 @@ export function AssetGenerationStep({
                 imagePromptStates={column.id === 'image' ? state.imagePrompt : undefined}
                 onGenerateImagePrompt={column.id === 'image' ? generateImagePrompt : undefined}
                 onGenerateImage={column.id === 'image' ? generateImage : undefined}
+                onUploadImage={column.id === 'image' ? uploadImage : undefined}
+                uploadingImageSceneIds={column.id === 'image' ? uploadingImageSceneIds : undefined}
                 onGenerateAllImagePrompts={
                   column.id === 'image' ? () => generateAllImagePrompts(styleHint) : undefined
                 }

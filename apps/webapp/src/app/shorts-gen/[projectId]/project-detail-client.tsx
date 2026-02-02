@@ -530,6 +530,35 @@ export function ProjectDetailClient({
     []
   );
 
+  // Single scene image upload handler
+  const handleImageUpload = useCallback(
+    async (sceneId: string, file: File): Promise<GenerateImageResponse> => {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch(`/api/shorts-gen/scenes/${sceneId}/image-upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(error.error || error.message || 'Failed to upload image');
+      }
+      const data = await response.json();
+
+      return {
+        asset: {
+          id: data.assetId,
+          sceneId,
+          assetType: 'background_image',
+          fileUrl: data.fileUrl,
+          durationMs: null,
+        },
+      };
+    },
+    []
+  );
+
   // All image prompts generation handler
   const handleAllImagePromptsGenerate = useCallback(
     async (styleHint?: string): Promise<GenerateAllImagePromptsResponse> => {
@@ -714,6 +743,7 @@ export function ProjectDetailClient({
           onSubtitleGenerate={handleSubtitleGenerate}
           onImageGenerate={handleImageGenerate}
           onImagePromptGenerate={handleImagePromptGenerate}
+          onImageUpload={handleImageUpload}
           onAllVoicesGenerate={handleAllVoicesGenerate}
           onAllSubtitlesGenerate={handleAllSubtitlesGenerate}
           onAllImagesGenerate={handleAllImagesGenerate}

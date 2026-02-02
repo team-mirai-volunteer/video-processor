@@ -44,6 +44,8 @@ export interface SceneAssetState {
   /** 字幕など複数アセットを持つ場合に使用 */
   assets?: SceneAsset[];
   error?: string;
+  /** アセットのソース種別（生成 or アップロード） */
+  sourceType?: 'generated' | 'uploaded';
 }
 
 /**
