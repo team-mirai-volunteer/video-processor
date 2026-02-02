@@ -96,6 +96,142 @@ Route → UseCase → Gateway(interface) ← Repository/Client(実装)
 - **Repository/Client**: Gatewayを実装、Prisma/外部APIに依存
 - **DI**: routesでインスタンス化して注入
 
+---
+
+## BFF（Backend For Frontend）経由の必須要件
+
+### 方針
+
+**フロントエンドからExpressバックエンドへの直接リクエストは禁止**
+
+簡易的な認証のため、すべてのリクエストは必ず **Next.js BFF層** を経由する。
+
+```
+[Browser]
+    ↓ (認証不要)
+[Next.js BFF層]  ← API Routes / Server Actions
+    ↓ X-API-Key ヘッダー付与
+[Express Backend]
+    ↓ X-API-Key 検証 (apiKeyAuth middleware)
+[処理実行]
+```
+
+### 認証の仕組み
+
+| 環境変数 | 用途 |
+|----------|------|
+| `BACKEND_API_KEY` (webapp側) | BFFからバックエンドへのリクエスト時にX-API-Keyヘッダーに設定 |
+| `WEBAPP_API_KEY` (backend側) | バックエンドでX-API-Keyヘッダーを検証 |
+
+バックエンドの認証ミドルウェア: `apps/backend/src/contexts/shared/presentation/middleware/api-key-auth.ts`
+
+---
+
+## Next.js BFF層の構造
+
+### ディレクトリ構成
+
+```
+apps/webapp/src/
+├── app/api/shorts-gen/              # API Routes (BFF Proxy)
+│   ├── projects/[projectId]/
+│   │   ├── planning/
+│   │   │   ├── route.ts             # POST: 企画直接作成
+│   │   │   └── generate/route.ts    # POST: 企画AI生成 (SSE)
+│   │   ├── script/
+│   │   │   └── generate/route.ts    # POST: 台本AI生成 (SSE)
+│   │   └── scenes/[sceneId]/
+│   │       └── route.ts             # PATCH: シーン更新
+│   ├── scenes/[sceneId]/
+│   │   ├── voice/route.ts           # POST: 音声生成
+│   │   ├── subtitles/route.ts       # POST: 字幕生成
+│   │   ├── image/route.ts           # POST: 画像生成
+│   │   └── image-prompt/route.ts    # POST: 画像プロンプト生成
+│   └── scripts/[scriptId]/
+│       ├── voice/route.ts           # POST: 全シーン音声生成
+│       ├── subtitles/route.ts       # POST: 全シーン字幕生成
+│       └── images/route.ts          # POST: 全シーン画像生成
+│
+└── server/
+    ├── presentation/actions/shorts-gen/  # Server Actions
+    │   ├── composeVideo.ts          # 動画合成
+    │   ├── publishText.ts           # 公開テキスト
+    │   └── referenceCharacter.ts    # 参照キャラクター
+    │
+    └── infrastructure/clients/
+        └── backend-client.ts        # バックエンドAPI呼び出し共通クライアント
+```
+
+### BFF実装の2パターン
+
+#### パターン1: API Routes（SSE/ストリーミング向け）
+
+```typescript
+// apps/webapp/src/app/api/shorts-gen/projects/[projectId]/planning/generate/route.ts
+export async function POST(request: NextRequest, { params }: { params: { projectId: string } }) {
+  const body = await request.json();
+
+  const response = await fetch(`${BACKEND_URL}/api/shorts-gen/...`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': BACKEND_API_KEY,  // ← 認証キー付与
+    },
+    body: JSON.stringify(body),
+  });
+
+  // SSEをそのままプロキシ
+  return new Response(response.body, {
+    headers: { 'Content-Type': 'text/event-stream' },
+  });
+}
+```
+
+#### パターン2: Server Actions（単発リクエスト向け）
+
+```typescript
+// apps/webapp/src/server/presentation/actions/shorts-gen/composeVideo.ts
+'use server';
+
+import { backendClient } from '@/server/infrastructure/clients/backend-client';
+
+export async function composeVideo(projectId: string, scriptId: string) {
+  return backendClient.composeVideo({ projectId, scriptId });
+}
+```
+
+### backendClient
+
+`apps/webapp/src/server/infrastructure/clients/backend-client.ts` がバックエンドAPI呼び出しの共通実装。
+
+```typescript
+async function fetchBackend<T>(endpoint: string, options?: FetchOptions): Promise<T> {
+  const response = await fetch(`${BACKEND_URL}${endpoint}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': BACKEND_API_KEY,  // ← 自動付与
+    },
+    ...options,
+  });
+  return response.json();
+}
+```
+
+---
+
+## 新規エンドポイント追加時のチェックリスト
+
+バックエンドに新しいAPIを追加する場合、**必ずBFF層も実装する**。
+
+| 追加場所 | 実装内容 |
+|----------|----------|
+| **Backend** | `apps/backend/src/contexts/shorts-gen/presentation/routes/` にルート追加 |
+| **BFF (API Route)** | `apps/webapp/src/app/api/shorts-gen/` にプロキシルート追加（SSE/ストリーム時） |
+| **BFF (Server Action)** | `apps/webapp/src/server/presentation/actions/shorts-gen/` にアクション追加（単発時） |
+| **backendClient** | `apps/webapp/src/server/infrastructure/clients/backend-client.ts` にメソッド追加 |
+
+**BFF層を実装しないと、フロントエンドからバックエンドを呼び出せない。**
+
 ## エラーハンドリング
 
 | 層 | 方式 |
