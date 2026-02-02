@@ -1,26 +1,10 @@
-import type * as fs from 'node:fs';
+import type { LocalFileGateway } from '@shared/domain/gateways/local-file.gateway.js';
 import type { TempStorageGateway } from '@shared/domain/gateways/temp-storage.gateway.js';
 import { ok } from '@shared/domain/types/result.js';
 import {
   ComposeVideoUseCase,
   type ComposeVideoUseCaseDeps,
 } from '@shorts-gen/application/usecases/compose-video.usecase.js';
-
-// Mock fs module
-vi.mock('node:fs', async () => {
-  const actual = await vi.importActual<typeof fs>('node:fs');
-  return {
-    ...actual,
-    promises: {
-      ...actual.promises,
-      mkdtemp: vi.fn().mockResolvedValue('/tmp/compose-video-mock'),
-      readFile: vi.fn().mockResolvedValue(Buffer.from('mock video content')),
-      readdir: vi.fn().mockResolvedValue([]),
-      unlink: vi.fn().mockResolvedValue(undefined),
-      rmdir: vi.fn().mockResolvedValue(undefined),
-    },
-  };
-});
 import type {
   AssetRegistryGateway,
   BgmAssetInfo,
@@ -46,6 +30,7 @@ describe('ComposeVideoUseCase', () => {
   let videoComposeGateway: VideoComposeGateway;
   let assetRegistryGateway: AssetRegistryGateway;
   let tempStorageGateway: TempStorageGateway;
+  let localFileGateway: LocalFileGateway;
   let idCounter: number;
 
   // Test data
@@ -242,6 +227,18 @@ describe('ComposeVideoUseCase', () => {
       getSignedUrl: vi.fn().mockResolvedValue('https://storage.googleapis.com/signed-url'),
     };
 
+    localFileGateway = {
+      createTempDir: vi.fn().mockResolvedValue('/tmp/compose-video-mock'),
+      readFile: vi.fn().mockResolvedValue(Buffer.from('mock video content')),
+      writeFile: vi.fn().mockResolvedValue(undefined),
+      cleanup: vi.fn().mockResolvedValue(undefined),
+      join: vi.fn().mockImplementation((...paths: string[]) => paths.join('/')),
+      extname: vi.fn().mockImplementation((filePath: string) => {
+        const match = filePath.match(/\.[^.]+$/);
+        return match ? match[0] : '';
+      }),
+    };
+
     const deps: ComposeVideoUseCaseDeps = {
       projectRepository,
       sceneRepository,
@@ -250,6 +247,7 @@ describe('ComposeVideoUseCase', () => {
       videoComposeGateway,
       assetRegistryGateway,
       tempStorageGateway,
+      localFileGateway,
       generateId: () => `id-${++idCounter}`,
     };
 
