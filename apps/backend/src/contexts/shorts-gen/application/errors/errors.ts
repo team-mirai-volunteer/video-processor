@@ -19,6 +19,17 @@ export class NotFoundError extends ApplicationError {
 }
 
 /**
+ * Conflict error (409 Conflict)
+ */
+export class ConflictError extends ApplicationError {
+  readonly statusCode = 409;
+
+  constructor(resource: string, id: string) {
+    super(`${resource} already exists for ${id}`);
+  }
+}
+
+/**
  * AI generation error (500 Internal Server Error)
  */
 export class AiGenerationError extends ApplicationError {

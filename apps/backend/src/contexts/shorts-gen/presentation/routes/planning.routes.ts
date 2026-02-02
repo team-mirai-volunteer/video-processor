@@ -1,11 +1,16 @@
 import { prisma } from '@shared/infrastructure/database/connection.js';
 import { createLogger } from '@shared/infrastructure/logging/logger.js';
-import { NotFoundError, ValidationError } from '@shorts-gen/application/errors/errors.js';
+import {
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+} from '@shorts-gen/application/errors/errors.js';
 import {
   type GeneratePlanningInput,
   GeneratePlanningUseCase,
 } from '@shorts-gen/application/usecases/generate-planning.usecase.js';
 import type { ChatMessage } from '@shorts-gen/domain/gateways/agentic-ai.gateway.js';
+import { ShortsPlanning } from '@shorts-gen/domain/models/planning.js';
 import { AnthropicAgenticClient } from '@shorts-gen/infrastructure/clients/anthropic-agentic.client.js';
 import { ShortsPlanningRepository } from '@shorts-gen/infrastructure/repositories/planning.repository.js';
 import { ShortsProjectRepository } from '@shorts-gen/infrastructure/repositories/project.repository.js';
@@ -40,6 +45,13 @@ interface GeneratePlanningRequest {
  * Request body for updating planning
  */
 interface UpdatePlanningRequest {
+  content: string;
+}
+
+/**
+ * Request body for creating planning directly
+ */
+interface CreatePlanningRequest {
   content: string;
 }
 
@@ -234,6 +246,65 @@ router.get('/:projectId/planning/versions', async (req, res, next) => {
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
       })),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/shorts-gen/projects/:projectId/planning
+ * Create planning directly (without AI generation)
+ */
+router.post('/:projectId/planning', async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const body = req.body as CreatePlanningRequest;
+
+    if (!projectId) {
+      throw new ValidationError('Project ID is required');
+    }
+
+    if (!body.content || body.content.trim().length === 0) {
+      throw new ValidationError('Content is required');
+    }
+
+    // Verify project exists
+    const projectExists = await projectRepository.exists(projectId);
+    if (!projectExists) {
+      throw new NotFoundError('Project', projectId);
+    }
+
+    // Check if planning already exists
+    const existingPlanning = await planningRepository.findByProjectId(projectId);
+    if (existingPlanning) {
+      throw new ConflictError('Planning', projectId);
+    }
+
+    // Create new planning
+    const createResult = ShortsPlanning.create({ projectId, content: body.content }, () =>
+      uuidv4()
+    );
+
+    if (!createResult.success) {
+      throw new ValidationError(createResult.error.message);
+    }
+
+    const planning = createResult.value;
+    await planningRepository.save(planning);
+
+    log.info('Planning created directly', {
+      projectId,
+      planningId: planning.id,
+    });
+
+    res.status(201).json({
+      id: planning.id,
+      projectId: planning.projectId,
+      content: planning.content,
+      version: planning.version,
+      createdAt: planning.createdAt,
+      updatedAt: planning.updatedAt,
     });
   } catch (error) {
     next(error);
