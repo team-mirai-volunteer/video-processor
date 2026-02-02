@@ -16,7 +16,7 @@ export async function PATCH(
   try {
     const body = await request.json();
 
-    const backendUrl = `${BACKEND_URL}/api/shorts-gen/projects/${projectId}/scenes/${sceneId}`;
+    const backendUrl = `${BACKEND_URL}/api/shorts-gen/projects/${projectId}/script/scenes/${sceneId}`;
 
     const response = await fetch(backendUrl, {
       method: 'PATCH',
