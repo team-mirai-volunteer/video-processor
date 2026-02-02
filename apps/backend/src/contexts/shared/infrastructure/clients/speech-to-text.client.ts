@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { v2 } from '@google-cloud/speech';
 import type { google } from '@google-cloud/speech/build/protos/protos.js';
 import { Storage } from '@google-cloud/storage';
@@ -13,21 +10,9 @@ import type {
 } from '@shared/domain/gateways/transcription.gateway.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createLogger } from '../logging/logger.js';
+import { type DictionaryEntry, properNounDictionary } from './proper-noun-dictionary.js';
 
 const log = createLogger('SpeechToTextClient');
-
-interface DictionaryEntry {
-  correct: string;
-  category: 'person' | 'organization' | 'service' | 'political_term';
-  description: string;
-  wrongPatterns: string[];
-}
-
-interface ProperNounDictionary {
-  version: string;
-  description: string;
-  entries: DictionaryEntry[];
-}
 
 const BOOST_BY_CATEGORY: Record<DictionaryEntry['category'], number> = {
   person: 15,
@@ -372,39 +357,22 @@ export class SpeechToTextClient implements TranscriptionGateway {
   }
 
   /**
-   * Load proper noun dictionary for Speech Adaptation
+   * Build Speech Adaptation config from proper noun dictionary
    */
   private loadDictionary(): google.cloud.speech.v2.ISpeechAdaptation {
-    try {
-      const __filename = fileURLToPath(import.meta.url);
-      const __dirname = dirname(__filename);
-      // Dictionary is now in clip-video context
-      const dictionaryPath = join(
-        __dirname,
-        '../../../clip-video/infrastructure/data/proper-noun-dictionary.json'
-      );
-      const dictionaryJson = readFileSync(dictionaryPath, 'utf-8');
-      const dictionary: ProperNounDictionary = JSON.parse(dictionaryJson);
+    const phrases = properNounDictionary.map((entry) => ({
+      value: entry.correct,
+      boost: BOOST_BY_CATEGORY[entry.category],
+    }));
 
-      const phrases = dictionary.entries.map((entry) => ({
-        value: entry.correct,
-        boost: BOOST_BY_CATEGORY[entry.category],
-      }));
-
-      return {
-        phraseSets: [
-          {
-            inlinePhraseSet: {
-              phrases,
-            },
+    return {
+      phraseSets: [
+        {
+          inlinePhraseSet: {
+            phrases,
           },
-        ],
-      };
-    } catch (error) {
-      log.warn('Failed to load dictionary, continuing without adaptation', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return {};
-    }
+        },
+      ],
+    };
   }
 }
