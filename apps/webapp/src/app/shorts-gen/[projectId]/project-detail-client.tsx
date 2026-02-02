@@ -205,6 +205,15 @@ export function ProjectDetailClient({
     [updateStepStatus]
   );
 
+  const handlePlanningCreated = useCallback(
+    (newPlanning: Planning) => {
+      setPlanning(newPlanning);
+      updateStepStatus('planning', 'completed');
+      updateStepStatus('script', 'ready');
+    },
+    [updateStepStatus]
+  );
+
   const handlePlanningUpdated = useCallback((updatedPlanning: Planning) => {
     setPlanning(updatedPlanning);
   }, []);
@@ -656,6 +665,7 @@ export function ProjectDetailClient({
                   : 'idle'
             }
             onPlanningGenerated={handlePlanningGenerated}
+            onPlanningCreated={handlePlanningCreated}
             onPlanningUpdated={handlePlanningUpdated}
             onSavePlanning={handleSavePlanning}
           />

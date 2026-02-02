@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { FileText } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { PlanningBlockEditor } from './planning-block-editor';
+import { PlanningBlockEditorNew } from './planning-block-editor-new';
 import type { Planning, UpdatePlanningParams } from './types';
 
 type PlanningGenerationStatus = 'idle' | 'ready' | 'generating' | 'completed' | 'error';
@@ -27,6 +28,7 @@ interface PlanningGenerationStepProps {
   planning: Planning | null;
   status: PlanningGenerationStatus;
   onPlanningGenerated?: (planning: Planning) => void;
+  onPlanningCreated?: (planning: Planning) => void;
   onPlanningUpdated?: (planning: Planning) => void;
   onSavePlanning?: (planningId: string, params: UpdatePlanningParams) => Promise<void>;
   className?: string;
@@ -43,6 +45,7 @@ export function PlanningGenerationStep({
   planning,
   status,
   onPlanningGenerated,
+  onPlanningCreated,
   onPlanningUpdated,
   onSavePlanning,
   className,
@@ -138,9 +141,13 @@ export function PlanningGenerationStep({
                 className="h-full"
               />
             ) : (
-              <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded-md h-full flex items-center justify-center">
-                <p>チャットで企画書を生成してください</p>
-              </div>
+              <PlanningBlockEditorNew
+                projectId={projectId}
+                onPlanningCreated={(newPlanning) => {
+                  onPlanningCreated?.(newPlanning);
+                }}
+                className="h-full"
+              />
             )}
           </div>
 
