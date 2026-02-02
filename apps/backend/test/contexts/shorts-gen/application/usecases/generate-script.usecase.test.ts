@@ -18,6 +18,7 @@ import type { ShortsPlanningRepositoryGateway } from '@shorts-gen/domain/gateway
 import type { ShortsSceneRepositoryGateway } from '@shorts-gen/domain/gateways/scene-repository.gateway.js';
 import type { ShortsScriptRepositoryGateway } from '@shorts-gen/domain/gateways/script-repository.gateway.js';
 import { ShortsPlanning } from '@shorts-gen/domain/models/planning.js';
+import { ShortsScene } from '@shorts-gen/domain/models/scene.js';
 import { ShortsScript } from '@shorts-gen/domain/models/script.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -462,6 +463,179 @@ describe('GenerateScriptUseCase', () => {
           planningId: testPlanningId,
         })
       ).rejects.toThrow(ValidationError);
+    });
+  });
+
+  describe('load_script tool', () => {
+    it('should return formatted script when script exists', async () => {
+      const existingScript = ShortsScript.fromProps({
+        id: 'existing-script',
+        projectId: testProjectId,
+        planningId: testPlanningId,
+        version: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const mockScenes = [
+        ShortsScene.fromProps({
+          id: 'scene-1',
+          scriptId: 'existing-script',
+          order: 0,
+          summary: 'オープニング',
+          visualType: 'image_gen',
+          voiceText: 'こんにちは',
+          subtitles: ['こんにちは'],
+          silenceDurationMs: null,
+          stockVideoKey: null,
+          solidColor: null,
+          imagePrompt: null,
+          imageStyleHint: 'アニメ風',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }),
+        ShortsScene.fromProps({
+          id: 'scene-2',
+          scriptId: 'existing-script',
+          order: 1,
+          summary: 'エンディング',
+          visualType: 'solid_color',
+          voiceText: null,
+          subtitles: ['ご視聴ありがとう'],
+          silenceDurationMs: 3000,
+          stockVideoKey: null,
+          solidColor: '#000000',
+          imagePrompt: null,
+          imageStyleHint: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }),
+      ];
+
+      vi.mocked(scriptRepository.findByProjectId).mockResolvedValue(existingScript);
+      vi.mocked(sceneRepository.findByScriptId).mockResolvedValue(mockScenes);
+
+      async function* mockStream(): AsyncIterable<StreamChunk> {
+        yield { type: 'text_delta', textDelta: '台本を読み込みます。' };
+        yield {
+          type: 'tool_call',
+          toolCall: {
+            id: 'call-1',
+            name: 'load_script',
+            arguments: {},
+          },
+        };
+        yield { type: 'done', finishReason: 'tool_calls' };
+      }
+
+      vi.mocked(agenticAiGateway.chatStream).mockResolvedValue(ok(mockStream()));
+
+      const result = await useCase.executeStream({
+        projectId: testProjectId,
+        planningId: testPlanningId,
+      });
+
+      const chunks: StreamChunk[] = [];
+      for await (const chunk of result.stream) {
+        chunks.push(chunk);
+      }
+
+      // Verify load_script tool was processed
+      expect(scriptRepository.findByProjectId).toHaveBeenCalledWith(testProjectId);
+      expect(sceneRepository.findByScriptId).toHaveBeenCalledWith('existing-script');
+
+      // Find the text_delta chunk that contains the loaded script
+      const loadResultChunk = chunks.find(
+        (c) => c.type === 'text_delta' && c.textDelta?.includes('現在の台本')
+      );
+      expect(loadResultChunk).toBeDefined();
+      expect(loadResultChunk?.textDelta).toContain('シーン1');
+      expect(loadResultChunk?.textDelta).toContain('オープニング');
+      expect(loadResultChunk?.textDelta).toContain('シーン2');
+      expect(loadResultChunk?.textDelta).toContain('エンディング');
+      expect(loadResultChunk?.textDelta).toContain('3000ms');
+      expect(loadResultChunk?.textDelta).toContain('#000000');
+      expect(loadResultChunk?.textDelta).toContain('アニメ風');
+    });
+
+    it('should return "台本はまだ作成されていません" when no script exists', async () => {
+      vi.mocked(scriptRepository.findByProjectId).mockResolvedValue(null);
+
+      async function* mockStream(): AsyncIterable<StreamChunk> {
+        yield { type: 'text_delta', textDelta: '台本を読み込みます。' };
+        yield {
+          type: 'tool_call',
+          toolCall: {
+            id: 'call-1',
+            name: 'load_script',
+            arguments: {},
+          },
+        };
+        yield { type: 'done', finishReason: 'tool_calls' };
+      }
+
+      vi.mocked(agenticAiGateway.chatStream).mockResolvedValue(ok(mockStream()));
+
+      const result = await useCase.executeStream({
+        projectId: testProjectId,
+        planningId: testPlanningId,
+      });
+
+      const chunks: StreamChunk[] = [];
+      for await (const chunk of result.stream) {
+        chunks.push(chunk);
+      }
+
+      // Find the text_delta chunk that contains the result
+      const loadResultChunk = chunks.find(
+        (c) => c.type === 'text_delta' && c.textDelta?.includes('台本はまだ作成されていません')
+      );
+      expect(loadResultChunk).toBeDefined();
+    });
+
+    it('should return "台本はまだ作成されていません" when script has no scenes', async () => {
+      const existingScript = ShortsScript.fromProps({
+        id: 'existing-script',
+        projectId: testProjectId,
+        planningId: testPlanningId,
+        version: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      vi.mocked(scriptRepository.findByProjectId).mockResolvedValue(existingScript);
+      vi.mocked(sceneRepository.findByScriptId).mockResolvedValue([]);
+
+      async function* mockStream(): AsyncIterable<StreamChunk> {
+        yield { type: 'text_delta', textDelta: '台本を読み込みます。' };
+        yield {
+          type: 'tool_call',
+          toolCall: {
+            id: 'call-1',
+            name: 'load_script',
+            arguments: {},
+          },
+        };
+        yield { type: 'done', finishReason: 'tool_calls' };
+      }
+
+      vi.mocked(agenticAiGateway.chatStream).mockResolvedValue(ok(mockStream()));
+
+      const result = await useCase.executeStream({
+        projectId: testProjectId,
+        planningId: testPlanningId,
+      });
+
+      const chunks: StreamChunk[] = [];
+      for await (const chunk of result.stream) {
+        chunks.push(chunk);
+      }
+
+      // Find the text_delta chunk that contains the result
+      const loadResultChunk = chunks.find(
+        (c) => c.type === 'text_delta' && c.textDelta?.includes('台本はまだ作成されていません')
+      );
+      expect(loadResultChunk).toBeDefined();
     });
   });
 });
