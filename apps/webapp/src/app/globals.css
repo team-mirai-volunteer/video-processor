@@ -79,12 +79,12 @@
 }
 
 /* BlockNoteエディター見出しサイズ調整 */
-.bn-editor [data-content-type='heading'][data-level='1'] {
+.bn-editor [data-content-type="heading"][data-level="1"] {
   font-size: 1.3em !important;
 }
-.bn-editor [data-content-type='heading'][data-level='2'] {
+.bn-editor [data-content-type="heading"][data-level="2"] {
   font-size: 1.15em !important;
 }
-.bn-editor [data-content-type='heading'][data-level='3'] {
+.bn-editor [data-content-type="heading"][data-level="3"] {
   font-size: 1.05em !important;
 }
