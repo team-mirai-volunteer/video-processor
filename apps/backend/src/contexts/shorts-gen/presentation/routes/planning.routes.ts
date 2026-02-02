@@ -12,6 +12,7 @@ import {
 import type { ChatMessage } from '@shorts-gen/domain/gateways/agentic-ai.gateway.js';
 import { ShortsPlanning } from '@shorts-gen/domain/models/planning.js';
 import { AnthropicAgenticClient } from '@shorts-gen/infrastructure/clients/anthropic-agentic.client.js';
+import { JinaUrlContentFetcherClient } from '@shorts-gen/infrastructure/clients/jina-url-content-fetcher.client.js';
 import { ShortsPlanningRepository } from '@shorts-gen/infrastructure/repositories/planning.repository.js';
 import { ShortsProjectRepository } from '@shorts-gen/infrastructure/repositories/project.repository.js';
 import { type Router as ExpressRouter, Router } from 'express';
@@ -24,12 +25,14 @@ const router: ExpressRouter = Router();
 const projectRepository = new ShortsProjectRepository(prisma);
 const planningRepository = new ShortsPlanningRepository(prisma);
 const agenticAiGateway = new AnthropicAgenticClient();
+const urlContentFetcherGateway = new JinaUrlContentFetcherClient();
 
 // Initialize use cases
 const generatePlanningUseCase = new GeneratePlanningUseCase({
   agenticAiGateway,
   planningRepository,
   projectRepository,
+  urlContentFetcherGateway,
   generateId: () => uuidv4(),
 });
 

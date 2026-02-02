@@ -6,6 +6,7 @@ import type {
 } from '@shorts-gen/domain/gateways/agentic-ai.gateway.js';
 import type { ShortsPlanningRepositoryGateway } from '@shorts-gen/domain/gateways/planning-repository.gateway.js';
 import type { ShortsProjectRepositoryGateway } from '@shorts-gen/domain/gateways/project-repository.gateway.js';
+import type { UrlContentFetcherGateway } from '@shorts-gen/domain/gateways/url-content-fetcher.gateway.js';
 import { ShortsPlanning } from '@shorts-gen/domain/models/planning.js';
 import { AiGenerationError, NotFoundError, ValidationError } from '../errors/errors.js';
 
@@ -219,44 +220,13 @@ const LOAD_PLANNING_TOOL: ToolDefinition = {
 };
 
 /**
- * URLからコンテンツを取得する（Jina Reader API使用）
- * https://jina.ai/reader/ - URLをMarkdown形式で取得できる無料API
- */
-async function fetchUrlContent(url: string): Promise<string> {
-  try {
-    // Jina Reader APIを使用してURLの内容をMarkdown形式で取得
-    const jinaUrl = `https://r.jina.ai/${url}`;
-    const response = await fetch(jinaUrl, {
-      headers: {
-        Accept: 'text/plain',
-      },
-    });
-
-    if (!response.ok) {
-      return `Error: Failed to fetch URL via Jina Reader (status: ${response.status})`;
-    }
-
-    const text = await response.text();
-
-    // Limit content length to avoid token limits
-    const maxLength = 15000;
-    if (text.length > maxLength) {
-      return `${text.substring(0, maxLength)}\n\n... (truncated)`;
-    }
-
-    return text;
-  } catch (error) {
-    return `Error: Failed to fetch URL - ${error instanceof Error ? error.message : String(error)}`;
-  }
-}
-
-/**
  * GeneratePlanningUseCase の依存関係
  */
 export interface GeneratePlanningUseCaseDeps {
   agenticAiGateway: AgenticAiGateway;
   planningRepository: ShortsPlanningRepositoryGateway;
   projectRepository: ShortsProjectRepositoryGateway;
+  urlContentFetcherGateway: UrlContentFetcherGateway;
   generateId: () => string;
 }
 
@@ -305,12 +275,14 @@ export class GeneratePlanningUseCase {
   private readonly agenticAiGateway: AgenticAiGateway;
   private readonly planningRepository: ShortsPlanningRepositoryGateway;
   private readonly projectRepository: ShortsProjectRepositoryGateway;
+  private readonly urlContentFetcherGateway: UrlContentFetcherGateway;
   private readonly generateId: () => string;
 
   constructor(deps: GeneratePlanningUseCaseDeps) {
     this.agenticAiGateway = deps.agenticAiGateway;
     this.planningRepository = deps.planningRepository;
     this.projectRepository = deps.projectRepository;
+    this.urlContentFetcherGateway = deps.urlContentFetcherGateway;
     this.generateId = deps.generateId;
   }
 
@@ -445,7 +417,13 @@ export class GeneratePlanningUseCase {
 
         if (toolCall.name === 'fetch_url') {
           const url = toolCall.arguments.url as string;
-          toolResult = await fetchUrlContent(url);
+          const fetchResult = await this.urlContentFetcherGateway.fetchContent({ url });
+          if (fetchResult.success) {
+            toolResult = fetchResult.value.content;
+          } else {
+            const error = fetchResult.error;
+            toolResult = `Error: Failed to fetch URL - ${error.message}`;
+          }
           // fetch_url完了を通知
           yield {
             type: 'tool_call',
