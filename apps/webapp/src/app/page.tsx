@@ -1,7 +1,7 @@
 import { VideoTable } from '@/components/features/video-list';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { loadVideos } from '@/server/presentation/loaders/loadVideos';
+import { loadVideos } from '@/server/presentation/clip-video/loaders/loadVideos';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 

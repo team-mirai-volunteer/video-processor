@@ -1,5 +1,5 @@
 import { getBackendClient } from '@/server/infrastructure/clients/get-backend-client';
-import { loadShortsProject } from '@/server/presentation/loaders/loadShortsProject';
+import { loadShortsProject } from '@/server/presentation/shorts-gen/loaders/loadShortsProject';
 import { notFound } from 'next/navigation';
 import { ProjectDetailClient } from './project-detail-client';
 

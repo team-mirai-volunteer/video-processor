@@ -22,7 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatDate } from '@/lib/utils';
-import { deleteVideo } from '@/server/presentation/actions/deleteVideo';
+import { deleteVideo } from '@/server/presentation/clip-video/actions/deleteVideo';
 import type { VideoSummary } from '@video-processor/shared';
 import { Trash2 } from 'lucide-react';
 import Link from 'next/link';

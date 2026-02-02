@@ -2,9 +2,9 @@ import { VideoDetailClient } from '@/app/videos/[id]/video-detail-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { BackendApiError } from '@/server/infrastructure/clients/backend-client';
-import { loadRefinedTranscription } from '@/server/presentation/loaders/loadRefinedTranscription';
-import { loadTranscription } from '@/server/presentation/loaders/loadTranscription';
-import { loadVideo } from '@/server/presentation/loaders/loadVideo';
+import { loadRefinedTranscription } from '@/server/presentation/clip-video/loaders/loadRefinedTranscription';
+import { loadTranscription } from '@/server/presentation/clip-video/loaders/loadTranscription';
+import { loadVideo } from '@/server/presentation/clip-video/loaders/loadVideo';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 

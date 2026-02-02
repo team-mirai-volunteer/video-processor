@@ -1,7 +1,7 @@
 import { CreateProjectDialog } from '@/components/features/shorts-gen/project-form';
 import { ProjectTable } from '@/components/features/shorts-gen/project-list';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { loadShortsProjects } from '@/server/presentation/loaders/loadShortsProjects';
+import { loadShortsProjects } from '@/server/presentation/shorts-gen/loaders/loadShortsProjects';
 
 export const dynamic = 'force-dynamic';
 

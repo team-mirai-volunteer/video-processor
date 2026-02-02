@@ -3,7 +3,7 @@
 import { RefinedTranscriptView } from '@/components/features/transcript/refined-transcript-view';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { downloadSrt } from '@/server/presentation/actions/downloadSrt';
+import { downloadSrt } from '@/server/presentation/clip-video/actions/downloadSrt';
 import type {
   GetRefinedTranscriptionResponse,
   GetTranscriptionResponse,

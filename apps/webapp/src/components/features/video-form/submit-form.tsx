@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { BackendApiError } from '@/server/infrastructure/clients/backend-client';
-import { submitVideo } from '@/server/presentation/actions/submitVideo';
+import { submitVideo } from '@/server/presentation/clip-video/actions/submitVideo';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';

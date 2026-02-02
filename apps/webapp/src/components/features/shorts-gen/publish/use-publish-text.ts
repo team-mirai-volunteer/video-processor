@@ -4,7 +4,7 @@ import {
   generatePublishText,
   getPublishTextByProject,
   updatePublishText,
-} from '@/server/presentation/actions/shorts-gen';
+} from '@/server/presentation/shorts-gen/actions';
 import type { GetPublishTextResponse } from '@video-processor/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PublishTextState } from './types';
