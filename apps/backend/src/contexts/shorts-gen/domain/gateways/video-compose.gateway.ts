@@ -6,6 +6,29 @@ import type { Result } from '@shared/domain/types/result.js';
 export type SceneVisualType = 'image' | 'video' | 'solid_color';
 
 /**
+ * Ken Burns効果の種類
+ */
+export type KenBurnsEffectType =
+  | 'zoom_in'
+  | 'zoom_out'
+  | 'pan_left'
+  | 'pan_right'
+  | 'pan_up'
+  | 'pan_down';
+
+/**
+ * Ken Burns効果の設定
+ */
+export interface KenBurnsEffect {
+  /** エフェクトの種類 */
+  type: KenBurnsEffectType;
+  /** ズーム倍率（1.0〜2.0、デフォルト: 1.3） */
+  zoomScale?: number;
+  /** パン移動量（出力サイズに対する割合、0.0〜0.5、デフォルト: 0.2） */
+  panAmount?: number;
+}
+
+/**
  * シーン素材情報
  */
 export interface SceneVisual {
@@ -15,6 +38,8 @@ export interface SceneVisual {
   filePath?: string;
   /** 塗りつぶし色（type === 'solid_color'の場合、#RRGGBB形式） */
   color?: string;
+  /** Ken Burns効果設定（type === 'image'の場合のみ有効） */
+  kenBurns?: KenBurnsEffect;
 }
 
 /**

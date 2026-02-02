@@ -7,6 +7,7 @@ import { err, ok } from '@shared/domain/types/result.js';
 import ffmpeg from 'fluent-ffmpeg';
 import type {
   ComposeSceneInput,
+  KenBurnsEffect,
   VideoComposeGateway,
   VideoComposeGatewayError,
   VideoComposeParams,
@@ -232,6 +233,7 @@ export class FFmpegComposeClient implements VideoComposeGateway {
     frameRate: number
   ): Promise<void> {
     const durationSec = scene.durationMs / 1000;
+    const kenBurns = scene.visual.type === 'image' ? scene.visual.kenBurns : undefined;
 
     // FFmpegコマンド引数を構築
     const args: string[] = ['-y'];
@@ -246,7 +248,21 @@ export class FFmpegComposeClient implements VideoComposeGateway {
         `color=c=0x${color}:s=${width}x${height}:d=${durationSec}:r=${frameRate}`
       );
     } else if (scene.visual.type === 'image' && scene.visual.filePath) {
-      args.push('-loop', '1', '-t', String(durationSec), '-i', scene.visual.filePath);
+      if (kenBurns) {
+        // Ken Burns効果を使う場合、フレームレートを指定
+        args.push(
+          '-loop',
+          '1',
+          '-framerate',
+          String(frameRate),
+          '-t',
+          String(durationSec),
+          '-i',
+          scene.visual.filePath
+        );
+      } else {
+        args.push('-loop', '1', '-t', String(durationSec), '-i', scene.visual.filePath);
+      }
     } else if (scene.visual.type === 'video' && scene.visual.filePath) {
       args.push('-stream_loop', '-1', '-t', String(durationSec), '-i', scene.visual.filePath);
     }
@@ -274,6 +290,16 @@ export class FFmpegComposeClient implements VideoComposeGateway {
     // 背景のスケーリング（solid_colorの場合はすでに正しいサイズなのでスキップ可能だが統一のため適用）
     if (scene.visual.type === 'solid_color') {
       filterComplex = '[0:v]setsar=1[bg];';
+    } else if (kenBurns) {
+      // Ken Burns効果を適用
+      const kenBurnsFilter = this.buildKenBurnsFilter(
+        kenBurns,
+        width,
+        height,
+        durationSec,
+        frameRate
+      );
+      filterComplex = `[0:v]${kenBurnsFilter},setsar=1[bg];`;
     } else {
       filterComplex = `[0:v]scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${frameRate}[bg];`;
     }
@@ -439,5 +465,104 @@ export class FFmpegComposeClient implements VideoComposeGateway {
     } catch {
       // Ignore cleanup errors
     }
+  }
+
+  /**
+   * Ken Burns効果用のzoompanフィルター式を構築
+   */
+  private buildKenBurnsFilter(
+    effect: KenBurnsEffect,
+    width: number,
+    height: number,
+    durationSec: number,
+    frameRate: number
+  ): string {
+    // デフォルト値の設定と範囲の補正
+    let zoomScale = effect.zoomScale ?? 1.3;
+    let panAmount = effect.panAmount ?? 0.2;
+
+    // zoomScaleの範囲補正（1.0〜2.0）
+    if (zoomScale < 1.0) {
+      zoomScale = 1.0;
+    } else if (zoomScale > 2.0) {
+      zoomScale = 2.0;
+    }
+
+    // panAmountの範囲補正（0.0〜0.5）
+    if (panAmount < 0.0) {
+      panAmount = 0.0;
+    } else if (panAmount > 0.5) {
+      panAmount = 0.5;
+    }
+
+    const totalFrames = Math.ceil(durationSec * frameRate);
+
+    // 入力画像を大きめにスケールするためのスケール係数
+    // Ken Burns効果では、出力サイズより大きい画像が必要
+    const scaleFactor = Math.max(zoomScale, 1.0 + panAmount) * 1.1;
+    const scaledW = Math.ceil(width * scaleFactor);
+    const scaledH = Math.ceil(height * scaleFactor);
+
+    // パン用のピクセル移動量
+    const panPxX = Math.ceil(width * panAmount);
+    const panPxY = Math.ceil(height * panAmount);
+
+    let zExpr: string;
+    let xExpr: string;
+    let yExpr: string;
+
+    switch (effect.type) {
+      case 'zoom_in':
+        // ズームイン: 1.0 → zoomScale
+        zExpr = `1+(${zoomScale}-1)*on/${totalFrames}`;
+        xExpr = 'iw/2-(iw/zoom/2)';
+        yExpr = 'ih/2-(ih/zoom/2)';
+        break;
+
+      case 'zoom_out':
+        // ズームアウト: zoomScale → 1.0
+        zExpr = `${zoomScale}-(${zoomScale}-1)*on/${totalFrames}`;
+        xExpr = 'iw/2-(iw/zoom/2)';
+        yExpr = 'ih/2-(ih/zoom/2)';
+        break;
+
+      case 'pan_left':
+        // 左から右へパン（x座標が減少）
+        zExpr = String(zoomScale);
+        xExpr = `${panPxX}*(1-on/${totalFrames})`;
+        yExpr = '(ih-oh)/2';
+        break;
+
+      case 'pan_right':
+        // 右から左へパン（x座標が増加）
+        zExpr = String(zoomScale);
+        xExpr = `${panPxX}*on/${totalFrames}`;
+        yExpr = '(ih-oh)/2';
+        break;
+
+      case 'pan_up':
+        // 下から上へパン（y座標が減少）
+        zExpr = String(zoomScale);
+        xExpr = '(iw-ow)/2';
+        yExpr = `${panPxY}*(1-on/${totalFrames})`;
+        break;
+
+      case 'pan_down':
+        // 上から下へパン（y座標が増加）
+        zExpr = String(zoomScale);
+        xExpr = '(iw-ow)/2';
+        yExpr = `${panPxY}*on/${totalFrames}`;
+        break;
+
+      default:
+        // フォールバック: 静止（ズームなし）
+        zExpr = '1';
+        xExpr = '(iw-ow)/2';
+        yExpr = '(ih-oh)/2';
+    }
+
+    // フィルターチェーン: scale → zoompan
+    // scaleで入力画像を大きめに拡大し、zoompanでクロップ＆アニメーション
+    return `scale=${scaledW}:${scaledH}:force_original_aspect_ratio=increase,zoompan=z='${zExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${width}x${height}:fps=${frameRate}`;
   }
 }
