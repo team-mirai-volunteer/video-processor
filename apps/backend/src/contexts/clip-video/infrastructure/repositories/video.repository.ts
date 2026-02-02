@@ -29,6 +29,7 @@ export class VideoRepository implements VideoRepositoryGateway {
         progressMessage: props.progressMessage,
         gcsUri: props.gcsUri,
         gcsExpiresAt: props.gcsExpiresAt,
+        audioGcsUri: props.audioGcsUri,
         createdAt: props.createdAt,
         updatedAt: props.updatedAt,
       },
@@ -44,6 +45,7 @@ export class VideoRepository implements VideoRepositoryGateway {
         progressMessage: props.progressMessage,
         gcsUri: props.gcsUri,
         gcsExpiresAt: props.gcsExpiresAt,
+        audioGcsUri: props.audioGcsUri,
         updatedAt: props.updatedAt,
       },
     });
@@ -121,6 +123,7 @@ export class VideoRepository implements VideoRepositoryGateway {
     progressMessage: string | null;
     gcsUri: string | null;
     gcsExpiresAt: Date | null;
+    audioGcsUri: string | null;
     createdAt: Date;
     updatedAt: Date;
   }): Video {
@@ -138,6 +141,7 @@ export class VideoRepository implements VideoRepositoryGateway {
       progressMessage: record.progressMessage,
       gcsUri: record.gcsUri,
       gcsExpiresAt: record.gcsExpiresAt,
+      audioGcsUri: record.audioGcsUri,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     };

@@ -88,7 +88,9 @@ export const backendClient = {
     if (query?.status) params.set('status', query.status);
 
     const queryString = params.toString();
-    return fetchBackend<GetVideosResponse>(`/api/videos${queryString ? `?${queryString}` : ''}`);
+    return fetchBackend<GetVideosResponse>(`/api/videos${queryString ? `?${queryString}` : ''}`, {
+      revalidate: 10,
+    });
   },
 
   async getVideo(id: string, options?: { revalidate?: number | false }): Promise<GetVideoResponse> {
@@ -106,6 +108,17 @@ export const backendClient = {
     await fetchBackend(`/api/videos/${id}`, {
       method: 'DELETE',
     });
+  },
+
+  async resetVideo(
+    videoId: string,
+    step?: 'cache' | 'audio' | 'transcribe' | 'refine' | 'all'
+  ): Promise<{ videoId: string; status: string; resetStep: string }> {
+    const query = step ? `?step=${step}` : '';
+    return fetchBackend<{ videoId: string; status: string; resetStep: string }>(
+      `/api/videos/${videoId}/reset${query}`,
+      { method: 'POST' }
+    );
   },
 
   // Clips

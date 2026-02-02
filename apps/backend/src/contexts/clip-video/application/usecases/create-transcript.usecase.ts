@@ -92,6 +92,13 @@ export class CreateTranscriptUseCase {
       const audioResult = await this.extractAudioUseCase.execute(videoId, 'flac');
       log.info('Audio extracted and uploaded to GCS', { audioGcsUri: audioResult.audioGcsUri });
 
+      // Re-fetch video to get updated audioGcsUri from ExtractAudioUseCase
+      const audioExtractedVideo = await this.videoRepository.findById(videoId);
+      if (!audioExtractedVideo) {
+        throw new NotFoundError('Video', videoId);
+      }
+      currentVideo = audioExtractedVideo;
+
       // Update phase to transcribing
       currentVideo = currentVideo
         .withTranscriptionPhase('transcribing')

@@ -49,4 +49,19 @@ export interface VideoProcessingGateway {
     startTimeSeconds: number,
     endTimeSeconds: number
   ): Promise<void>;
+
+  /**
+   * Extract audio from a URL (e.g., signed GCS URL) to a file
+   * Memory efficient: FFmpeg streams directly from URL without local download
+   * @param inputUrl URL to input video (must be accessible via HTTP/HTTPS)
+   * @param outputPath Path to output audio file
+   * @param format Output format ('wav' | 'flac')
+   * @param onProgress Optional callback for progress updates
+   */
+  extractAudioFromUrl(
+    inputUrl: string,
+    outputPath: string,
+    format: 'wav' | 'flac',
+    onProgress?: (progress: { timemark: string; percent?: number }) => void
+  ): Promise<void>;
 }

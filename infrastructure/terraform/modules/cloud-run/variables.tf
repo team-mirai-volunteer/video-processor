@@ -124,6 +124,11 @@ variable "fish_audio_default_voice_model_id" {
   type        = string
 }
 
+variable "anthropic_api_key_secret_id" {
+  description = "Secret Manager secret ID for Anthropic API key"
+  type        = string
+}
+
 # Application config
 variable "cors_origin" {
   description = "Allowed CORS origin"

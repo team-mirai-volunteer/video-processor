@@ -104,6 +104,7 @@ export interface VideoWithRelations {
   progressMessage: string | null;
   gcsUri: string | null;
   gcsExpiresAt: Date | null;
+  audioGcsUri: string | null;
   clips: import('./clip.js').Clip[];
   processingJobs: import('./processing-job.js').ProcessingJobSummary[];
   transcription: Transcription | null;

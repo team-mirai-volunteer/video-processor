@@ -52,6 +52,7 @@ export class GetVideoUseCase {
       progressMessage: video.progressMessage,
       gcsUri: video.gcsUri,
       gcsExpiresAt: video.gcsExpiresAt,
+      audioGcsUri: video.audioGcsUri,
       clips: clips.map((clip) => ({
         id: clip.id,
         videoId: clip.videoId,

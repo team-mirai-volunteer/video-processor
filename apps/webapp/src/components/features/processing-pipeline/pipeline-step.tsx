@@ -2,7 +2,15 @@
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { AlertCircle, Check, ChevronDown, ChevronRight, Circle, Loader2 } from 'lucide-react';
+import {
+  AlertCircle,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Circle,
+  Loader2,
+  RotateCcw,
+} from 'lucide-react';
 
 export type StepStatus = 'pending' | 'ready' | 'running' | 'completed' | 'error';
 
@@ -18,6 +26,9 @@ export interface PipelineStepProps {
   children?: React.ReactNode;
   error?: string;
   progressMessage?: string | null;
+  onReset?: () => void;
+  canReset?: boolean;
+  isResetting?: boolean;
 }
 
 function StatusIcon({ status }: { status: StepStatus }) {
@@ -74,6 +85,9 @@ export function PipelineStep({
   children,
   error,
   progressMessage,
+  onReset,
+  canReset,
+  isResetting,
 }: PipelineStepProps) {
   const isRunning = status === 'running';
 
@@ -112,7 +126,30 @@ export function PipelineStep({
 
             {children && <div className="space-y-2 text-sm">{children}</div>}
 
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-end gap-2 pt-2">
+              {onReset && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onReset();
+                  }}
+                  disabled={!canReset || isResetting}
+                >
+                  {isResetting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      リセット中...
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      リセット
+                    </>
+                  )}
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant={status === 'completed' ? 'outline' : 'default'}
@@ -120,7 +157,7 @@ export function PipelineStep({
                   e.stopPropagation();
                   onExecute();
                 }}
-                disabled={!canExecute || isRunning}
+                disabled={!canExecute || isRunning || isResetting}
               >
                 {isRunning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isRunning ? '実行中...' : status === 'completed' ? '再実行' : '実行'}

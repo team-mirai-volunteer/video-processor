@@ -134,6 +134,40 @@ export class FFmpegClient implements VideoProcessingGateway {
   }
 
   /**
+   * Extract audio from a URL (e.g., signed GCS URL) to a file
+   * Memory efficient: FFmpeg streams directly from URL without local download
+   * @param inputUrl URL to input video (must be accessible via HTTP/HTTPS)
+   * @param outputPath Path to output audio file
+   * @param format Output format ('wav' | 'flac')
+   * @param onProgress Optional callback for progress updates (receives timemark string)
+   */
+  async extractAudioFromUrl(
+    inputUrl: string,
+    outputPath: string,
+    format: 'wav' | 'flac',
+    onProgress?: (progress: { timemark: string; percent?: number }) => void
+  ): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      const command = ffmpeg(inputUrl).noVideo().audioFrequency(16000).audioChannels(1);
+
+      if (format === 'wav') {
+        command.audioCodec('pcm_s16le');
+      } else {
+        command.audioCodec('flac');
+      }
+
+      command
+        .output(outputPath)
+        .on('progress', (progress) => {
+          onProgress?.({ timemark: progress.timemark, percent: progress.percent });
+        })
+        .on('end', () => resolve())
+        .on('error', (err: Error) => reject(err))
+        .run();
+    });
+  }
+
+  /**
    * Cleanup temporary directory and its contents
    */
   private async cleanup(tempDir: string): Promise<void> {

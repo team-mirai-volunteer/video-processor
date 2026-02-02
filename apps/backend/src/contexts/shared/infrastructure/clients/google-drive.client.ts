@@ -123,7 +123,7 @@ export class GoogleDriveClient implements StorageGateway {
     try {
       const response = await this.drive.files.get(
         { fileId, alt: 'media', supportsAllDrives: true },
-        { responseType: 'stream' }
+        { responseType: 'stream', timeout: 0 }
       );
 
       return response.data as NodeJS.ReadableStream;

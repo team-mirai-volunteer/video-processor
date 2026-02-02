@@ -23,7 +23,9 @@ export async function getVideoStatus(videoId: string): Promise<VideoStatusRespon
   let refinedTranscription: GetRefinedTranscriptionResponse | null = null;
 
   // transcribing以降のステータスでは文字起こしを取得
+  // transcribingでもsavingフェーズで保存済みの可能性があるため含める
   if (
+    video.status === 'transcribing' ||
     video.status === 'transcribed' ||
     video.status === 'extracting' ||
     video.status === 'completed'

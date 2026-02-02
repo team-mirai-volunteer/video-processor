@@ -128,6 +128,8 @@ export class GcsClient implements TempStorageGateway {
     const file = bucket.file(gcsPath);
     const writeStream = file.createWriteStream({
       contentType: params.contentType ?? 'video/mp4',
+      timeout: 0,
+      resumable: true,
     });
 
     let bytesTransferred = 0;

@@ -167,6 +167,13 @@ case "${ACTION}" in
       terraform apply -auto-approve
     fi
 
+    # Run database migration
+    echo "=== Running database migration ==="
+    gcloud run jobs execute "${PROJECT_NAME}-migration" \
+      --region="${REGION}" \
+      --project="${PROJECT_ID}" \
+      --wait
+
     # Force Cloud Run to pull new image
     echo "=== Updating Cloud Run service to use new image ==="
     gcloud run services update "${PROJECT_NAME}-api" \
