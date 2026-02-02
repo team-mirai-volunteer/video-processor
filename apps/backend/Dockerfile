@@ -54,6 +54,9 @@ COPY --from=builder /app/apps/shared ./apps/shared
 COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
 COPY --from=builder /app/apps/backend/src/contexts/shared/infrastructure/database/prisma ./apps/backend/src/contexts/shared/infrastructure/database/prisma
 
+# Copy assets (videos, bgm)
+COPY --from=builder /app/apps/backend/src/contexts/shorts-gen/infrastructure/assets ./apps/backend/dist/contexts/shorts-gen/infrastructure/assets
+
 # Copy Prisma client (generated client + runtime)
 COPY --from=builder /app/node_modules/.pnpm/@prisma+client*/node_modules/@prisma/client ./node_modules/@prisma/client
 COPY --from=builder /app/node_modules/.pnpm/@prisma+client*/node_modules/.prisma ./node_modules/.prisma
