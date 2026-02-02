@@ -9,49 +9,14 @@ import type {
   VideoAssetInfo,
   VoiceAssetInfo,
 } from '../../domain/gateways/asset-registry.gateway.js';
-
-/**
- * asset-registry.json の動画アセット定義
- */
-interface VideoAssetDefinition {
-  path: string;
-  description: string;
-  durationMs: number;
-}
-
-/**
- * asset-registry.json のBGMアセット定義
- */
-interface BgmAssetDefinition {
-  path: string;
-  description: string;
-}
-
-/**
- * asset-registry.json の声アセット定義
- */
-interface VoiceAssetDefinition {
-  envKey: string;
-  name: string;
-  description: string;
-}
-
-/**
- * asset-registry.json のスキーマ
- */
-interface AssetRegistry {
-  videos: Record<string, VideoAssetDefinition>;
-  bgm: Record<string, BgmAssetDefinition>;
-  voices: Record<string, VoiceAssetDefinition>;
-}
+import { assetRegistry } from '../assets/asset-registry.js';
 
 /**
  * Asset Registry Client
- * asset-registry.json を読み込み、キーからパスを解決する
+ * asset-registry.ts からアセット情報を取得し、キーからパスを解決する
  */
 export class AssetRegistryClient implements AssetRegistryGateway {
   private readonly assetsDir: string;
-  private registry: AssetRegistry | null = null;
 
   /**
    * @param assetsDir assetsディレクトリの絶対パス（省略時はデフォルトパス）
@@ -61,45 +26,10 @@ export class AssetRegistryClient implements AssetRegistryGateway {
   }
 
   /**
-   * レジストリをロードする（遅延ロード）
-   */
-  private loadRegistry(): Result<AssetRegistry, AssetRegistryError> {
-    if (this.registry) {
-      return ok(this.registry);
-    }
-
-    const registryPath = path.join(this.assetsDir, 'asset-registry.json');
-
-    try {
-      if (!fs.existsSync(registryPath)) {
-        return err({
-          type: 'REGISTRY_LOAD_ERROR',
-          message: `Registry file not found: ${registryPath}`,
-        });
-      }
-
-      const content = fs.readFileSync(registryPath, 'utf-8');
-      this.registry = JSON.parse(content) as AssetRegistry;
-      return ok(this.registry);
-    } catch (error) {
-      return err({
-        type: 'REGISTRY_LOAD_ERROR',
-        message: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
-  /**
    * 動画アセットを取得する
    */
   getVideoAsset(key: string): Result<VideoAssetInfo, AssetRegistryError> {
-    const registryResult = this.loadRegistry();
-    if (!registryResult.success) {
-      return registryResult;
-    }
-
-    const registry = registryResult.value;
-    const videoDefinition = registry.videos[key];
+    const videoDefinition = assetRegistry.videos[key];
 
     if (!videoDefinition) {
       return err({
@@ -130,13 +60,7 @@ export class AssetRegistryClient implements AssetRegistryGateway {
    * BGMアセットを取得する
    */
   getBgmAsset(key: string): Result<BgmAssetInfo, AssetRegistryError> {
-    const registryResult = this.loadRegistry();
-    if (!registryResult.success) {
-      return registryResult;
-    }
-
-    const registry = registryResult.value;
-    const bgmDefinition = registry.bgm[key];
+    const bgmDefinition = assetRegistry.bgm[key];
 
     if (!bgmDefinition) {
       return err({
@@ -166,35 +90,21 @@ export class AssetRegistryClient implements AssetRegistryGateway {
    * 利用可能な全動画アセットのキー一覧を取得する
    */
   listVideoAssetKeys(): string[] {
-    const registryResult = this.loadRegistry();
-    if (!registryResult.success) {
-      return [];
-    }
-    return Object.keys(registryResult.value.videos);
+    return Object.keys(assetRegistry.videos);
   }
 
   /**
    * 利用可能な全BGMアセットのキー一覧を取得する
    */
   listBgmAssetKeys(): string[] {
-    const registryResult = this.loadRegistry();
-    if (!registryResult.success) {
-      return [];
-    }
-    return Object.keys(registryResult.value.bgm);
+    return Object.keys(assetRegistry.bgm);
   }
 
   /**
    * 声アセットを取得する
    */
   getVoiceAsset(key: string): Result<VoiceAssetInfo, AssetRegistryError> {
-    const registryResult = this.loadRegistry();
-    if (!registryResult.success) {
-      return registryResult;
-    }
-
-    const registry = registryResult.value;
-    const voiceDefinition = registry.voices?.[key];
+    const voiceDefinition = assetRegistry.voices[key];
 
     if (!voiceDefinition) {
       return err({
@@ -235,15 +145,9 @@ export class AssetRegistryClient implements AssetRegistryGateway {
    * 利用可能な全声アセット一覧を取得する
    */
   listVoiceAssets(): VoiceAssetInfo[] {
-    const registryResult = this.loadRegistry();
-    if (!registryResult.success) {
-      return [];
-    }
-
-    const voices = registryResult.value.voices ?? {};
     const result: VoiceAssetInfo[] = [];
 
-    for (const key of Object.keys(voices)) {
+    for (const key of Object.keys(assetRegistry.voices)) {
       const voiceResult = this.getVoiceAsset(key);
       if (voiceResult.success) {
         result.push(voiceResult.value);
@@ -263,12 +167,5 @@ export class AssetRegistryClient implements AssetRegistryGateway {
     }
     const result = this.getBgmAsset(key);
     return result.success;
-  }
-
-  /**
-   * 内部キャッシュをクリアする（主にテスト用）
-   */
-  clearCache(): void {
-    this.registry = null;
   }
 }
