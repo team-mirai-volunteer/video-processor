@@ -1,6 +1,4 @@
-import * as fs from 'node:fs';
-import * as os from 'node:os';
-import * as path from 'node:path';
+import type { LocalFileGateway } from '@shared/domain/gateways/local-file.gateway.js';
 import type { TempStorageGateway } from '@shared/domain/gateways/temp-storage.gateway.js';
 import { createLogger } from '@shared/infrastructure/logging/logger.js';
 import type { AssetRegistryGateway } from '@shorts-gen/domain/gateways/asset-registry.gateway.js';
@@ -68,6 +66,7 @@ export interface ComposeVideoUseCaseDeps {
   videoComposeGateway: VideoComposeGateway;
   assetRegistryGateway: AssetRegistryGateway;
   tempStorageGateway: TempStorageGateway;
+  localFileGateway: LocalFileGateway;
   generateId: () => string;
 }
 
@@ -100,6 +99,7 @@ export class ComposeVideoUseCase {
   private readonly videoComposeGateway: VideoComposeGateway;
   private readonly assetRegistryGateway: AssetRegistryGateway;
   private readonly tempStorageGateway: TempStorageGateway;
+  private readonly localFileGateway: LocalFileGateway;
   private readonly generateId: () => string;
 
   constructor(deps: ComposeVideoUseCaseDeps) {
@@ -110,6 +110,7 @@ export class ComposeVideoUseCase {
     this.videoComposeGateway = deps.videoComposeGateway;
     this.assetRegistryGateway = deps.assetRegistryGateway;
     this.tempStorageGateway = deps.tempStorageGateway;
+    this.localFileGateway = deps.localFileGateway;
     this.generateId = deps.generateId;
   }
 
@@ -158,7 +159,7 @@ export class ComposeVideoUseCase {
 
     try {
       // 3. Create temp directory for downloads and output
-      tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'compose-video-'));
+      tempDir = await this.localFileGateway.createTempDir('compose-video');
 
       // 4. Fetch project for dimensions
       const project = await this.projectRepository.findById(projectId);
@@ -215,7 +216,7 @@ export class ComposeVideoUseCase {
         log.info('Resolved BGM path', { bgmKey: effectiveBgmKey, bgmPath });
       }
 
-      const outputPath = path.join(tempDir, `composed_${composedVideo.id}.mp4`);
+      const outputPath = this.localFileGateway.join(tempDir, `composed_${composedVideo.id}.mp4`);
 
       // 9. Call VideoComposeGateway
       log.info('Starting FFmpeg composition...', { outputPath });
@@ -236,7 +237,7 @@ export class ComposeVideoUseCase {
 
       // 10. Upload to temp storage (GCS)
       log.info('Uploading composed video to storage...');
-      const videoBuffer = await fs.promises.readFile(outputPath);
+      const videoBuffer = await this.localFileGateway.readFile(outputPath);
       const uploadResult = await this.tempStorageGateway.upload({
         videoId: `composed-${composedVideo.id}`,
         content: videoBuffer,
@@ -276,7 +277,7 @@ export class ComposeVideoUseCase {
     } finally {
       // Cleanup temp directory
       if (tempDir) {
-        await this.cleanupTempDir(tempDir);
+        await this.localFileGateway.cleanup(tempDir);
       }
     }
   }
@@ -474,12 +475,12 @@ export class ComposeVideoUseCase {
 
     // For GCS URIs, download to temp directory
     if (url.startsWith('gs://')) {
-      const extension = path.extname(url) || this.guessExtension(url);
-      const localPath = path.join(tempDir, `${filename}${extension}`);
+      const extension = this.localFileGateway.extname(url) || this.guessExtension(url);
+      const localPath = this.localFileGateway.join(tempDir, `${filename}${extension}`);
       log.debug('Downloading asset from GCS', { url, localPath });
 
       const buffer = await this.tempStorageGateway.download(url);
-      await fs.promises.writeFile(localPath, buffer);
+      await this.localFileGateway.writeFile(localPath, buffer);
 
       return localPath;
     }
@@ -558,19 +559,5 @@ export class ComposeVideoUseCase {
         break;
     }
     return this.createError({ type: 'COMPOSE_FAILED', message });
-  }
-
-  /**
-   * Cleanup temp directory
-   */
-  private async cleanupTempDir(dirPath: string): Promise<void> {
-    try {
-      const files = await fs.promises.readdir(dirPath);
-      await Promise.all(files.map((file) => fs.promises.unlink(path.join(dirPath, file))));
-      await fs.promises.rmdir(dirPath);
-      log.debug('Temp directory cleaned up', { dirPath });
-    } catch {
-      log.debug('Failed to cleanup temp directory (non-critical)', { dirPath });
-    }
   }
 }

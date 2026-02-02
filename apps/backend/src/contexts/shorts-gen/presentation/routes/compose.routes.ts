@@ -1,5 +1,6 @@
 import type { TempStorageGateway } from '@shared/domain/gateways/temp-storage.gateway.js';
 import { GcsClient } from '@shared/infrastructure/clients/gcs.client.js';
+import { LocalFileClient } from '@shared/infrastructure/clients/local-file.client.js';
 import { LocalTempStorageClient } from '@shared/infrastructure/clients/local-temp-storage.client.js';
 import { prisma } from '@shared/infrastructure/database/connection.js';
 import { logger } from '@shared/infrastructure/logging/logger.js';
@@ -38,6 +39,7 @@ function createTempStorageGateway(): TempStorageGateway {
 const tempStorageGateway = createTempStorageGateway();
 const videoComposeGateway = new FFmpegComposeClient();
 const assetRegistryGateway = new AssetRegistryClient();
+const localFileGateway = new LocalFileClient();
 
 /**
  * Convert GCS URI to signed URL for browser access
@@ -60,6 +62,7 @@ const composeVideoUseCase = new ComposeVideoUseCase({
   videoComposeGateway,
   assetRegistryGateway,
   tempStorageGateway,
+  localFileGateway,
   generateId: () => uuidv4(),
 });
 
