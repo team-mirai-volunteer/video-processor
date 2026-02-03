@@ -7,6 +7,8 @@ import type {
   ExtractAudioResponse,
   ExtractClipsRequest,
   ExtractClipsResponse,
+  GetAllClipsQuery,
+  GetAllClipsResponse,
   GetReferenceCharactersResponse,
   GetRefinedTranscriptionResponse,
   GetShortsImagesResponse,
@@ -178,6 +180,18 @@ export const mockBackendClient = {
     return {
       videoId,
       status: 'extracting',
+    };
+  },
+
+  async getAllClips(_query?: GetAllClipsQuery): Promise<GetAllClipsResponse> {
+    return {
+      data: [],
+      pagination: {
+        total: 0,
+        page: 1,
+        limit: 50,
+        totalPages: 0,
+      },
     };
   },
 

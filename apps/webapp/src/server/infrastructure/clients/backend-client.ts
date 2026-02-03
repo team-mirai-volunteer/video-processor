@@ -12,6 +12,8 @@ import type {
   ExtractClipsResponse,
   GeneratePublishTextRequest,
   GeneratePublishTextResponse,
+  GetAllClipsQuery,
+  GetAllClipsResponse,
   GetClipsResponse,
   GetComposedVideoResponse,
   GetPublishTextResponse,
@@ -124,6 +126,17 @@ export const backendClient = {
   // Clips
   async getClips(videoId: string): Promise<GetClipsResponse> {
     return fetchBackend<GetClipsResponse>(`/api/videos/${videoId}/clips`);
+  },
+
+  async getAllClips(query?: GetAllClipsQuery): Promise<GetAllClipsResponse> {
+    const params = new URLSearchParams();
+    if (query?.page) params.set('page', query.page.toString());
+    if (query?.limit) params.set('limit', query.limit.toString());
+
+    const queryString = params.toString();
+    return fetchBackend<GetAllClipsResponse>(`/api/clips${queryString ? `?${queryString}` : ''}`, {
+      revalidate: 10,
+    });
   },
 
   async extractClips(videoId: string, request: ExtractClipsRequest): Promise<ExtractClipsResponse> {

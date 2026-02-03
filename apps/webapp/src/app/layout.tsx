@@ -20,6 +20,9 @@ function Header() {
           <Link href="/" className="text-sm font-medium hover:text-primary">
             動画一覧
           </Link>
+          <Link href="/clips" className="text-sm font-medium hover:text-primary">
+            クリップ一覧
+          </Link>
           <Link href="/submit" className="text-sm font-medium hover:text-primary">
             動画登録
           </Link>
