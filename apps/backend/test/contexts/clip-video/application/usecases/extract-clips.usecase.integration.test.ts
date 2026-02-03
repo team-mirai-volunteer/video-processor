@@ -173,6 +173,20 @@ class InMemoryClipRepository implements ClipRepositoryGateway {
     }
     return result;
   }
+
+  async findAllPaginated(options: { page: number; limit: number }): Promise<{
+    clips: { clip: Clip; videoTitle: string | null }[];
+    total: number;
+  }> {
+    const allClips = Array.from(this.clips.values());
+    const start = (options.page - 1) * options.limit;
+    const end = start + options.limit;
+    const paginatedClips = allClips.slice(start, end);
+    return {
+      clips: paginatedClips.map((clip) => ({ clip, videoTitle: null })),
+      total: allClips.length,
+    };
+  }
 }
 
 describe.skipIf(!runIntegrationTests)('ExtractClipsUseCase Integration', () => {

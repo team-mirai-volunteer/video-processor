@@ -1,4 +1,8 @@
-import type { ClipRepositoryGateway } from '@clip-video/domain/gateways/clip-repository.gateway.js';
+import type {
+  ClipRepositoryGateway,
+  FindAllPaginatedOptions,
+  FindAllPaginatedResult,
+} from '@clip-video/domain/gateways/clip-repository.gateway.js';
 import { Clip, type ClipProps } from '@clip-video/domain/models/clip.js';
 import type { PrismaClient } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -102,6 +106,32 @@ export class ClipRepository implements ClipRepositoryGateway {
     });
 
     return records.map((record) => this.toDomain(record));
+  }
+
+  async findAllPaginated(options: FindAllPaginatedOptions): Promise<FindAllPaginatedResult> {
+    const { page, limit } = options;
+    const skip = (page - 1) * limit;
+
+    const [records, total] = await Promise.all([
+      this.prisma.clip.findMany({
+        include: {
+          video: {
+            select: { title: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.clip.count(),
+    ]);
+
+    const clips = records.map((record) => ({
+      clip: this.toDomain(record),
+      videoTitle: record.video.title,
+    }));
+
+    return { clips, total };
   }
 
   private toDomain(record: {
