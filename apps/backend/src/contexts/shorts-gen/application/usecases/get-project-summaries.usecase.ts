@@ -13,7 +13,7 @@ export interface GetProjectSummariesInput {
   titleFilter?: string;
 }
 
-export interface ProjectSummary {
+interface ProjectSummary {
   id: string;
   title: string;
   aspectRatio: string;
