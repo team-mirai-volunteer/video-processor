@@ -25,6 +25,7 @@ import { FFmpegClient } from '@shared/infrastructure/clients/ffmpeg.client.js';
 import { LocalStorageClient } from '@shared/infrastructure/clients/local-storage.client.js';
 import { LocalTempStorageClient } from '@shared/infrastructure/clients/local-temp-storage.client.js';
 import { OpenAIClient } from '@shared/infrastructure/clients/openai.client.js';
+import { properNounDictionary } from '@shared/infrastructure/clients/proper-noun-dictionary.js';
 import { SpeechToTextClient } from '@shared/infrastructure/clients/speech-to-text.client.js';
 import { v4 as uuidv4 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -152,15 +153,14 @@ class InMemoryRefinedTranscriptionRepository implements RefinedTranscriptionRepo
 }
 
 /**
- * Load dictionary from JSON file
+ * Load dictionary from TS module
  */
 async function loadDictionary(): Promise<ProperNounDictionary> {
-  const dictionaryPath = path.resolve(
-    __dirname,
-    '../../../../../src/infrastructure/data/proper-noun-dictionary.json'
-  );
-  const content = await fs.promises.readFile(dictionaryPath, 'utf-8');
-  return JSON.parse(content) as ProperNounDictionary;
+  return {
+    version: '1.0.0',
+    description: 'チームみらい関連の固有名詞辞書',
+    entries: properNounDictionary,
+  };
 }
 
 describe.skipIf(!runIntegrationTests)('CreateTranscriptUseCase Integration', () => {
