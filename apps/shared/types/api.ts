@@ -89,6 +89,35 @@ export type GetVideoResponse = VideoWithRelations;
 // ============================================================================
 
 /**
+ * GET /api/clips query parameters
+ * 全クリップ一覧取得用
+ */
+export interface GetAllClipsQuery {
+  page?: number;
+  limit?: number;
+}
+
+/**
+ * Clip summary with video information for list views
+ * 動画横断クリップ一覧用の型
+ */
+export interface AllClipSummary {
+  id: string;
+  title: string | null;
+  transcript: string | null;
+  googleDriveUrl: string | null;
+  status: import('./clip.js').ClipStatus;
+  videoId: string;
+  videoTitle: string | null;
+  createdAt: Date;
+}
+
+/**
+ * GET /api/clips response
+ */
+export type GetAllClipsResponse = PaginatedResponse<AllClipSummary>;
+
+/**
  * GET /api/videos/:id/clips response
  */
 export interface GetClipsResponse {

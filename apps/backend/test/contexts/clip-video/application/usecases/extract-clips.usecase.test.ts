@@ -32,6 +32,7 @@ describe('ExtractClipsUseCase', () => {
     saveMany: vi.fn(),
     findById: vi.fn(),
     findByVideoId: vi.fn(),
+    findAllPaginated: vi.fn(),
   };
 
   const mockTranscriptionRepository: TranscriptionRepositoryGateway = {

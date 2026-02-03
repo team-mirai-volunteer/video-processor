@@ -27,11 +27,14 @@ export type {
 
 // API types
 export type {
+  AllClipSummary,
   CacheVideoResponse,
   ErrorResponse,
   ExtractAudioResponse,
   ExtractClipsRequest,
   ExtractClipsResponse,
+  GetAllClipsQuery,
+  GetAllClipsResponse,
   GetClipResponse,
   GetClipsResponse,
   GetRefinedTranscriptionResponse,

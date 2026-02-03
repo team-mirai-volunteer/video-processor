@@ -1,3 +1,4 @@
+import { GetAllClipsUseCase } from '@clip-video/application/usecases/get-all-clips.usecase.js';
 import { GetClipsUseCase } from '@clip-video/application/usecases/get-clips.usecase.js';
 import { ClipRepository } from '@clip-video/infrastructure/repositories/clip.repository.js';
 import { VideoRepository } from '@clip-video/infrastructure/repositories/video.repository.js';
@@ -10,10 +11,29 @@ const router: ExpressRouter = Router();
 const videoRepository = new VideoRepository(prisma);
 const clipRepository = new ClipRepository(prisma);
 
-// Initialize use case
+// Initialize use cases
 const getClipsUseCase = new GetClipsUseCase({
   videoRepository,
   clipRepository,
+});
+
+const getAllClipsUseCase = new GetAllClipsUseCase({
+  clipRepository,
+});
+
+/**
+ * GET /api/clips
+ * Get all clips with pagination (cross-video)
+ */
+router.get('/clips', async (req, res, next) => {
+  try {
+    const page = req.query.page ? Number(req.query.page) : undefined;
+    const limit = req.query.limit ? Number(req.query.limit) : undefined;
+    const result = await getAllClipsUseCase.execute({ page, limit });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
 });
 
 /**
