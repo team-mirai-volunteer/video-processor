@@ -12,7 +12,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDate } from '@/lib/utils';
 import type { AllClipSummary, Pagination } from '@video-processor/shared';
-import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -57,15 +57,15 @@ export function ClipListTable({ clips, pagination }: ClipListTableProps) {
   return (
     <TooltipProvider delayDuration={0}>
       <div className="space-y-4">
-        <Table>
+        <Table className="text-xs sm:text-sm">
           <TableHeader>
             <TableRow>
               <TableHead>元動画</TableHead>
-              <TableHead>クリップタイトル</TableHead>
+              <TableHead className="min-w-[10ch]">クリップタイトル</TableHead>
               <TableHead>動画長</TableHead>
-              <TableHead className="max-w-md">切り抜き文章</TableHead>
+              <TableHead className="min-w-[10ch] max-w-md">切り抜き文章</TableHead>
               <TableHead>作成日時</TableHead>
-              <TableHead className="text-right">リンク</TableHead>
+              <TableHead className="text-right">DL</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -99,10 +99,9 @@ export function ClipListTable({ clips, pagination }: ClipListTableProps) {
                       href={clip.googleDriveUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                      className="inline-flex items-center justify-center px-2 py-1 text-xs font-medium text-white bg-black rounded hover:bg-gray-800 transition-colors"
                     >
-                      GDrive
-                      <ExternalLink className="h-3 w-3" />
+                      DL
                     </a>
                   ) : (
                     <span className="text-muted-foreground">-</span>
