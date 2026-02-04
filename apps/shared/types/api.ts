@@ -143,6 +143,14 @@ export interface GetClipResponse {
   errorMessage: string | null;
   createdAt: Date;
   updatedAt: Date;
+  // 字幕付き動画関連
+  subtitledVideoGcsUri: string | null;
+  subtitledVideoUrl: string | null;
+  subtitledVideoDriveId: string | null;
+  subtitledVideoDriveUrl: string | null;
+  // 動画プレイヤー用キャッシュ
+  clipVideoGcsUri: string | null;
+  clipVideoGcsExpiresAt: Date | null;
 }
 
 // ============================================================================

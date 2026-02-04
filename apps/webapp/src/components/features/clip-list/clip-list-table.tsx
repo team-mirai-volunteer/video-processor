@@ -91,7 +91,11 @@ export function ClipListTable({ clips, pagination }: ClipListTableProps) {
                     <span className="text-muted-foreground">-</span>
                   )}
                 </TableCell>
-                <TableCell>{clip.title || '-'}</TableCell>
+                <TableCell>
+                  <Link href={`/clips/${clip.id}`} className="underline hover:text-primary">
+                    {clip.title || '-'}
+                  </Link>
+                </TableCell>
                 <TableCell>{formatDuration(clip.durationSeconds)}</TableCell>
                 <TableCell className="max-w-2xl">
                   {clip.transcript && clip.transcript.length > 50 ? (

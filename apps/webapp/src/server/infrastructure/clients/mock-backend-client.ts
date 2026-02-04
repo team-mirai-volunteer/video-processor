@@ -9,6 +9,8 @@ import type {
   ExtractClipsResponse,
   GetAllClipsQuery,
   GetAllClipsResponse,
+  GetClipResponse,
+  GetClipVideoUrlResponse,
   GetReferenceCharactersResponse,
   GetRefinedTranscriptionResponse,
   GetShortsImagesResponse,
@@ -197,6 +199,14 @@ export const mockBackendClient = {
 
   async deleteClip(_id: string): Promise<void> {
     // Mock deletion - do nothing
+  },
+
+  async getClip(_id: string): Promise<GetClipResponse | null> {
+    return null;
+  },
+
+  async getClipVideoUrl(_clipId: string): Promise<GetClipVideoUrlResponse | null> {
+    return null;
   },
 
   // Pipeline Steps

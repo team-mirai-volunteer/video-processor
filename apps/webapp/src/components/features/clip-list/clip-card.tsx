@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { formatDuration } from '@/lib/utils';
 import type { Clip } from '@video-processor/shared';
 import { Clock, ExternalLink, FileText } from 'lucide-react';
+import Link from 'next/link';
 
 interface ClipCardProps {
   clip: Clip;
@@ -26,7 +27,11 @@ export function ClipCard({ clip }: ClipCardProps) {
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <CardTitle className="text-lg">{clip.title || 'タイトルなし'}</CardTitle>
+            <CardTitle className="text-lg">
+              <Link href={`/clips/${clip.id}`} className="hover:underline hover:text-primary">
+                {clip.title || 'タイトルなし'}
+              </Link>
+            </CardTitle>
             <CardDescription className="flex items-center gap-4">
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
