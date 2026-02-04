@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDate } from '@/lib/utils';
 import type { AllClipSummary, Pagination } from '@video-processor/shared';
 import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
@@ -24,6 +25,17 @@ function truncateText(text: string | null, maxLength: number): string {
   if (!text) return '-';
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength)}...`;
+}
+
+function formatDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
 export function ClipListTable({ clips, pagination }: ClipListTableProps) {
@@ -43,81 +55,94 @@ export function ClipListTable({ clips, pagination }: ClipListTableProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>元動画</TableHead>
-            <TableHead>クリップタイトル</TableHead>
-            <TableHead className="max-w-md">切り抜き文章</TableHead>
-            <TableHead>作成日時</TableHead>
-            <TableHead className="text-right">リンク</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {clips.map((clip) => (
-            <TableRow key={clip.id}>
-              <TableCell className="font-medium">
-                <Link href={`/videos/${clip.videoId}`} className="hover:underline text-primary">
-                  {clip.videoTitle || 'タイトルなし'}
-                </Link>
-              </TableCell>
-              <TableCell>{clip.title || '-'}</TableCell>
-              <TableCell className="max-w-md">
-                <span title={clip.transcript || undefined}>
-                  {truncateText(clip.transcript, 100)}
-                </span>
-              </TableCell>
-              <TableCell>{formatDate(clip.createdAt)}</TableCell>
-              <TableCell className="text-right">
-                {clip.googleDriveUrl ? (
-                  <a
-                    href={clip.googleDriveUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-primary hover:underline"
-                  >
-                    GDrive
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </TableCell>
+    <TooltipProvider delayDuration={0}>
+      <div className="space-y-4">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>元動画</TableHead>
+              <TableHead>クリップタイトル</TableHead>
+              <TableHead>動画長</TableHead>
+              <TableHead className="max-w-md">切り抜き文章</TableHead>
+              <TableHead>作成日時</TableHead>
+              <TableHead className="text-right">リンク</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {clips.map((clip) => (
+              <TableRow key={clip.id}>
+                <TableCell className="font-medium">
+                  <Link href={`/videos/${clip.videoId}`} className="hover:underline text-primary">
+                    {clip.videoTitle || 'タイトルなし'}
+                  </Link>
+                </TableCell>
+                <TableCell>{clip.title || '-'}</TableCell>
+                <TableCell>{formatDuration(clip.durationSeconds)}</TableCell>
+                <TableCell className="max-w-md">
+                  {clip.transcript && clip.transcript.length > 50 ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-default">{truncateText(clip.transcript, 50)}</span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-md whitespace-pre-wrap">
+                        {clip.transcript}
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <span>{truncateText(clip.transcript, 50)}</span>
+                  )}
+                </TableCell>
+                <TableCell>{formatDate(clip.createdAt)}</TableCell>
+                <TableCell className="text-right">
+                  {clip.googleDriveUrl ? (
+                    <a
+                      href={clip.googleDriveUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      GDrive
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
 
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          全{pagination.total}件中 {(pagination.page - 1) * pagination.limit + 1}-
-          {Math.min(pagination.page * pagination.limit, pagination.total)}件を表示
-        </p>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(pagination.page - 1)}
-            disabled={pagination.page <= 1}
-          >
-            <ChevronLeft className="h-4 w-4" />
-            前へ
-          </Button>
-          <span className="text-sm">
-            {pagination.page} / {pagination.totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(pagination.page + 1)}
-            disabled={pagination.page >= pagination.totalPages}
-          >
-            次へ
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            全{pagination.total}件中 {(pagination.page - 1) * pagination.limit + 1}-
+            {Math.min(pagination.page * pagination.limit, pagination.total)}件を表示
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(pagination.page - 1)}
+              disabled={pagination.page <= 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              前へ
+            </Button>
+            <span className="text-sm">
+              {pagination.page} / {pagination.totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(pagination.page + 1)}
+              disabled={pagination.page >= pagination.totalPages}
+            >
+              次へ
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
