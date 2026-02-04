@@ -90,14 +90,14 @@ infrastructure/→ repositories, clients (throw errors)
 
 | 修正対象 | 読むべきガイド |
 |----------|----------------|
-| バックエンド (API, UseCase, Repository等) | [docs/backend-clip-video-guide.md](docs/backend-clip-video-guide.md) |
+| バックエンド (API, UseCase, Repository等) | [docs/clip-video-backend-guide.md](docs/clip-video-backend-guide.md) |
 
 ### shorts-gen機能の修正時に読むべきガイド
 
 | 修正対象 | 読むべきガイド |
 |----------|----------------|
-| バックエンド (API, UseCase, Repository等) | [docs/backend-shorts-gen-guide.md](docs/backend-shorts-gen-guide.md) |
-| フロントエンド (UI, 状態管理, Server Action等) | [docs/frontend-shorts-gen-guide.md](docs/frontend-shorts-gen-guide.md) |
+| バックエンド (API, UseCase, Repository等) | [docs/shorts-gen-backend-guide.md](docs/shorts-gen-backend-guide.md) |
+| フロントエンド (UI, 状態管理, Server Action等) | [docs/shorts-gen-frontend-guide.md](docs/shorts-gen-frontend-guide.md) |
 
 これらのガイドには、ディレクトリ構成・レイヤー間依存・主要な型・修正時のポイントがまとまっている。
 
@@ -105,6 +105,6 @@ infrastructure/→ repositories, clients (throw errors)
 
 | 修正対象 | 読むべきガイド |
 |----------|----------------|
-| フロントエンド (UI, 状態管理, Server Action等) | [docs/frontend-clip-video-guide.md](docs/frontend-clip-video-guide.md) |
+| フロントエンド (UI, 状態管理, Server Action等) | [docs/clip-video-frontend-guide.md](docs/clip-video-frontend-guide.md) |
 
 clip-videoのフロントエンドガイドには、パイプライン処理・ポーリング・クリップ抽出の仕組みがまとまっている。
