@@ -26,7 +26,7 @@ export function VideoTable({ videos }: VideoTableProps) {
   }
 
   return (
-    <Table>
+    <Table className="text-xs sm:text-sm">
       <TableHeader>
         <TableRow>
           <TableHead>タイトル</TableHead>
