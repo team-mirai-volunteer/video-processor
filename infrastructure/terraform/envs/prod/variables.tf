@@ -9,6 +9,12 @@ variable "project_name" {
   default     = "video-processor-prod"
 }
 
+variable "env" {
+  description = "Environment name (stg, prod)"
+  type        = string
+  default     = "prod"
+}
+
 variable "region" {
   description = "GCP region"
   type        = string
@@ -35,9 +41,43 @@ variable "google_credentials_json" {
   sensitive   = true
 }
 
+variable "webapp_api_key" {
+  description = "API key for webapp BFF authentication"
+  type        = string
+  sensitive   = true
+}
+
+variable "gemini_api_key" {
+  description = "Gemini API key"
+  type        = string
+  sensitive   = true
+}
+
+variable "fish_audio_api_key" {
+  description = "Fish Audio API key"
+  type        = string
+  sensitive   = true
+}
+
+variable "fish_audio_default_voice_model_id" {
+  description = "Fish Audio default voice model ID"
+  type        = string
+}
+
+variable "anthropic_api_key" {
+  description = "Anthropic API key"
+  type        = string
+  sensitive   = true
+}
+
 # Application
 variable "container_image" {
   description = "Container image URL"
+  type        = string
+}
+
+variable "migration_image" {
+  description = "Migration container image URL"
   type        = string
 }
 
@@ -54,4 +94,17 @@ variable "google_drive_output_folder_id" {
 variable "transcript_output_folder_id" {
   description = "Google Drive output folder ID for transcripts"
   type        = string
+}
+
+# GCS Temp Storage
+variable "temp_storage_type" {
+  description = "Temporary storage type (local or gcs)"
+  type        = string
+  default     = "gcs"
+}
+
+variable "video_temp_bucket" {
+  description = "GCS bucket name for temporary video storage"
+  type        = string
+  default     = ""
 }
