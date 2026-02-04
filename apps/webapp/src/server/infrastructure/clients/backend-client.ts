@@ -14,6 +14,8 @@ import type {
   GeneratePublishTextResponse,
   GetAllClipsQuery,
   GetAllClipsResponse,
+  GetClipResponse,
+  GetClipVideoUrlResponse,
   GetClipsResponse,
   GetComposedVideoResponse,
   GetPublishTextResponse,
@@ -143,6 +145,34 @@ export const backendClient = {
     await fetchBackend(`/api/clips/${id}`, {
       method: 'DELETE',
     });
+  },
+
+  async getClip(
+    id: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetClipResponse | null> {
+    try {
+      return await fetchBackend<GetClipResponse>(`/api/clips/${id}`, options);
+    } catch (error) {
+      if (error instanceof BackendApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  async getClipVideoUrl(
+    clipId: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetClipVideoUrlResponse | null> {
+    try {
+      return await fetchBackend<GetClipVideoUrlResponse>(`/api/clips/${clipId}/video-url`, options);
+    } catch (error) {
+      if (error instanceof BackendApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   async extractClips(videoId: string, request: ExtractClipsRequest): Promise<ExtractClipsResponse> {

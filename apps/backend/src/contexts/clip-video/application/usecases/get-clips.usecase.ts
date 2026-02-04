@@ -61,6 +61,12 @@ export class GetClipsUseCase {
       errorMessage: clip.errorMessage,
       createdAt: clip.createdAt,
       updatedAt: clip.updatedAt,
+      subtitledVideoGcsUri: clip.subtitledVideoGcsUri,
+      subtitledVideoUrl: clip.subtitledVideoUrl,
+      subtitledVideoDriveId: clip.subtitledVideoDriveId,
+      subtitledVideoDriveUrl: clip.subtitledVideoDriveUrl,
+      clipVideoGcsUri: clip.clipVideoGcsUri,
+      clipVideoGcsExpiresAt: clip.clipVideoGcsExpiresAt,
     };
   }
 }
