@@ -23,12 +23,6 @@ function Header() {
           <Link href="/clips" className="text-sm font-medium hover:text-primary">
             クリップ一覧
           </Link>
-          <Link
-            href="/shorts-gen"
-            className="text-xs text-muted-foreground/30 hover:text-muted-foreground/50"
-          >
-            .
-          </Link>
         </nav>
       </div>
     </header>

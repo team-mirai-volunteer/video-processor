@@ -12,7 +12,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDate } from '@/lib/utils';
 import type { AllClipSummary, Pagination } from '@video-processor/shared';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -72,7 +72,7 @@ export function ClipListTable({ clips, pagination }: ClipListTableProps) {
             {clips.map((clip) => (
               <TableRow key={clip.id}>
                 <TableCell className="font-medium">
-                  <Link href={`/videos/${clip.videoId}`} className="hover:underline text-primary">
+                  <Link href={`/videos/${clip.videoId}`} className="underline">
                     {clip.videoTitle || 'タイトルなし'}
                   </Link>
                 </TableCell>
@@ -82,8 +82,9 @@ export function ClipListTable({ clips, pagination }: ClipListTableProps) {
                       href={clip.googleDriveUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center px-2 py-1 text-xs font-medium text-white bg-black rounded hover:bg-gray-800 transition-colors"
+                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-black rounded hover:bg-gray-800 transition-colors"
                     >
+                      <Download className="h-3 w-3" />
                       DL
                     </a>
                   ) : (
