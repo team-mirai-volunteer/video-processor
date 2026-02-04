@@ -109,6 +109,7 @@ export interface AllClipSummary {
   status: import('./clip.js').ClipStatus;
   videoId: string;
   videoTitle: string | null;
+  durationSeconds: number;
   createdAt: Date;
 }
 

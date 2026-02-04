@@ -38,6 +38,7 @@ export class GetAllClipsUseCase {
         status: clip.status,
         videoId: clip.videoId,
         videoTitle,
+        durationSeconds: clip.durationSeconds,
         createdAt: clip.createdAt,
       })),
       pagination: {
