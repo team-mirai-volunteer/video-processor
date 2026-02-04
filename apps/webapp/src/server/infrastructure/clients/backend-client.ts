@@ -139,6 +139,12 @@ export const backendClient = {
     });
   },
 
+  async deleteClip(id: string): Promise<void> {
+    await fetchBackend(`/api/clips/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
   async extractClips(videoId: string, request: ExtractClipsRequest): Promise<ExtractClipsResponse> {
     return fetchBackend<ExtractClipsResponse>(`/api/videos/${videoId}/extract-clips`, {
       method: 'POST',

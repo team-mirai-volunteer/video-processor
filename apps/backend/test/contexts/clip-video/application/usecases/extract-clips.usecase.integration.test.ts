@@ -187,6 +187,10 @@ class InMemoryClipRepository implements ClipRepositoryGateway {
       total: allClips.length,
     };
   }
+
+  async delete(id: string): Promise<void> {
+    this.clips.delete(id);
+  }
 }
 
 describe.skipIf(!runIntegrationTests)('ExtractClipsUseCase Integration', () => {

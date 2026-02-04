@@ -49,4 +49,9 @@ export interface ClipRepositoryGateway {
    * Find all clips with pagination (cross-video)
    */
   findAllPaginated(options: FindAllPaginatedOptions): Promise<FindAllPaginatedResult>;
+
+  /**
+   * Delete a clip by ID
+   */
+  delete(id: string): Promise<void>;
 }

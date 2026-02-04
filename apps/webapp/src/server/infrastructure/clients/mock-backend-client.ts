@@ -195,6 +195,10 @@ export const mockBackendClient = {
     };
   },
 
+  async deleteClip(_id: string): Promise<void> {
+    // Mock deletion - do nothing
+  },
+
   // Pipeline Steps
   async cacheVideo(videoId: string): Promise<CacheVideoResponse> {
     return {

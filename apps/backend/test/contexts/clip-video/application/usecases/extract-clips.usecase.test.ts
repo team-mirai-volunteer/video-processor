@@ -33,6 +33,7 @@ describe('ExtractClipsUseCase', () => {
     findById: vi.fn(),
     findByVideoId: vi.fn(),
     findAllPaginated: vi.fn(),
+    delete: vi.fn(),
   };
 
   const mockTranscriptionRepository: TranscriptionRepositoryGateway = {

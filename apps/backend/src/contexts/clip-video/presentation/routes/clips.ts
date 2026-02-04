@@ -1,3 +1,4 @@
+import { DeleteClipUseCase } from '@clip-video/application/usecases/delete-clip.usecase.js';
 import { GetAllClipsUseCase } from '@clip-video/application/usecases/get-all-clips.usecase.js';
 import { GetClipsUseCase } from '@clip-video/application/usecases/get-clips.usecase.js';
 import { ClipRepository } from '@clip-video/infrastructure/repositories/clip.repository.js';
@@ -18,6 +19,10 @@ const getClipsUseCase = new GetClipsUseCase({
 });
 
 const getAllClipsUseCase = new GetAllClipsUseCase({
+  clipRepository,
+});
+
+const deleteClipUseCase = new DeleteClipUseCase({
   clipRepository,
 });
 
@@ -59,6 +64,20 @@ router.get('/clips/:id', async (req, res, next) => {
     const { id } = req.params;
     const result = await getClipsUseCase.executeForClip(id ?? '');
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * DELETE /api/clips/:id
+ * Delete a clip
+ */
+router.delete('/clips/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await deleteClipUseCase.execute({ clipId: id ?? '' });
+    res.status(204).send();
   } catch (error) {
     next(error);
   }
