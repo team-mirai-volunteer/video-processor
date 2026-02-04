@@ -40,6 +40,18 @@ interface Props {
 
 const POLLING_INTERVAL = 3000; // 3秒
 
+const CLIP_INSTRUCTIONS_PLACEHOLDER_SINGLE = `『新党チームみらいは2025年にもう新しくできた最も若い国政政党です。』のように、具体的な動画内のセリフを指定してください。
+タイムスタンプ情報などが含まれていても問題なく切り出されます。`;
+
+const CLIP_INSTRUCTIONS_PLACEHOLDER_MULTIPLE = `=====
+① 02:44.60 - 02:59.96
+ソフトを書くだけではなく、例えば超党派で他の政党さん、政治家さんと一緒にAIと民主主義について協議するようなそういった枠組みも作ることができております。
+
+② 03:35.64 - 03:47.08
+そんな中で是非皆さんにまだまだ知られていないこのチームみらい、こういう政党があるんだということを知っていただきたい、広めていただきたいとそう思っております。
+=====
+のように、AIが各クリップの区切りを判別できるよう、明確に記載してください。`;
+
 export function VideoDetailClient({
   video: initialVideo,
   initialTranscription,
@@ -274,10 +286,6 @@ export function VideoDetailClient({
                     <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                     <div>
                       複数クリップを作成する場合は、AIが各クリップの区切りを判別できるよう、明確に記載してください。
-                      <br />
-                      <span className="text-muted-foreground">
-                        （例：「1. ○○の部分」「2. △△の部分」）
-                      </span>
                     </div>
                   </div>
                 )}
@@ -286,10 +294,14 @@ export function VideoDetailClient({
                   <Label htmlFor="clipInstructions">切り抜き指示</Label>
                   <Textarea
                     id="clipInstructions"
-                    placeholder="以下の箇所を切り抜いてください：&#10;1. 冒頭の自己紹介部分&#10;2. 政策について語っている部分&#10;3. 質疑応答のハイライト"
+                    placeholder={
+                      multipleClips
+                        ? CLIP_INSTRUCTIONS_PLACEHOLDER_MULTIPLE
+                        : CLIP_INSTRUCTIONS_PLACEHOLDER_SINGLE
+                    }
                     value={clipInstructions}
                     onChange={(e) => setClipInstructions(e.target.value)}
-                    rows={6}
+                    rows={11}
                     disabled={extracting}
                   />
                   <p className="text-sm text-muted-foreground">
