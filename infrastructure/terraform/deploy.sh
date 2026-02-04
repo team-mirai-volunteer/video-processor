@@ -43,7 +43,7 @@ case "${ENV}" in
     ;;
   prod)
     PROJECT_ID="mirai-video-processor"
-    PROJECT_NAME="video-processor"
+    PROJECT_NAME="video-processor-prod"
     ;;
 esac
 REGION="asia-northeast1"
