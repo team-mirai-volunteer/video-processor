@@ -208,6 +208,18 @@ export class Clip {
   }
 
   /**
+   * Update clip with GCS cache info for video playback
+   */
+  withGcsCache(gcsUri: string, expiresAt: Date): Clip {
+    return new Clip({
+      ...this.toProps(),
+      clipVideoGcsUri: gcsUri,
+      clipVideoGcsExpiresAt: expiresAt,
+      updatedAt: new Date(),
+    });
+  }
+
+  /**
    * Convert to plain object
    */
   toProps(): ClipProps {
