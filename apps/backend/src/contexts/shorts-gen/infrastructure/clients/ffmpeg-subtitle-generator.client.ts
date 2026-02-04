@@ -16,9 +16,12 @@ import type {
 
 /**
  * Default font family with fallbacks for different platforms
- * Noto Sans CJK JP (Linux), Hiragino Kaku Gothic Pro (macOS), or DejaVu Sans (fallback)
+ * - Linux (Cloud Run): Noto Sans CJK JP
+ * - macOS (local dev): Hiragino Kaku Gothic Pro
  */
-const DEFAULT_FONT_FAMILY = process.env.SUBTITLE_FONT_FAMILY || 'Hiragino Kaku Gothic Pro';
+const DEFAULT_FONT_FAMILY =
+  process.env.SUBTITLE_FONT_FAMILY ||
+  (process.platform === 'darwin' ? 'Hiragino Kaku Gothic Pro' : 'Noto Sans CJK JP');
 
 /**
  * Default subtitle style settings
