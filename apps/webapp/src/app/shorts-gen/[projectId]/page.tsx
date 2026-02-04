@@ -1,5 +1,6 @@
 import { getBackendClient } from '@/server/infrastructure/clients/get-backend-client';
 import { loadShortsProject } from '@/server/presentation/shorts-gen/loaders/loadShortsProject';
+import { AlertTriangle } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { ProjectDetailClient } from './project-detail-client';
 
@@ -53,14 +54,25 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     }
 
     return (
-      <ProjectDetailClient
-        project={projectResponse.data}
-        initialPlanning={initialPlanning}
-        initialScript={initialScript}
-        initialScenes={initialScenes}
-        initialAssets={initialAssets}
-        initialReferenceCharacters={referenceCharactersResponse?.characters ?? []}
-      />
+      <div className="space-y-6">
+        <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0 text-destructive" />
+            <ul className="list-disc list-inside text-sm text-destructive space-y-1">
+              <li>この機能は実装中で動作に不安定な部分があります。</li>
+              <li>他者が権利を持つキャラクターを使っての生成は絶対に行わないでください。</li>
+            </ul>
+          </div>
+        </div>
+        <ProjectDetailClient
+          project={projectResponse.data}
+          initialPlanning={initialPlanning}
+          initialScript={initialScript}
+          initialScenes={initialScenes}
+          initialAssets={initialAssets}
+          initialReferenceCharacters={referenceCharactersResponse?.characters ?? []}
+        />
+      </div>
     );
   } catch {
     notFound();
