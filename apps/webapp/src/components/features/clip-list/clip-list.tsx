@@ -5,10 +5,9 @@ import type { Clip } from '@video-processor/shared';
 
 interface ClipListProps {
   clips: Clip[];
-  onClipDelete?: (clipId: string) => void;
 }
 
-export function ClipList({ clips, onClipDelete }: ClipListProps) {
+export function ClipList({ clips }: ClipListProps) {
   if (clips.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -20,7 +19,7 @@ export function ClipList({ clips, onClipDelete }: ClipListProps) {
   return (
     <div className="grid gap-4">
       {clips.map((clip) => (
-        <ClipCard key={clip.id} clip={clip} onDelete={onClipDelete} />
+        <ClipCard key={clip.id} clip={clip} />
       ))}
     </div>
   );

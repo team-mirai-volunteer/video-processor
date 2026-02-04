@@ -1,26 +1,14 @@
 'use client';
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDuration } from '@/lib/utils';
 import type { Clip } from '@video-processor/shared';
-import { Clock, ExternalLink, FileText, Trash2 } from 'lucide-react';
+import { Clock, ExternalLink, FileText } from 'lucide-react';
 
 interface ClipCardProps {
   clip: Clip;
-  onDelete?: (clipId: string) => void;
 }
 
 const statusConfig = {
@@ -30,7 +18,7 @@ const statusConfig = {
   failed: { label: 'エラー', variant: 'destructive' as const },
 };
 
-export function ClipCard({ clip, onDelete }: ClipCardProps) {
+export function ClipCard({ clip }: ClipCardProps) {
   const config = statusConfig[clip.status];
 
   return (
@@ -47,35 +35,7 @@ export function ClipCard({ clip, onDelete }: ClipCardProps) {
               <span>({formatDuration(clip.durationSeconds)})</span>
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant={config.variant}>{config.label}</Badge>
-            {onDelete && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>クリップを削除しますか?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      このクリップをリストから削除します。Google
-                      Driveにアップロードされた動画ファイルは削除されません。
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => onDelete(clip.id)}>削除</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-          </div>
+          <Badge variant={config.variant}>{config.label}</Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
