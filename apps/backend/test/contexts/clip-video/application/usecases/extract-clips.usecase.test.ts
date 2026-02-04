@@ -300,6 +300,16 @@ describe('ExtractClipsUseCase', () => {
       expect(mockVideoProcessingGateway.extractClipFromFile).toHaveBeenCalled();
       expect(mockStorageGateway.downloadFileAsStream).toHaveBeenCalled();
       expect(mockTempStorageGateway.uploadFromStream).toHaveBeenCalled();
+
+      // Verify that clip end time has 0.5 second padding applied
+      const extractClipCalls = vi.mocked(mockVideoProcessingGateway.extractClipFromFile).mock.calls;
+      expect(extractClipCalls.length).toBeGreaterThan(0);
+      const extractClipCall = extractClipCalls[0]!;
+      const clipStartTime = extractClipCall[2];
+      const clipEndTime = extractClipCall[3];
+      const expectedClip = mockAiResponse.clips[0]!;
+      expect(clipStartTime).toBe(expectedClip.startTimeSeconds); // 0
+      expect(clipEndTime).toBe(expectedClip.endTimeSeconds + 0.5); // 30 + 0.5 = 30.5
     });
 
     it('should update video status to failed on error', async () => {

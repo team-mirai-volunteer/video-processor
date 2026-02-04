@@ -209,12 +209,14 @@ export class ExtractClipsUseCase {
             await this.clipRepository.save(clip.withStatus('processing'));
 
             // Extract clip using FFmpeg (file-based, memory efficient)
+            // Add padding to avoid cutting off the end of the clip
+            const CLIP_END_PADDING_SECONDS = 0.5;
             log.info(`Extracting clip ${i + 1}...`);
             await this.videoProcessingGateway.extractClipFromFile(
               sourceVideoPath,
               clipOutputPath,
               clip.startTimeSeconds,
-              clip.endTimeSeconds
+              clip.endTimeSeconds + CLIP_END_PADDING_SECONDS
             );
 
             const clipStats = await fs.promises.stat(clipOutputPath);
