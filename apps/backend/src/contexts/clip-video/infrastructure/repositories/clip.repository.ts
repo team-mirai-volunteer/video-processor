@@ -134,6 +134,12 @@ export class ClipRepository implements ClipRepositoryGateway {
     return { clips, total };
   }
 
+  async delete(id: string): Promise<void> {
+    await this.prisma.clip.delete({
+      where: { id },
+    });
+  }
+
   private toDomain(record: {
     id: string;
     videoId: string;

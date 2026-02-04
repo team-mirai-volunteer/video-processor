@@ -1,5 +1,16 @@
 'use client';
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -11,10 +22,12 @@ import {
 } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDate } from '@/lib/utils';
+import { deleteClip } from '@/server/presentation/clip-video/actions/deleteClip';
 import type { AllClipSummary, Pagination } from '@video-processor/shared';
-import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
 
 interface ClipListTableProps {
   clips: AllClipSummary[];
@@ -41,11 +54,24 @@ function formatDuration(seconds: number): string {
 export function ClipListTable({ clips, pagination }: ClipListTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('page', newPage.toString());
     router.push(`/clips?${params.toString()}`);
+  };
+
+  const handleDelete = async (clipId: string) => {
+    setDeletingId(clipId);
+    try {
+      const result = await deleteClip(clipId);
+      if (result.success) {
+        router.refresh();
+      }
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   if (clips.length === 0) {
@@ -66,6 +92,7 @@ export function ClipListTable({ clips, pagination }: ClipListTableProps) {
               <TableHead className="max-w-md">切り抜き文章</TableHead>
               <TableHead>作成日時</TableHead>
               <TableHead className="text-right">リンク</TableHead>
+              <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -107,6 +134,35 @@ export function ClipListTable({ clips, pagination }: ClipListTableProps) {
                   ) : (
                     <span className="text-muted-foreground">-</span>
                   )}
+                </TableCell>
+                <TableCell>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        disabled={deletingId === clip.id}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>クリップを削除しますか?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          このクリップをリストから削除します。Google
+                          Driveにアップロードされた動画ファイルは削除されません。
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(clip.id)}>
+                          削除
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </TableCell>
               </TableRow>
             ))}
