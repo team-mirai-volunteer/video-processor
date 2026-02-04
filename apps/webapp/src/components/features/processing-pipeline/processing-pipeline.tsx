@@ -6,6 +6,7 @@ import {
 } from '@/components/features/processing-pipeline/pipeline-step';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { formatDate, formatDuration } from '@/lib/utils';
 import { cacheVideo } from '@/server/presentation/clip-video/actions/cacheVideo';
 import { extractAudio } from '@/server/presentation/clip-video/actions/extractAudio';
@@ -22,7 +23,7 @@ import type {
   TranscriptionPhase,
   VideoWithRelations,
 } from '@video-processor/shared';
-import { Loader2, PlayCircle, RotateCcw } from 'lucide-react';
+import { ChevronDown, Loader2, PlayCircle, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface ProcessingPipelineProps {
@@ -116,6 +117,7 @@ export function ProcessingPipeline({
   const [runningAllSteps, setRunningAllSteps] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resettingStep, setResettingStep] = useState<ResetStep | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   // Initialize step states based on video/transcription data and transcriptionPhase
   const initialSteps = useMemo((): StepsState => {
@@ -471,6 +473,12 @@ export function ProcessingPipeline({
     steps.transcribe.status === 'running' ||
     steps.refine.status === 'running';
 
+  const isAllStepsCompleted =
+    steps.cache.status === 'completed' &&
+    steps.extractAudio.status === 'completed' &&
+    steps.transcribe.status === 'completed' &&
+    steps.refine.status === 'completed';
+
   // Render step details
   const renderCacheDetails = () => {
     const result = steps.cache.result as CacheVideoResponse | undefined;
@@ -547,11 +555,146 @@ export function ProcessingPipeline({
     );
   };
 
+  const pipelineSteps = (
+    <div className="space-y-3">
+      {/* Step 1: Cache */}
+      <PipelineStep
+        stepNumber={1}
+        title="動画の読み込み"
+        description="Google Driveから動画ファイルを取得します"
+        status={steps.cache.status}
+        isExpanded={expandedStep === 'cache'}
+        onToggle={() => toggleStep('cache')}
+        onExecute={handleCacheVideo}
+        canExecute={!isAnyStepRunning && !resettingStep}
+        error={steps.cache.error}
+        progressMessage={steps.cache.status === 'running' ? progressMessage : undefined}
+        onReset={handleResetCache}
+        canReset={
+          !resettingStep &&
+          (steps.cache.status === 'completed' ||
+            steps.cache.status === 'error' ||
+            steps.cache.status === 'running')
+        }
+        isResetting={resettingStep === 'cache'}
+      >
+        {renderCacheDetails()}
+      </PipelineStep>
+
+      {/* Step 2: Extract Audio */}
+      <PipelineStep
+        stepNumber={2}
+        title="音声の取り出し"
+        description="動画から音声データを取り出します"
+        status={steps.extractAudio.status}
+        isExpanded={expandedStep === 'extractAudio'}
+        onToggle={() => toggleStep('extractAudio')}
+        onExecute={handleExtractAudio}
+        canExecute={!isAnyStepRunning && !resettingStep && steps.cache.status === 'completed'}
+        error={steps.extractAudio.error}
+        progressMessage={steps.extractAudio.status === 'running' ? progressMessage : undefined}
+        onReset={handleResetTranscribe}
+        canReset={
+          !resettingStep &&
+          (steps.extractAudio.status === 'completed' ||
+            steps.extractAudio.status === 'error' ||
+            steps.extractAudio.status === 'running')
+        }
+        isResetting={resettingStep === 'transcribe'}
+      >
+        {renderExtractAudioDetails()}
+      </PipelineStep>
+
+      {/* Step 3: Transcribe */}
+      <PipelineStep
+        stepNumber={3}
+        title="音声を文字に変換"
+        description="音声を解析してテキストに変換します"
+        status={steps.transcribe.status}
+        isExpanded={expandedStep === 'transcribe'}
+        onToggle={() => toggleStep('transcribe')}
+        onExecute={handleTranscribeAudio}
+        canExecute={
+          !isAnyStepRunning &&
+          !resettingStep &&
+          (steps.extractAudio.status === 'completed' || steps.cache.status === 'completed')
+        }
+        error={steps.transcribe.error}
+        progressMessage={steps.transcribe.status === 'running' ? progressMessage : undefined}
+        onReset={handleResetTranscribe}
+        canReset={
+          !resettingStep &&
+          (steps.transcribe.status === 'completed' ||
+            steps.transcribe.status === 'error' ||
+            steps.transcribe.status === 'running')
+        }
+        isResetting={resettingStep === 'transcribe'}
+      >
+        {renderTranscribeDetails()}
+      </PipelineStep>
+
+      {/* Step 4: Refine */}
+      <PipelineStep
+        stepNumber={4}
+        title="字幕テキストの整形"
+        description="AIが文章を読みやすく整え、誤字を修正します"
+        status={steps.refine.status}
+        isExpanded={expandedStep === 'refine'}
+        onToggle={() => toggleStep('refine')}
+        onExecute={handleRefineTranscript}
+        canExecute={!isAnyStepRunning && !resettingStep && steps.transcribe.status === 'completed'}
+        error={steps.refine.error}
+        progressMessage={steps.refine.status === 'running' ? progressMessage : undefined}
+        onReset={handleResetRefine}
+        canReset={
+          !resettingStep &&
+          (steps.refine.status === 'completed' ||
+            steps.refine.status === 'error' ||
+            steps.refine.status === 'running')
+        }
+        isResetting={resettingStep === 'refine'}
+      >
+        {renderRefineDetails()}
+      </PipelineStep>
+    </div>
+  );
+
+  // 全ステップ完了時は折りたたみ可能なUI
+  if (isAllStepsCompleted) {
+    return (
+      <Card>
+        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+          <CardHeader>
+            <CollapsibleTrigger asChild>
+              <button type="button" className="flex w-full items-center justify-between text-left">
+                <div>
+                  <CardTitle>動画の準備</CardTitle>
+                  <CardDescription>
+                    すべての準備が完了しています。クリックで詳細を表示できます。
+                  </CardDescription>
+                </div>
+                <ChevronDown
+                  className={`h-5 w-5 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+            </CollapsibleTrigger>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent>{pipelineSteps}</CardContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
+    );
+  }
+
+  // 未完了の場合は通常表示
   return (
     <Card>
       <CardHeader>
         <CardTitle>動画の準備</CardTitle>
-        <CardDescription>文字起こしと字幕作成のための前処理を行います</CardDescription>
+        <CardDescription>
+          文字起こしと字幕作成のための前処理を行います。すべて「完了」であれば再実行する必要はありません。
+        </CardDescription>
         <div className="flex gap-2 pt-2 justify-end">
           <Button
             variant="outline"
@@ -590,109 +733,7 @@ export function ProcessingPipeline({
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {/* Step 1: Cache */}
-        <PipelineStep
-          stepNumber={1}
-          title="動画の読み込み"
-          description="Google Driveから動画ファイルを取得します"
-          status={steps.cache.status}
-          isExpanded={expandedStep === 'cache'}
-          onToggle={() => toggleStep('cache')}
-          onExecute={handleCacheVideo}
-          canExecute={!isAnyStepRunning && !resettingStep}
-          error={steps.cache.error}
-          progressMessage={steps.cache.status === 'running' ? progressMessage : undefined}
-          onReset={handleResetCache}
-          canReset={
-            !resettingStep &&
-            (steps.cache.status === 'completed' ||
-              steps.cache.status === 'error' ||
-              steps.cache.status === 'running')
-          }
-          isResetting={resettingStep === 'cache'}
-        >
-          {renderCacheDetails()}
-        </PipelineStep>
-
-        {/* Step 2: Extract Audio */}
-        <PipelineStep
-          stepNumber={2}
-          title="音声の取り出し"
-          description="動画から音声データを取り出します"
-          status={steps.extractAudio.status}
-          isExpanded={expandedStep === 'extractAudio'}
-          onToggle={() => toggleStep('extractAudio')}
-          onExecute={handleExtractAudio}
-          canExecute={!isAnyStepRunning && !resettingStep && steps.cache.status === 'completed'}
-          error={steps.extractAudio.error}
-          progressMessage={steps.extractAudio.status === 'running' ? progressMessage : undefined}
-          onReset={handleResetTranscribe}
-          canReset={
-            !resettingStep &&
-            (steps.extractAudio.status === 'completed' ||
-              steps.extractAudio.status === 'error' ||
-              steps.extractAudio.status === 'running')
-          }
-          isResetting={resettingStep === 'transcribe'}
-        >
-          {renderExtractAudioDetails()}
-        </PipelineStep>
-
-        {/* Step 3: Transcribe */}
-        <PipelineStep
-          stepNumber={3}
-          title="音声を文字に変換"
-          description="音声を解析してテキストに変換します"
-          status={steps.transcribe.status}
-          isExpanded={expandedStep === 'transcribe'}
-          onToggle={() => toggleStep('transcribe')}
-          onExecute={handleTranscribeAudio}
-          canExecute={
-            !isAnyStepRunning &&
-            !resettingStep &&
-            (steps.extractAudio.status === 'completed' || steps.cache.status === 'completed')
-          }
-          error={steps.transcribe.error}
-          progressMessage={steps.transcribe.status === 'running' ? progressMessage : undefined}
-          onReset={handleResetTranscribe}
-          canReset={
-            !resettingStep &&
-            (steps.transcribe.status === 'completed' ||
-              steps.transcribe.status === 'error' ||
-              steps.transcribe.status === 'running')
-          }
-          isResetting={resettingStep === 'transcribe'}
-        >
-          {renderTranscribeDetails()}
-        </PipelineStep>
-
-        {/* Step 4: Refine */}
-        <PipelineStep
-          stepNumber={4}
-          title="字幕テキストの整形"
-          description="AIが文章を読みやすく整え、誤字を修正します"
-          status={steps.refine.status}
-          isExpanded={expandedStep === 'refine'}
-          onToggle={() => toggleStep('refine')}
-          onExecute={handleRefineTranscript}
-          canExecute={
-            !isAnyStepRunning && !resettingStep && steps.transcribe.status === 'completed'
-          }
-          error={steps.refine.error}
-          progressMessage={steps.refine.status === 'running' ? progressMessage : undefined}
-          onReset={handleResetRefine}
-          canReset={
-            !resettingStep &&
-            (steps.refine.status === 'completed' ||
-              steps.refine.status === 'error' ||
-              steps.refine.status === 'running')
-          }
-          isResetting={resettingStep === 'refine'}
-        >
-          {renderRefineDetails()}
-        </PipelineStep>
-      </CardContent>
+      <CardContent>{pipelineSteps}</CardContent>
     </Card>
   );
 }

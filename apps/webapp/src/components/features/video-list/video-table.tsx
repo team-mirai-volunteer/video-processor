@@ -1,7 +1,6 @@
 'use client';
 
 import { StatusBadge } from '@/components/features/video-list/status-badge';
-import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -30,30 +29,24 @@ export function VideoTable({ videos }: VideoTableProps) {
       <TableHeader>
         <TableRow>
           <TableHead>タイトル</TableHead>
-          <TableHead>ステータス</TableHead>
+          <TableHead className="w-32">ステータス</TableHead>
           <TableHead className="text-center">クリップ数</TableHead>
           <TableHead>登録日時</TableHead>
-          <TableHead className="text-right" />
         </TableRow>
       </TableHeader>
       <TableBody>
         {videos.map((video) => (
           <TableRow key={video.id}>
             <TableCell className="font-medium">
-              <Link href={`/videos/${video.id}`} className="hover:underline">
+              <Link href={`/videos/${video.id}`} className="underline">
                 {video.title || 'タイトルなし'}
               </Link>
             </TableCell>
-            <TableCell>
+            <TableCell className="w-32">
               <StatusBadge status={video.status} />
             </TableCell>
             <TableCell className="text-center">{video.clipCount}</TableCell>
             <TableCell>{formatDate(video.createdAt)}</TableCell>
-            <TableCell className="text-right">
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/videos/${video.id}`}>詳細</Link>
-              </Button>
-            </TableCell>
           </TableRow>
         ))}
       </TableBody>
