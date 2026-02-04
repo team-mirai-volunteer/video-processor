@@ -12,11 +12,11 @@ function Header() {
   return (
     <header className="border-b">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-          <Video className="h-6 w-6" />
+        <Link href="/" className="flex items-center gap-2 font-bold text-sm sm:text-xl">
+          <Video className="h-6 w-6 shrink-0" />
           <span>みらい動画スタジオ β</span>
         </Link>
-        <nav className="flex items-center gap-6">
+        <nav className="flex items-center gap-3 sm:gap-6">
           <Link href="/videos" className="text-sm font-medium hover:text-primary">
             動画一覧
           </Link>

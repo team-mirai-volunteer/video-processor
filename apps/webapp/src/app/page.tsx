@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, Heart, ListOrdered, Scissors, Share2 } from 'lucide-react';
+import { ArrowRight, Github, Heart, ListOrdered, Scissors, Share2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function HomePage() {
@@ -110,6 +110,19 @@ export default function HomePage() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* リポジトリリンク */}
+      <div className="border-t pt-6 text-center">
+        <a
+          href="https://github.com/team-mirai-volunteer/video-processor"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <Github className="h-4 w-4" />
+          GitHub Repository
+        </a>
+      </div>
     </div>
   );
 }

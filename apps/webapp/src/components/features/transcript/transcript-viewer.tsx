@@ -87,19 +87,19 @@ export function TranscriptViewer({
 
   return (
     <Tabs defaultValue={defaultTab} className="w-full">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <TabsList>
           <TabsTrigger value="timeline" disabled={!hasRefined && !isLoadingRefined}>
             タイムライン
             {isLoadingRefined && <Loader2 className="ml-2 h-3 w-3 animate-spin" />}
           </TabsTrigger>
           <TabsTrigger value="plain-text" disabled={!hasRefined}>
-            PlainText
+            テキスト
           </TabsTrigger>
           <TabsTrigger value="json" disabled={!hasRefined}>
             JSON
           </TabsTrigger>
-          <TabsTrigger value="raw-json">文字起こし（校正前）</TabsTrigger>
+          <TabsTrigger value="raw-json">校正前</TabsTrigger>
         </TabsList>
 
         <div className="flex items-center gap-2">

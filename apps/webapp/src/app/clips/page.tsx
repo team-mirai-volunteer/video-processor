@@ -29,7 +29,7 @@ export default async function ClipsPage({ searchParams }: ClipsPageProps) {
           <CardTitle>全クリップ</CardTitle>
           <CardDescription>登録された動画から生成されたクリップの一覧です</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-0">
           <ClipListTable clips={response.data} pagination={response.pagination} />
         </CardContent>
       </Card>

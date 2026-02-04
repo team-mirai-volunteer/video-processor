@@ -143,19 +143,17 @@ export function VideoDetailClient({
         </Button>
       </div>
 
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">{video.title || 'タイトルなし'}</h1>
-          <div className="flex items-center gap-2 mt-2">
-            <StatusBadge status={video.status} />
-          </div>
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold">{video.title || 'タイトルなし'}</h1>
+        <div className="flex items-center gap-3">
+          <StatusBadge status={video.status} />
+          <Button variant="outline" size="sm" asChild>
+            <a href={video.googleDriveUrl} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Google Driveで開く
+            </a>
+          </Button>
         </div>
-        <Button variant="outline" asChild>
-          <a href={video.googleDriveUrl} target="_blank" rel="noopener noreferrer">
-            <ExternalLink className="mr-2 h-4 w-4" />
-            Google Driveで開く
-          </a>
-        </Button>
       </div>
 
       {error && (
