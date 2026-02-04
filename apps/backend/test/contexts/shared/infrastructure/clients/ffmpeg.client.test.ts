@@ -121,6 +121,82 @@ describe.skipIf(!runIntegrationTests)('FFmpegClient Integration', () => {
 
   // extractAudio method was removed - use extractAudioFromFile instead
 
+  describe('extractClipFromFile', () => {
+    it('should extract a clip from file to file with end padding applied', async () => {
+      const tempDir = await fs.promises.mkdtemp(path.join(OUTPUT_DIR, 'ffmpeg-test-'));
+      const inputPath = path.join(tempDir, 'input.mp4');
+      const outputPath = path.join(tempDir, 'output.mp4');
+
+      try {
+        // Create output dir if not exists
+        await fs.promises.mkdir(OUTPUT_DIR, { recursive: true });
+
+        // Copy test video to temp input
+        await fs.promises.copyFile(SAMPLE_VIDEO_PATH, inputPath);
+
+        const startTime = 1;
+        const endTime = 3;
+        const CLIP_END_PADDING_SECONDS = 0.5;
+
+        // Execute
+        await client.extractClipFromFile(inputPath, outputPath, startTime, endTime);
+
+        // Verify output exists
+        const clipBuffer = await fs.promises.readFile(outputPath);
+        expect(clipBuffer.length).toBeGreaterThan(0);
+
+        // Verify the clip duration includes padding
+        const clipDuration = await client.getVideoDuration(clipBuffer);
+        const expectedDurationWithPadding = endTime - startTime + CLIP_END_PADDING_SECONDS;
+
+        // Allow tolerance for stream copy (keyframe-based cutting)
+        expect(clipDuration).toBeGreaterThanOrEqual(expectedDurationWithPadding - 1.5);
+        expect(clipDuration).toBeLessThanOrEqual(expectedDurationWithPadding + 1.5);
+      } finally {
+        await fs.promises.rm(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should handle end time beyond video duration gracefully', async () => {
+      const tempDir = await fs.promises.mkdtemp(path.join(OUTPUT_DIR, 'ffmpeg-test-'));
+      const inputPath = path.join(tempDir, 'input.mp4');
+      const outputPath = path.join(tempDir, 'output.mp4');
+
+      try {
+        await fs.promises.mkdir(OUTPUT_DIR, { recursive: true });
+        await fs.promises.copyFile(SAMPLE_VIDEO_PATH, inputPath);
+
+        // Extract near the end of video - with padding, this should exceed video duration
+        // Video is ~12.8s, so endTime=12.5 + padding=0.5 = 13s (beyond video)
+        const startTime = 10;
+        const endTime = 12.5;
+
+        // Should not throw - FFmpeg handles this gracefully
+        await client.extractClipFromFile(inputPath, outputPath, startTime, endTime);
+
+        // Verify output exists
+        const clipBuffer = await fs.promises.readFile(outputPath);
+        expect(clipBuffer.length).toBeGreaterThan(0);
+      } finally {
+        await fs.promises.rm(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should throw an error for non-existent input file', async () => {
+      const tempDir = await fs.promises.mkdtemp(path.join(OUTPUT_DIR, 'ffmpeg-test-'));
+      const inputPath = path.join(tempDir, 'non-existent.mp4');
+      const outputPath = path.join(tempDir, 'output.mp4');
+
+      try {
+        await fs.promises.mkdir(OUTPUT_DIR, { recursive: true });
+
+        await expect(client.extractClipFromFile(inputPath, outputPath, 0, 1)).rejects.toThrow();
+      } finally {
+        await fs.promises.rm(tempDir, { recursive: true, force: true });
+      }
+    });
+  });
+
   describe('extractAudioFromFile', () => {
     it('should extract WAV audio from file to file', async () => {
       const tempDir = await fs.promises.mkdtemp(path.join(OUTPUT_DIR, 'ffmpeg-test-'));

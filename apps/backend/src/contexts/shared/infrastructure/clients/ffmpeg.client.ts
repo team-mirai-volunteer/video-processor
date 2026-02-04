@@ -119,7 +119,8 @@ export class FFmpegClient implements VideoProcessingGateway {
     startTimeSeconds: number,
     endTimeSeconds: number
   ): Promise<void> {
-    const duration = endTimeSeconds - startTimeSeconds;
+    const CLIP_END_PADDING_SECONDS = 0.5;
+    const duration = endTimeSeconds - startTimeSeconds + CLIP_END_PADDING_SECONDS;
 
     await new Promise<void>((resolve, reject) => {
       ffmpeg(inputPath)
