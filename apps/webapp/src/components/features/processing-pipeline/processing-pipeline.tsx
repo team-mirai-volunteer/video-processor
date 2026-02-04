@@ -550,46 +550,44 @@ export function ProcessingPipeline({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>動画の準備</CardTitle>
-            <CardDescription>文字起こしと字幕作成のための前処理を行います</CardDescription>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleReset}
-              disabled={resetting || resettingStep !== null}
-            >
-              {resetting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  リセット中...
-                </>
-              ) : (
-                <>
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  リセット
-                </>
-              )}
-            </Button>
-            <Button
-              onClick={handleRunAllSteps}
-              disabled={isAnyStepRunning || runningAllSteps || resetting}
-            >
-              {runningAllSteps ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  処理中...
-                </>
-              ) : (
-                <>
-                  <PlayCircle className="mr-2 h-4 w-4" />
-                  全ステップ実行
-                </>
-              )}
-            </Button>
-          </div>
+        <CardTitle>動画の準備</CardTitle>
+        <CardDescription>文字起こしと字幕作成のための前処理を行います</CardDescription>
+        <div className="flex gap-2 pt-2 justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            disabled={resetting || resettingStep !== null}
+          >
+            {resetting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                リセット中...
+              </>
+            ) : (
+              <>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                リセット
+              </>
+            )}
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleRunAllSteps}
+            disabled={isAnyStepRunning || runningAllSteps || resetting}
+          >
+            {runningAllSteps ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                処理中...
+              </>
+            ) : (
+              <>
+                <PlayCircle className="mr-2 h-4 w-4" />
+                全ステップ実行
+              </>
+            )}
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
