@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { formatBytes, formatDate, formatDuration } from '@/lib/utils';
-import { deleteClip } from '@/server/presentation/clip-video/actions/deleteClip';
 import { extractClips } from '@/server/presentation/clip-video/actions/extractClips';
 import { getVideoStatus } from '@/server/presentation/clip-video/actions/getVideoStatus';
 import { refineTranscript } from '@/server/presentation/clip-video/actions/refineTranscript';
@@ -130,18 +129,6 @@ export function VideoDetailClient({
       setError(err instanceof Error ? err.message : '文字起こし校正に失敗しました');
     } finally {
       setIsRefining(false);
-    }
-  };
-
-  const handleClipDelete = async (clipId: string) => {
-    const result = await deleteClip(clipId, video.id);
-    if (result.success) {
-      setVideo((prev) => ({
-        ...prev,
-        clips: prev.clips.filter((clip) => clip.id !== clipId),
-      }));
-    } else {
-      setError(result.error || 'クリップの削除に失敗しました');
     }
   };
 
@@ -415,7 +402,7 @@ export function VideoDetailClient({
           <CardDescription>この動画から生成されたショート動画の一覧です</CardDescription>
         </CardHeader>
         <CardContent>
-          <ClipList clips={video.clips} onClipDelete={handleClipDelete} />
+          <ClipList clips={video.clips} />
         </CardContent>
       </Card>
     </div>
