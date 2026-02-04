@@ -19,6 +19,14 @@ export interface ClipProps {
   errorMessage: string | null;
   createdAt: Date;
   updatedAt: Date;
+  // 字幕付き動画関連
+  subtitledVideoGcsUri: string | null;
+  subtitledVideoUrl: string | null;
+  subtitledVideoDriveId: string | null;
+  subtitledVideoDriveUrl: string | null;
+  // 動画プレイヤー用キャッシュ
+  clipVideoGcsUri: string | null;
+  clipVideoGcsExpiresAt: Date | null;
 }
 
 export interface CreateClipParams {
@@ -46,6 +54,14 @@ export class Clip {
   readonly errorMessage: string | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
+  // 字幕付き動画関連
+  readonly subtitledVideoGcsUri: string | null;
+  readonly subtitledVideoUrl: string | null;
+  readonly subtitledVideoDriveId: string | null;
+  readonly subtitledVideoDriveUrl: string | null;
+  // 動画プレイヤー用キャッシュ
+  readonly clipVideoGcsUri: string | null;
+  readonly clipVideoGcsExpiresAt: Date | null;
 
   private constructor(props: ClipProps) {
     this.id = props.id;
@@ -61,6 +77,12 @@ export class Clip {
     this.errorMessage = props.errorMessage;
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
+    this.subtitledVideoGcsUri = props.subtitledVideoGcsUri;
+    this.subtitledVideoUrl = props.subtitledVideoUrl;
+    this.subtitledVideoDriveId = props.subtitledVideoDriveId;
+    this.subtitledVideoDriveUrl = props.subtitledVideoDriveUrl;
+    this.clipVideoGcsUri = props.clipVideoGcsUri;
+    this.clipVideoGcsExpiresAt = props.clipVideoGcsExpiresAt;
   }
 
   /**
@@ -102,6 +124,12 @@ export class Clip {
         errorMessage: null,
         createdAt: now,
         updatedAt: now,
+        subtitledVideoGcsUri: null,
+        subtitledVideoUrl: null,
+        subtitledVideoDriveId: null,
+        subtitledVideoDriveUrl: null,
+        clipVideoGcsUri: null,
+        clipVideoGcsExpiresAt: null,
       })
     );
   }
@@ -138,6 +166,12 @@ export class Clip {
         errorMessage: null,
         createdAt: now,
         updatedAt: now,
+        subtitledVideoGcsUri: null,
+        subtitledVideoUrl: null,
+        subtitledVideoDriveId: null,
+        subtitledVideoDriveUrl: null,
+        clipVideoGcsUri: null,
+        clipVideoGcsExpiresAt: null,
       })
     );
   }
@@ -191,6 +225,12 @@ export class Clip {
       errorMessage: this.errorMessage,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
+      subtitledVideoGcsUri: this.subtitledVideoGcsUri,
+      subtitledVideoUrl: this.subtitledVideoUrl,
+      subtitledVideoDriveId: this.subtitledVideoDriveId,
+      subtitledVideoDriveUrl: this.subtitledVideoDriveUrl,
+      clipVideoGcsUri: this.clipVideoGcsUri,
+      clipVideoGcsExpiresAt: this.clipVideoGcsExpiresAt,
     };
   }
 }

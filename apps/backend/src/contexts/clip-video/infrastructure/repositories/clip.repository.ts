@@ -29,6 +29,12 @@ export class ClipRepository implements ClipRepositoryGateway {
         errorMessage: props.errorMessage,
         createdAt: props.createdAt,
         updatedAt: props.updatedAt,
+        subtitledVideoGcsUri: props.subtitledVideoGcsUri,
+        subtitledVideoUrl: props.subtitledVideoUrl,
+        subtitledVideoDriveId: props.subtitledVideoDriveId,
+        subtitledVideoDriveUrl: props.subtitledVideoDriveUrl,
+        clipVideoGcsUri: props.clipVideoGcsUri,
+        clipVideoGcsExpiresAt: props.clipVideoGcsExpiresAt,
       },
       update: {
         googleDriveFileId: props.googleDriveFileId,
@@ -41,6 +47,12 @@ export class ClipRepository implements ClipRepositoryGateway {
         status: props.status,
         errorMessage: props.errorMessage,
         updatedAt: props.updatedAt,
+        subtitledVideoGcsUri: props.subtitledVideoGcsUri,
+        subtitledVideoUrl: props.subtitledVideoUrl,
+        subtitledVideoDriveId: props.subtitledVideoDriveId,
+        subtitledVideoDriveUrl: props.subtitledVideoDriveUrl,
+        clipVideoGcsUri: props.clipVideoGcsUri,
+        clipVideoGcsExpiresAt: props.clipVideoGcsExpiresAt,
       },
     });
   }
@@ -69,6 +81,12 @@ export class ClipRepository implements ClipRepositoryGateway {
             errorMessage: props.errorMessage,
             createdAt: props.createdAt,
             updatedAt: props.updatedAt,
+            subtitledVideoGcsUri: props.subtitledVideoGcsUri,
+            subtitledVideoUrl: props.subtitledVideoUrl,
+            subtitledVideoDriveId: props.subtitledVideoDriveId,
+            subtitledVideoDriveUrl: props.subtitledVideoDriveUrl,
+            clipVideoGcsUri: props.clipVideoGcsUri,
+            clipVideoGcsExpiresAt: props.clipVideoGcsExpiresAt,
           },
           update: {
             googleDriveFileId: props.googleDriveFileId,
@@ -81,6 +99,12 @@ export class ClipRepository implements ClipRepositoryGateway {
             status: props.status,
             errorMessage: props.errorMessage,
             updatedAt: props.updatedAt,
+            subtitledVideoGcsUri: props.subtitledVideoGcsUri,
+            subtitledVideoUrl: props.subtitledVideoUrl,
+            subtitledVideoDriveId: props.subtitledVideoDriveId,
+            subtitledVideoDriveUrl: props.subtitledVideoDriveUrl,
+            clipVideoGcsUri: props.clipVideoGcsUri,
+            clipVideoGcsExpiresAt: props.clipVideoGcsExpiresAt,
           },
         });
       })
@@ -154,6 +178,12 @@ export class ClipRepository implements ClipRepositoryGateway {
     errorMessage: string | null;
     createdAt: Date;
     updatedAt: Date;
+    subtitledVideoGcsUri: string | null;
+    subtitledVideoUrl: string | null;
+    subtitledVideoDriveId: string | null;
+    subtitledVideoDriveUrl: string | null;
+    clipVideoGcsUri: string | null;
+    clipVideoGcsExpiresAt: Date | null;
   }): Clip {
     const props: ClipProps = {
       id: record.id,
@@ -169,6 +199,12 @@ export class ClipRepository implements ClipRepositoryGateway {
       errorMessage: record.errorMessage,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
+      subtitledVideoGcsUri: record.subtitledVideoGcsUri,
+      subtitledVideoUrl: record.subtitledVideoUrl,
+      subtitledVideoDriveId: record.subtitledVideoDriveId,
+      subtitledVideoDriveUrl: record.subtitledVideoDriveUrl,
+      clipVideoGcsUri: record.clipVideoGcsUri,
+      clipVideoGcsExpiresAt: record.clipVideoGcsExpiresAt,
     };
     return Clip.fromProps(props);
   }

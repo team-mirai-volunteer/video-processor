@@ -49,11 +49,35 @@ model Clip {
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  // 字幕付き動画関連
+  subtitledVideoGcsUri   String?   @map("subtitled_video_gcs_uri")
+  subtitledVideoUrl      String?   @map("subtitled_video_url")
+  subtitledVideoDriveId  String?   @map("subtitled_video_drive_id")
+  subtitledVideoDriveUrl String?   @map("subtitled_video_drive_url")
+
+  // 動画プレイヤー用キャッシュ
+  clipVideoGcsUri       String?   @map("clip_video_gcs_uri")
+  clipVideoGcsExpiresAt DateTime? @map("clip_video_gcs_expires_at")
+
+  video    Video         @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  subtitle ClipSubtitle?
 
   @@index([videoId])
   @@index([status])
   @@map("clips")
+}
+
+model ClipSubtitle {
+  id        String   @id @default(uuid())
+  clipId    String   @unique @map("clip_id")
+  segments  Json     // ClipSubtitleSegment[]
+  status    String   @default("draft") // draft | confirmed
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  clip Clip @relation(fields: [clipId], references: [id], onDelete: Cascade)
+
+  @@map("clip_subtitles")
 }
 
 model ProcessingJob {
