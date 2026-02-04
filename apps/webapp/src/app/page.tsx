@@ -112,17 +112,22 @@ export default function HomePage() {
         </CardContent>
       </Card>
 
-      {/* リポジトリリンク */}
+      {/* フッターリンク */}
       <div className="border-t pt-6 text-center">
-        <a
-          href="https://github.com/team-mirai-volunteer/video-processor"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <Github className="h-4 w-4" />
-          GitHub Repository
-        </a>
+        <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+          <a
+            href="https://github.com/team-mirai-volunteer/video-processor"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 hover:text-foreground"
+          >
+            <Github className="h-4 w-4" />
+            GitHub Repository
+          </a>
+          <Link href="/terms" className="hover:text-foreground">
+            利用規約
+          </Link>
+        </div>
       </div>
     </div>
   );
