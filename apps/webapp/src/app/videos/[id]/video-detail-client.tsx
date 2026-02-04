@@ -136,7 +136,7 @@ export function VideoDetailClient({
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/">
+          <Link href="/videos">
             <ArrowLeft className="mr-2 h-4 w-4" />
             一覧に戻る
           </Link>
