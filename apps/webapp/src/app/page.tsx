@@ -7,13 +7,14 @@ export default function HomePage() {
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       {/* ヒーローセクション */}
-      <div className="space-y-3 text-center">
-        <h1 className="text-3xl font-bold">切り抜き動画のご協力のお願い</h1>
+      <div className="space-y-3">
+        <h1 className="text-3xl font-bold">みらい動画スタジオ</h1>
         <p className="text-lg text-muted-foreground">はじめての方も大歓迎！</p>
       </div>
 
       {/* 感謝と背景 */}
       <div className="space-y-4">
+        <h3 className="text-xl font-bold">切り抜き動画のご協力のお願い</h3>
         <p className="flex items-start gap-2">
           <Heart className="mt-1 h-5 w-5 shrink-0 text-pink-500" />
           <span>いつもあたたかいご支援をありがとうございます。</span>

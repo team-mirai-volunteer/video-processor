@@ -61,11 +61,11 @@ export function ClipListTable({ clips, pagination }: ClipListTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead>元動画</TableHead>
-              <TableHead className="min-w-[10ch]">クリップタイトル</TableHead>
+              <TableHead>DL</TableHead>
+              <TableHead className="min-w-[20ch]">クリップタイトル</TableHead>
               <TableHead>動画長</TableHead>
-              <TableHead className="min-w-[10ch] max-w-md">切り抜き文章</TableHead>
+              <TableHead className="min-w-[20ch] max-w-2xl">切り抜き文章</TableHead>
               <TableHead>作成日時</TableHead>
-              <TableHead className="text-right">DL</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -76,24 +76,7 @@ export function ClipListTable({ clips, pagination }: ClipListTableProps) {
                     {clip.videoTitle || 'タイトルなし'}
                   </Link>
                 </TableCell>
-                <TableCell>{clip.title || '-'}</TableCell>
-                <TableCell>{formatDuration(clip.durationSeconds)}</TableCell>
-                <TableCell className="max-w-md">
-                  {clip.transcript && clip.transcript.length > 50 ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="cursor-default">{truncateText(clip.transcript, 50)}</span>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-md whitespace-pre-wrap">
-                        {clip.transcript}
-                      </TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    <span>{truncateText(clip.transcript, 50)}</span>
-                  )}
-                </TableCell>
-                <TableCell>{formatDate(clip.createdAt)}</TableCell>
-                <TableCell className="text-right">
+                <TableCell>
                   {clip.googleDriveUrl ? (
                     <a
                       href={clip.googleDriveUrl}
@@ -107,12 +90,29 @@ export function ClipListTable({ clips, pagination }: ClipListTableProps) {
                     <span className="text-muted-foreground">-</span>
                   )}
                 </TableCell>
+                <TableCell>{clip.title || '-'}</TableCell>
+                <TableCell>{formatDuration(clip.durationSeconds)}</TableCell>
+                <TableCell className="max-w-2xl">
+                  {clip.transcript && clip.transcript.length > 50 ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-default">{truncateText(clip.transcript, 50)}</span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-2xl whitespace-pre-wrap">
+                        {clip.transcript}
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <span>{truncateText(clip.transcript, 50)}</span>
+                  )}
+                </TableCell>
+                <TableCell>{formatDate(clip.createdAt)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between px-4">
           <p className="text-sm text-muted-foreground">
             全{pagination.total}件中 {(pagination.page - 1) * pagination.limit + 1}-
             {Math.min(pagination.page * pagination.limit, pagination.total)}件を表示
