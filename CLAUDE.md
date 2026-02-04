@@ -86,6 +86,12 @@ infrastructure/→ repositories, clients (throw errors)
 - [docs/shorts-gen-feature-spec.md](docs/shorts-gen-feature-spec.md) - ショート動画生成機能仕様
 - [biome.json](biome.json) - lint/format設定
 
+### clip-video機能の修正時に読むべきガイド
+
+| 修正対象 | 読むべきガイド |
+|----------|----------------|
+| バックエンド (API, UseCase, Repository等) | [docs/backend-clip-video-guide.md](docs/backend-clip-video-guide.md) |
+
 ### shorts-gen機能の修正時に読むべきガイド
 
 | 修正対象 | 読むべきガイド |
