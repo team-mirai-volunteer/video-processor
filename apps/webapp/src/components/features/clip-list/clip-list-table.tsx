@@ -21,8 +21,7 @@ interface ClipListTableProps {
   pagination: Pagination;
 }
 
-function truncateText(text: string | null, maxLength: number): string {
-  if (!text) return '-';
+function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength)}...`;
 }
@@ -76,10 +75,10 @@ export function ClipListTable({ clips, pagination }: ClipListTableProps) {
                     {clip.videoTitle || 'タイトルなし'}
                   </Link>
                 </TableCell>
-                <TableCell>{clip.title || '-'}</TableCell>
+                <TableCell>{clip.title}</TableCell>
                 <TableCell>{formatDuration(clip.durationSeconds)}</TableCell>
                 <TableCell className="max-w-md">
-                  {clip.transcript && clip.transcript.length > 50 ? (
+                  {clip.transcript.length > 50 ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="cursor-default">{truncateText(clip.transcript, 50)}</span>
@@ -89,7 +88,7 @@ export function ClipListTable({ clips, pagination }: ClipListTableProps) {
                       </TooltipContent>
                     </Tooltip>
                   ) : (
-                    <span>{truncateText(clip.transcript, 50)}</span>
+                    <span>{clip.transcript}</span>
                   )}
                 </TableCell>
                 <TableCell>{formatDate(clip.createdAt)}</TableCell>

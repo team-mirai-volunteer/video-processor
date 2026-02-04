@@ -10,11 +10,11 @@ export interface ClipProps {
   videoId: string;
   googleDriveFileId: string | null;
   googleDriveUrl: string | null;
-  title: string | null;
+  title: string;
   startTimeSeconds: number;
   endTimeSeconds: number;
   durationSeconds: number;
-  transcript: string | null;
+  transcript: string;
   status: ClipStatus;
   errorMessage: string | null;
   createdAt: Date;
@@ -23,10 +23,10 @@ export interface ClipProps {
 
 export interface CreateClipParams {
   videoId: string;
-  title: string | null;
+  title: string;
   startTimeSeconds: number;
   endTimeSeconds: number;
-  transcript: string | null;
+  transcript: string;
 }
 
 const MIN_CLIP_DURATION_SECONDS = 20;
@@ -37,11 +37,11 @@ export class Clip {
   readonly videoId: string;
   readonly googleDriveFileId: string | null;
   readonly googleDriveUrl: string | null;
-  readonly title: string | null;
+  readonly title: string;
   readonly startTimeSeconds: number;
   readonly endTimeSeconds: number;
   readonly durationSeconds: number;
-  readonly transcript: string | null;
+  readonly transcript: string;
   readonly status: ClipStatus;
   readonly errorMessage: string | null;
   readonly createdAt: Date;

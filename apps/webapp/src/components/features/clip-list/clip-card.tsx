@@ -26,7 +26,7 @@ export function ClipCard({ clip }: ClipCardProps) {
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <CardTitle className="text-lg">{clip.title || 'タイトルなし'}</CardTitle>
+            <CardTitle className="text-lg">{clip.title}</CardTitle>
             <CardDescription className="flex items-center gap-4">
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
@@ -39,15 +39,13 @@ export function ClipCard({ clip }: ClipCardProps) {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {clip.transcript && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-1 text-sm font-medium text-muted-foreground">
-              <FileText className="h-3 w-3" />
-              文字起こし
-            </div>
-            <p className="text-sm bg-muted p-3 rounded-md">{clip.transcript}</p>
+        <div className="space-y-2">
+          <div className="flex items-center gap-1 text-sm font-medium text-muted-foreground">
+            <FileText className="h-3 w-3" />
+            文字起こし
           </div>
-        )}
+          <p className="text-sm bg-muted p-3 rounded-md">{clip.transcript}</p>
+        </div>
 
         {clip.googleDriveUrl && clip.status === 'completed' && (
           <div className="flex justify-end">

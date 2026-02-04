@@ -139,11 +139,11 @@ export class ClipRepository implements ClipRepositoryGateway {
     videoId: string;
     googleDriveFileId: string | null;
     googleDriveUrl: string | null;
-    title: string | null;
+    title: string;
     startTimeSeconds: Decimal;
     endTimeSeconds: Decimal;
     durationSeconds: Decimal;
-    transcript: string | null;
+    transcript: string;
     status: string;
     errorMessage: string | null;
     createdAt: Date;

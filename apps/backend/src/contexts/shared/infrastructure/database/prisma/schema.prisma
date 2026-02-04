@@ -39,11 +39,11 @@ model Clip {
   videoId           String   @map("video_id")
   googleDriveFileId String?  @map("google_drive_file_id")
   googleDriveUrl    String?  @map("google_drive_url")
-  title             String?
+  title             String
   startTimeSeconds  Decimal  @map("start_time_seconds") @db.Decimal(10, 3)
   endTimeSeconds    Decimal  @map("end_time_seconds") @db.Decimal(10, 3)
   durationSeconds   Decimal  @map("duration_seconds") @db.Decimal(10, 3)
-  transcript        String?
+  transcript        String
   status            String   @default("pending")
   errorMessage      String?  @map("error_message")
   createdAt         DateTime @default(now()) @map("created_at")

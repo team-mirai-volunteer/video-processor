@@ -12,11 +12,11 @@ export interface Clip {
   videoId: string;
   googleDriveFileId: string | null;
   googleDriveUrl: string | null;
-  title: string | null;
+  title: string;
   startTimeSeconds: number;
   endTimeSeconds: number;
   durationSeconds: number;
-  transcript: string | null;
+  transcript: string;
   status: ClipStatus;
   errorMessage: string | null;
   createdAt: Date;
@@ -28,12 +28,12 @@ export interface Clip {
  */
 export interface ClipSummary {
   id: string;
-  title: string | null;
+  title: string;
   startTimeSeconds: number;
   endTimeSeconds: number;
   durationSeconds: number;
   googleDriveUrl: string | null;
-  transcript: string | null;
+  transcript: string;
   status: ClipStatus;
 }
 

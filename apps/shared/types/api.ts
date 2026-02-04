@@ -103,8 +103,8 @@ export interface GetAllClipsQuery {
  */
 export interface AllClipSummary {
   id: string;
-  title: string | null;
-  transcript: string | null;
+  title: string;
+  transcript: string;
   googleDriveUrl: string | null;
   status: import('./clip.js').ClipStatus;
   videoId: string;
@@ -133,11 +133,11 @@ export interface GetClipResponse {
   videoId: string;
   googleDriveFileId: string | null;
   googleDriveUrl: string | null;
-  title: string | null;
+  title: string;
   startTimeSeconds: number;
   endTimeSeconds: number;
   durationSeconds: number;
-  transcript: string | null;
+  transcript: string;
   status: string;
   errorMessage: string | null;
   createdAt: Date;

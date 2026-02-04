@@ -33,7 +33,7 @@ describe('Clip', () => {
           title: 'Test Clip',
           startTimeSeconds: 60,
           endTimeSeconds: 30,
-          transcript: null,
+          transcript: 'Test transcript',
         },
         generateId
       );
@@ -51,7 +51,7 @@ describe('Clip', () => {
           title: 'Test Clip',
           startTimeSeconds: 0,
           endTimeSeconds: 10, // Only 10 seconds (minimum is 20)
-          transcript: null,
+          transcript: 'Test transcript',
         },
         generateId
       );
@@ -69,7 +69,7 @@ describe('Clip', () => {
           title: 'Test Clip',
           startTimeSeconds: 0,
           endTimeSeconds: 120, // 120 seconds (maximum is 60)
-          transcript: null,
+          transcript: 'Test transcript',
         },
         generateId
       );
@@ -89,7 +89,7 @@ describe('Clip', () => {
           title: 'Test Clip',
           startTimeSeconds: 0,
           endTimeSeconds: 120, // Would fail with strict validation
-          transcript: null,
+          transcript: 'Test transcript',
         },
         generateId
       );
@@ -109,7 +109,7 @@ describe('Clip', () => {
           title: 'Test Clip',
           startTimeSeconds: 0,
           endTimeSeconds: 30,
-          transcript: null,
+          transcript: 'Test transcript',
         },
         generateId
       );
@@ -135,7 +135,7 @@ describe('Clip', () => {
           title: 'Test Clip',
           startTimeSeconds: 0,
           endTimeSeconds: 30,
-          transcript: null,
+          transcript: 'Test transcript',
         },
         generateId
       );
