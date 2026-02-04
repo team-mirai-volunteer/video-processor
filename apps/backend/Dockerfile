@@ -33,8 +33,13 @@ CMD ["./scripts/migrate.sh"]
 # Production stage
 FROM node:22-slim AS runner
 
-# Install FFmpeg and OpenSSL
-RUN apt-get update && apt-get install -y ffmpeg openssl && rm -rf /var/lib/apt/lists/*
+# Install FFmpeg, OpenSSL, and Japanese fonts
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    openssl \
+    fonts-noto-cjk \
+    && rm -rf /var/lib/apt/lists/* \
+    && fc-cache -fv
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate

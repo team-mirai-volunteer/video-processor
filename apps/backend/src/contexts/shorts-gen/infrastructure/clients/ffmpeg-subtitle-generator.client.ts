@@ -15,10 +15,11 @@ import type {
 } from '../../domain/gateways/subtitle-generator.gateway.js';
 
 /**
- * Default font family with fallbacks for different platforms
- * Noto Sans CJK JP (Linux), Hiragino Kaku Gothic Pro (macOS), or DejaVu Sans (fallback)
+ * Default font family for subtitle generation
+ * Uses Noto Sans CJK JP (Google's open source Japanese font)
+ * macOS users: brew install font-noto-sans-cjk-jp
  */
-const DEFAULT_FONT_FAMILY = process.env.SUBTITLE_FONT_FAMILY || 'Hiragino Kaku Gothic Pro';
+const DEFAULT_FONT_FAMILY = process.env.SUBTITLE_FONT_FAMILY || 'Noto Sans CJK JP';
 
 /**
  * Default subtitle style settings
