@@ -45,5 +45,5 @@ description: フィーチャーブランチを作成してPRを出す
 
 ## 注意事項
 
-- developやmainへの直接pushは禁止
-- Prismaのマイグレーションを含む場合は、PRを出す前にユーザーに確認を取る
+- developやmainへの直接pushは禁止。
+- Prismaのマイグレーションを含む場合は、PRを出す前にユーザーに確認を取る。
