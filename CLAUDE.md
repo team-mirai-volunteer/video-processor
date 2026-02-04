@@ -94,3 +94,11 @@ infrastructure/→ repositories, clients (throw errors)
 | フロントエンド (UI, 状態管理, Server Action等) | [docs/frontend-shorts-gen-guide.md](docs/frontend-shorts-gen-guide.md) |
 
 これらのガイドには、ディレクトリ構成・レイヤー間依存・主要な型・修正時のポイントがまとまっている。
+
+### clip-video機能の修正時に読むべきガイド
+
+| 修正対象 | 読むべきガイド |
+|----------|----------------|
+| フロントエンド (UI, 状態管理, Server Action等) | [docs/frontend-clip-video-guide.md](docs/frontend-clip-video-guide.md) |
+
+clip-videoのフロントエンドガイドには、パイプライン処理・ポーリング・クリップ抽出の仕組みがまとまっている。
