@@ -1,9 +1,12 @@
+import { ComposeSubtitledClipUseCase } from '@clip-video/application/usecases/compose-subtitled-clip.usecase.js';
 import { ConfirmClipSubtitlesUseCase } from '@clip-video/application/usecases/confirm-clip-subtitles.usecase.js';
 import { GenerateClipSubtitlesUseCase } from '@clip-video/application/usecases/generate-clip-subtitles.usecase.js';
 import { GetClipSubtitlesUseCase } from '@clip-video/application/usecases/get-clip-subtitles.usecase.js';
 import { GetClipVideoUrlUseCase } from '@clip-video/application/usecases/get-clip-video-url.usecase.js';
 import { UpdateClipSubtitlesUseCase } from '@clip-video/application/usecases/update-clip-subtitles.usecase.js';
+import { UploadSubtitledClipToDriveUseCase } from '@clip-video/application/usecases/upload-subtitled-clip-to-drive.usecase.js';
 import type { TempStorageGateway } from '@clip-video/domain/gateways/temp-storage.gateway.js';
+import { ClipSubtitleComposeClient } from '@clip-video/infrastructure/clients/clip-subtitle-compose.client.js';
 import { ClipSubtitleRepository } from '@clip-video/infrastructure/repositories/clip-subtitle.repository.js';
 import { ClipRepository } from '@clip-video/infrastructure/repositories/clip.repository.js';
 import { RefinedTranscriptionRepository } from '@clip-video/infrastructure/repositories/refined-transcription.repository.js';
@@ -24,6 +27,11 @@ const clipRepository = new ClipRepository(prisma);
 const clipSubtitleRepository = new ClipSubtitleRepository(prisma);
 const transcriptionRepository = new TranscriptionRepository(prisma);
 const refinedTranscriptionRepository = new RefinedTranscriptionRepository(prisma);
+
+// Initialize clients
+const gcsClient = new GcsClient();
+const googleDriveClient = GoogleDriveClient.fromEnv();
+const clipSubtitleComposer = new ClipSubtitleComposeClient();
 
 // Initialize gateways based on environment
 function createTempStorageGateway(): TempStorageGateway {
@@ -62,6 +70,19 @@ const getClipVideoUrlUseCase = new GetClipVideoUrlUseCase({
   clipRepository,
   storageGateway,
   tempStorageGateway,
+});
+
+const composeSubtitledClipUseCase = new ComposeSubtitledClipUseCase({
+  clipRepository,
+  clipSubtitleRepository,
+  clipSubtitleComposer,
+  tempStorage: gcsClient,
+});
+
+const uploadSubtitledClipToDriveUseCase = new UploadSubtitledClipToDriveUseCase({
+  clipRepository,
+  storage: googleDriveClient,
+  tempStorage: gcsClient,
 });
 
 /**
@@ -132,6 +153,38 @@ router.get('/clips/:clipId/video-url', async (req, res, next) => {
   try {
     const { clipId } = req.params;
     const result = await getClipVideoUrlUseCase.execute(clipId ?? '');
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/clips/:clipId/compose
+ * Compose subtitles onto a clip video
+ */
+router.post('/clips/:clipId/compose', async (req, res, next) => {
+  try {
+    const { clipId } = req.params;
+    const result = await composeSubtitledClipUseCase.execute({ clipId: clipId ?? '' });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/clips/:clipId/upload-to-drive
+ * Upload subtitled clip video to Google Drive
+ */
+router.post('/clips/:clipId/upload-to-drive', async (req, res, next) => {
+  try {
+    const { clipId } = req.params;
+    const { folderId } = req.body as { folderId?: string };
+    const result = await uploadSubtitledClipToDriveUseCase.execute({
+      clipId: clipId ?? '',
+      folderId,
+    });
     res.json(result);
   } catch (error) {
     next(error);

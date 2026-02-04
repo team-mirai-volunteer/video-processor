@@ -7,6 +7,13 @@ import {
 } from '@clip-video/domain/models/clip-subtitle.js';
 import type { Prisma, PrismaClient } from '@prisma/client';
 
+interface PrismaClipSubtitleSegment {
+  index: number;
+  text: string;
+  startTimeSeconds: number;
+  endTimeSeconds: number;
+}
+
 export class ClipSubtitleRepository implements ClipSubtitleRepositoryGateway {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -56,14 +63,24 @@ export class ClipSubtitleRepository implements ClipSubtitleRepositoryGateway {
     createdAt: Date;
     updatedAt: Date;
   }): ClipSubtitle {
+    const segments = record.segments as PrismaClipSubtitleSegment[];
+
     const props: ClipSubtitleProps = {
       id: record.id,
       clipId: record.clipId,
-      segments: record.segments as ClipSubtitleSegment[],
+      segments: segments.map(
+        (s): ClipSubtitleSegment => ({
+          index: s.index,
+          text: s.text,
+          startTimeSeconds: s.startTimeSeconds,
+          endTimeSeconds: s.endTimeSeconds,
+        })
+      ),
       status: record.status as ClipSubtitleStatus,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     };
+
     return ClipSubtitle.fromProps(props);
   }
 }

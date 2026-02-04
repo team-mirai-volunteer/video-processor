@@ -220,6 +220,30 @@ export class Clip {
   }
 
   /**
+   * Update clip with subtitled video GCS info
+   */
+  withSubtitledVideoGcsInfo(gcsUri: string, url: string): Clip {
+    return new Clip({
+      ...this.toProps(),
+      subtitledVideoGcsUri: gcsUri,
+      subtitledVideoUrl: url,
+      updatedAt: new Date(),
+    });
+  }
+
+  /**
+   * Update clip with subtitled video Google Drive info
+   */
+  withSubtitledVideoDriveInfo(driveId: string, driveUrl: string): Clip {
+    return new Clip({
+      ...this.toProps(),
+      subtitledVideoDriveId: driveId,
+      subtitledVideoDriveUrl: driveUrl,
+      updatedAt: new Date(),
+    });
+  }
+
+  /**
    * Convert to plain object
    */
   toProps(): ClipProps {
