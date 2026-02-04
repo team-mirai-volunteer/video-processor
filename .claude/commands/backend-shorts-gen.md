@@ -10,5 +10,4 @@ description: shorts-gen機能のバックエンド修正を行う
 
 ## 関連ドキュメント
 
-- フロントエンドの修正も必要な場合は [.claude/commands/front-shorts-gen.md](.claude/commands/front-shorts-gen.md) も参照
-- インフラ構成の修正も必要な場合は [.claude/commands/infra.md](.claude/commands/infra.md) も参照
+- フロントエンドの修正も必要な場合は [docs/shorts-gen-frontend-guide.md](docs/shorts-gen-frontend-guide.md) も参照

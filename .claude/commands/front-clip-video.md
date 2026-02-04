@@ -10,5 +10,4 @@ description: clip-video機能のフロントエンド修正を行う
 
 ## 関連ドキュメント
 
-- バックエンドAPIの修正も必要な場合は [.claude/commands/backend-clip-video.md](.claude/commands/backend-clip-video.md) も参照
-- インフラ構成の修正も必要な場合は [.claude/commands/infra.md](.claude/commands/infra.md) も参照
+- バックエンドAPIの修正も必要な場合は [docs/clip-video-backend-guide.md](docs/clip-video-backend-guide.md) も参照
