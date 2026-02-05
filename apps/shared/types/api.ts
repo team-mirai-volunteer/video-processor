@@ -158,7 +158,19 @@ export interface GetClipResponse {
 // ============================================================================
 
 /** 余白カラープリセット */
-export type PaddingColor = '#000000' | '#30bca7';
+export type PaddingColor =
+  | '#000000' // 黒
+  | '#30bca7' // チームみらいグリーン
+  | '#56d6ea' // 水色
+  | '#ff7aa2' // ピンク
+  | '#ffffff'; // 白
+
+/** テキスト枠カラープリセット（白は除く - 背景のみ） */
+export type OutlineColor =
+  | '#000000' // 黒
+  | '#30bca7' // チームみらいグリーン
+  | '#56d6ea' // 水色
+  | '#ff7aa2'; // ピンク
 
 /** 出力フォーマット */
 export type OutputFormat = 'original' | 'vertical' | 'horizontal';
@@ -349,6 +361,7 @@ export interface ConfirmClipSubtitleResponse {
 export interface ComposeSubtitledClipRequest {
   outputFormat?: OutputFormat;
   paddingColor?: PaddingColor;
+  outlineColor?: OutlineColor;
 }
 
 /**
