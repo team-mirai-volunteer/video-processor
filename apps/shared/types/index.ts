@@ -39,6 +39,7 @@ export type {
 export type {
   AllClipSummary,
   CacheVideoResponse,
+  ComposeSubtitledClipRequest,
   ComposeSubtitledClipResponse,
   ConfirmClipSubtitleResponse,
   ErrorResponse,

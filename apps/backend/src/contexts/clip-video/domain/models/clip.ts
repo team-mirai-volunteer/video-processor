@@ -196,6 +196,17 @@ export class Clip {
   }
 
   /**
+   * Update clip title
+   */
+  withTitle(title: string): Clip {
+    return new Clip({
+      ...this.toProps(),
+      title,
+      updatedAt: new Date(),
+    });
+  }
+
+  /**
    * Update clip status
    */
   withStatus(status: ClipStatus, errorMessage?: string): Clip {

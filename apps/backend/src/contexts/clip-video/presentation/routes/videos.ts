@@ -22,6 +22,7 @@ import { ProcessingJobRepository } from '@clip-video/infrastructure/repositories
 import { RefinedTranscriptionRepository } from '@clip-video/infrastructure/repositories/refined-transcription.repository.js';
 import { TranscriptionRepository } from '@clip-video/infrastructure/repositories/transcription.repository.js';
 import { VideoRepository } from '@clip-video/infrastructure/repositories/video.repository.js';
+import { AnthropicClient } from '@shared/infrastructure/clients/anthropic.client.js';
 import { FFmpegClient } from '@shared/infrastructure/clients/ffmpeg.client.js';
 import { GcsClient } from '@shared/infrastructure/clients/gcs.client.js';
 import { GoogleDriveClient } from '@shared/infrastructure/clients/google-drive.client.js';
@@ -118,6 +119,7 @@ const extractClipByTimeUseCase = new ExtractClipByTimeUseCase({
   storageGateway,
   tempStorageGateway,
   videoProcessingGateway: new FFmpegClient(),
+  aiGateway: new AnthropicClient(),
   generateId: () => uuidv4(),
   outputFolderId: process.env.GOOGLE_DRIVE_OUTPUT_FOLDER_ID,
 });

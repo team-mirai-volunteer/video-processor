@@ -1,8 +1,14 @@
 'use server';
 
 import { getBackendClient } from '@/server/infrastructure/clients/get-backend-client';
-import type { ComposeSubtitledClipResponse } from '@video-processor/shared';
+import type {
+  ComposeSubtitledClipRequest,
+  ComposeSubtitledClipResponse,
+} from '@video-processor/shared';
 
-export async function composeSubtitledClip(clipId: string): Promise<ComposeSubtitledClipResponse> {
-  return getBackendClient().composeSubtitledClip(clipId);
+export async function composeSubtitledClip(
+  clipId: string,
+  request?: ComposeSubtitledClipRequest
+): Promise<ComposeSubtitledClipResponse> {
+  return getBackendClient().composeSubtitledClip(clipId, request);
 }

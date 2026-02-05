@@ -161,7 +161,7 @@ export interface GetClipResponse {
 export type PaddingColor = '#000000' | '#30bca7';
 
 /** 出力フォーマット */
-export type OutputFormat = 'original' | 'vertical';
+export type OutputFormat = 'original' | 'vertical' | 'horizontal';
 
 /**
  * POST /api/videos/:videoId/extract-clips request body
@@ -341,6 +341,14 @@ export interface UpdateClipSubtitleResponse {
  */
 export interface ConfirmClipSubtitleResponse {
   subtitle: ClipSubtitle;
+}
+
+/**
+ * POST /api/clips/:clipId/compose request body
+ */
+export interface ComposeSubtitledClipRequest {
+  outputFormat?: OutputFormat;
+  paddingColor?: PaddingColor;
 }
 
 /**
