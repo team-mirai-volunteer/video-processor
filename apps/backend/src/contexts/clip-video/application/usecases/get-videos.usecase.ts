@@ -12,8 +12,8 @@ export interface GetVideosUseCaseDeps {
 }
 
 const DEFAULT_PAGE = 1;
-const DEFAULT_LIMIT = 20;
-const MAX_LIMIT = 100;
+const DEFAULT_LIMIT = 500;
+const MAX_LIMIT = 500;
 
 export class GetVideosUseCase {
   private readonly videoRepository: VideoRepositoryGateway;
