@@ -293,10 +293,22 @@ router.post('/:videoId/extract-clips', async (req, res, next) => {
   try {
     const { videoId } = req.params;
     const body = req.body as ExtractClipsRequest;
+
+    // Validate and normalize outputFormat
+    const outputFormat =
+      body.outputFormat === 'vertical' || body.outputFormat === 'original'
+        ? body.outputFormat
+        : 'original';
+
+    // Validate and normalize paddingColor (only for vertical format)
+    const paddingColor = body.paddingColor === '#30bca7' ? '#30bca7' : ('#000000' as const);
+
     const result = await extractClipsUseCase.execute({
       videoId: videoId ?? '',
       clipInstructions: body.clipInstructions,
       multipleClips: body.multipleClips ?? false,
+      outputFormat,
+      paddingColor,
     });
     res.status(202).json(result);
   } catch (error) {

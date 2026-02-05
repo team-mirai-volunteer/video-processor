@@ -1,3 +1,17 @@
+/** 余白カラープリセット */
+export type PaddingColor = '#000000' | '#30bca7';
+
+/** 出力フォーマット */
+export type OutputFormat = 'original' | 'vertical';
+
+/** クリップ抽出オプション */
+export interface ClipExtractionOptions {
+  /** 出力フォーマット。'vertical' の場合は9:16に変換 */
+  outputFormat?: OutputFormat;
+  /** 余白の色（プリセットから選択）。outputFormat: 'vertical' 時のみ有効 */
+  paddingColor?: PaddingColor;
+}
+
 /**
  * Gateway interface for video processing operations
  */
@@ -42,12 +56,14 @@ export interface VideoProcessingGateway {
    * @param outputPath Path to output video file
    * @param startTimeSeconds Start time in seconds
    * @param endTimeSeconds End time in seconds
+   * @param options Optional clip extraction options (e.g., vertical format)
    */
   extractClipFromFile(
     inputPath: string,
     outputPath: string,
     startTimeSeconds: number,
-    endTimeSeconds: number
+    endTimeSeconds: number,
+    options?: ClipExtractionOptions
   ): Promise<void>;
 
   /**
