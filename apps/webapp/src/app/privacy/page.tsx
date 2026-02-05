@@ -1,101 +1,109 @@
 export default function PrivacyPolicyPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-8 px-4 py-8">
-      <h1 className="text-3xl font-bold">プライバシーポリシー（Privacy Policy）</h1>
-
-      <p className="text-muted-foreground">
-        みらい動画スタジオ（以下「本サービス」といいます。）は、チームみらい（以下「当団体」といいます。）が提供する、動画素材の切り抜き・短尺化を行うための内部向けサービスです。
-        本サービスにおける利用者のプライバシーを尊重し、以下のとおりプライバシーポリシーを定めます。
-      </p>
+      <h1 className="text-3xl font-bold">プライバシーポリシー</h1>
 
       <hr className="border-border" />
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">1. 基本方針</h2>
+        <h2 className="text-2xl font-semibold">1. 個人情報の定義</h2>
+        <p>個人情報とは、以下のような情報により特定の個人を識別することができるものを指します。</p>
+        <ul className="list-disc space-y-1 pl-6">
+          <li>氏名、年齢、性別、住所、電話番号、職業、メールアドレス</li>
+          <li>個人ごとに割り当てられたIDやパスワード、その他識別可能な記号など</li>
+          <li>
+            単体では個人の特定ができないものの、他の情報と容易に照合することができ、個人を特定できる情報
+          </li>
+        </ul>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold">2. 個人情報の収集目的と使用範囲</h2>
         <p>
-          本サービスは、個人情報を取得・利用しないことを原則として設計・運用されています。
-          利用者が自ら意図的に提供しない限り、個人情報を取得・利用することはありません。
-        </p>
-        <p>
-          また、本ポリシーでは、利用者に誤解を与えないよう、個人情報を扱わないサービスであることを明確に示すことを基本方針とします。
+          個人情報をご提供いただく際には、ユーザーの同意に基づいて行うことを原則とし、無断で収集・利用することはありません。
         </p>
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">2. 個人情報の定義</h2>
+        <h2 className="text-2xl font-semibold">3. 第三者への情報提供について</h2>
         <p>
-          本ポリシーにおいて「個人情報」とは、氏名、住所、メールアドレスその他、特定の個人を識別できる情報を指します。
-          ただし、本サービスでは、これらの個人情報を取得・利用することはありません。
+          以下のいずれかに該当する場合を除き、利用者から提供された個人情報を第三者に開示・提供することはありません。
+        </p>
+        <ul className="list-disc space-y-1 pl-6">
+          <li>利用者本人の同意がある場合</li>
+          <li>
+            利用者個人が識別されない形（他の情報と照合しても個人を特定できない場合）で提供する場合
+          </li>
+          <li>法令に基づく開示請求があった場合</li>
+          <li>不正アクセスや規約違反など、利用者本人による違反が確認された場合</li>
+          <li>第三者に対して不利益を与えると判断された場合</li>
+          <li>公共の利益や利用者本人の利益のために必要と判断された場合</li>
+          <li>
+            寄付金が年間5万円を超える場合、およびそれ以下の金額でも寄付金控除を申請する場合は、政治資金収支報告書に寄付者の情報が記載されます。また、寄附金控除を受ける場合は、総務省のウェブサイトにて寄付年月日・金額・住所・氏名・職業が公開されます。
+          </li>
+        </ul>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold">4. 安全管理措置について</h2>
+        <p>
+          個人情報の適切な管理を行うために、責任者を定めた上で、厳正な管理・監督体制を構築しています。
         </p>
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">3. 個人情報の取得について</h2>
+        <h2 className="text-2xl font-semibold">5. Cookie（クッキー）について</h2>
         <p>
-          本サービスでは、利用者が意図的に提供した情報を除き、個人情報を収集・利用することはありません。
+          Cookieとは、サーバーが利用者の識別を目的として、利用者のブラウザに送信し、端末に保存される情報です。
         </p>
         <p>
-          万一、運営上の必要性から個人情報の取り扱いが発生する場合には、事前に利用者の明示的な同意を得た上で、必要最小限の範囲に限定して取り扱うものとします。
-        </p>
-      </section>
-
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">4. 利用目的</h2>
-        <p>本サービスは個人情報を取り扱わないため、個人情報の利用目的は存在しません。</p>
-        <p>
-          ただし、問い合わせ対応等により例外的に個人情報の取得が必要となる場合には、取得時にその利用目的を明示し、当該目的の範囲内でのみ利用します。
-        </p>
-      </section>
-
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">5. 第三者提供について</h2>
-        <p>本サービスでは個人情報を取得しないため、第三者への提供は行いません。</p>
-        <p>
-          なお、法令に基づく開示請求がある場合や、利用者本人の同意がある場合など、法令上認められる例外的な状況が生じた場合には、この限りではありません。
+          当ウェブサイトでは、Googleによるアクセス解析ツール「Google
+          アナリティクス」を使用しており、Google
+          アナリティクスはデータ収集のためにCookieを使用しています。データは匿名で収集されており、個人を特定するものではありません。この機能はお使いのブラウザの設定でCookieを無効にすることで拒否することができます。Google
+          アナリティクスでデータが収集および処理される仕組みの詳細は
+          <a
+            href="https://policies.google.com/technologies/partner-sites"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline hover:no-underline"
+          >
+            「Googleのサービスを使用するサイトやアプリから収集した情報のGoogleによる使用」
+          </a>
+          のページをご覧ください。
         </p>
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">6. Cookie・ログ等の取り扱い</h2>
+        <h2 className="text-2xl font-semibold">6. 個人情報の保管期間</h2>
         <p>
-          本サービスでは、サービスの改善や安定的な運用を目的として、Cookie
-          やアクセスログ等の技術情報を取得する場合があります。
-        </p>
-        <p>
-          これらの情報は、個人を特定しない匿名化された情報として取り扱い、利用者の識別を目的とするものではありません。
+          取得した個人情報は、政治資金規正法等の法令に基づき、必要な期間（原則として7年間）保管した後、適切な方法により廃棄・削除いたします。
         </p>
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">7. 安全管理措置</h2>
+        <h2 className="text-2xl font-semibold">7. プライバシーポリシーの改訂と通知について</h2>
         <p>
-          本サービスでは個人情報を取り扱いませんが、取得する匿名データやアクセスログ等についても、不正アクセスや漏えい等を防止するため、組織的・技術的な安全管理措置を講じます。
+          このプライバシーポリシーは、必要に応じて内容の見直しを行い、改訂されることがあります。その際、個別の通知は行いませんので、最新の情報については当ウェブサイトをご確認ください。
         </p>
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">8. データの保管および廃棄</h2>
+        <h2 className="text-2xl font-semibold">8. 個人情報に関するお問い合わせ</h2>
         <p>
-          本サービスでは個人情報を取り扱わないため、個人情報に関する特別な保管・廃棄ルールは設けていません。
+          個人情報の確認・修正・削除・利用停止等をご希望される場合は、下記のお問い合わせ窓口までご連絡ください。なお、ご請求内容がご本人によるものであることが確認できた場合に限り、必要な調査を行い、その結果に基づき適切な対応を行います。
         </p>
-        <p>
-          ただし、匿名データやログ等については、利用目的に照らして必要最小限の期間のみ保持し、不要となった場合には適切に削除します。
-        </p>
-      </section>
-
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">9. プライバシーポリシーの改訂</h2>
-        <p>
-          本ポリシーの内容は、法令の変更やサービス内容の見直し等に応じて、必要に応じて改訂されることがあります。
-          改訂後のプライバシーポリシーは、本サービス上に掲載することで周知します。
-        </p>
-      </section>
-
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">10. お問い合わせ窓口</h2>
-        <p>本ポリシーに関するお問い合わせは、以下の窓口までご連絡ください。</p>
-        <p>運営：チームみらい</p>
-        <p>お問い合わせ先：本サービス上に掲載する連絡先</p>
+        <div className="space-y-2">
+          <p className="font-semibold">お問い合わせ窓口</p>
+          <p>チームみらい 個人情報保護管理責任者</p>
+          <p>
+            <a
+              href="mailto:support@team-mir.ai"
+              className="text-primary underline hover:no-underline"
+            >
+              support@team-mir.ai
+            </a>
+          </p>
+        </div>
       </section>
     </div>
   );
