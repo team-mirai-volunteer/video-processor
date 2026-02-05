@@ -61,6 +61,7 @@ export type {
   GetVideosQuery,
   GetVideosResponse,
   HealthResponse,
+  OutlineColor,
   OutputFormat,
   PaddingColor,
   SubtitleFontSize,

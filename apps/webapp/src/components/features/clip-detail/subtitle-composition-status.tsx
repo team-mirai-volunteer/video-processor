@@ -4,7 +4,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import type { OutputFormat, PaddingColor, SubtitleFontSize } from '@video-processor/shared';
+import type {
+  OutlineColor,
+  OutputFormat,
+  PaddingColor,
+  SubtitleFontSize,
+} from '@video-processor/shared';
 import { CheckCircle, Download, ExternalLink, Loader2, RefreshCw, Video } from 'lucide-react';
 import { useState } from 'react';
 
@@ -17,6 +22,7 @@ interface SubtitleCompositionStatusProps {
   onCompose?: (
     outputFormat?: OutputFormat,
     paddingColor?: PaddingColor,
+    outlineColor?: OutlineColor,
     fontSize?: SubtitleFontSize
   ) => void;
   onUpload?: () => void;
@@ -37,6 +43,7 @@ export function SubtitleCompositionStatus({
 }: SubtitleCompositionStatusProps) {
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('original');
   const [paddingColor, setPaddingColor] = useState<PaddingColor>('#000000');
+  const [outlineColor, setOutlineColor] = useState<OutlineColor>('#30bca7');
   const [fontSize, setFontSize] = useState<SubtitleFontSize>('medium');
 
   const showComposeButton = step === 'idle' && canCompose;
@@ -45,7 +52,12 @@ export function SubtitleCompositionStatus({
   const hasUploadedVideo = !!subtitledVideoDriveUrl;
 
   const handleCompose = () => {
-    onCompose?.(outputFormat, outputFormat !== 'original' ? paddingColor : undefined, fontSize);
+    onCompose?.(
+      outputFormat,
+      outputFormat !== 'original' ? paddingColor : undefined,
+      outlineColor,
+      fontSize
+    );
   };
 
   return (
@@ -144,7 +156,7 @@ export function SubtitleCompositionStatus({
           {(outputFormat === 'vertical' || outputFormat === 'horizontal') && (
             <div className="space-y-2">
               <Label className="text-sm font-medium">余白の色</Label>
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4 flex-wrap">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"
@@ -178,13 +190,147 @@ export function SubtitleCompositionStatus({
                       className="w-4 h-4 rounded border border-gray-300"
                       style={{ backgroundColor: '#30bca7' }}
                     />
-                    チームみらいグリーン
+                    緑
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="composePaddingColor"
+                    value="#56d6ea"
+                    checked={paddingColor === '#56d6ea'}
+                    onChange={() => setPaddingColor('#56d6ea')}
+                    disabled={isComposing}
+                    className="w-4 h-4 text-primary"
+                  />
+                  <span className="flex items-center gap-2 text-sm">
+                    <span
+                      className="w-4 h-4 rounded border border-gray-300"
+                      style={{ backgroundColor: '#56d6ea' }}
+                    />
+                    水色
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="composePaddingColor"
+                    value="#ff7aa2"
+                    checked={paddingColor === '#ff7aa2'}
+                    onChange={() => setPaddingColor('#ff7aa2')}
+                    disabled={isComposing}
+                    className="w-4 h-4 text-primary"
+                  />
+                  <span className="flex items-center gap-2 text-sm">
+                    <span
+                      className="w-4 h-4 rounded border border-gray-300"
+                      style={{ backgroundColor: '#ff7aa2' }}
+                    />
+                    ピンク
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="composePaddingColor"
+                    value="#ffffff"
+                    checked={paddingColor === '#ffffff'}
+                    onChange={() => setPaddingColor('#ffffff')}
+                    disabled={isComposing}
+                    className="w-4 h-4 text-primary"
+                  />
+                  <span className="flex items-center gap-2 text-sm">
+                    <span
+                      className="w-4 h-4 rounded border border-gray-300"
+                      style={{ backgroundColor: '#ffffff' }}
+                    />
+                    白
                   </span>
                 </label>
               </div>
             </div>
           )}
 
+          {/* テキスト枠の色選択 */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">テキスト枠の色</Label>
+            <div className="flex items-center gap-4 flex-wrap">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="composeOutlineColor"
+                  value="#30bca7"
+                  checked={outlineColor === '#30bca7'}
+                  onChange={() => setOutlineColor('#30bca7')}
+                  disabled={isComposing}
+                  className="w-4 h-4 text-primary"
+                />
+                <span className="flex items-center gap-2 text-sm">
+                  <span
+                    className="w-4 h-4 rounded border border-gray-300"
+                    style={{ backgroundColor: '#30bca7' }}
+                  />
+                  緑
+                </span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="composeOutlineColor"
+                  value="#56d6ea"
+                  checked={outlineColor === '#56d6ea'}
+                  onChange={() => setOutlineColor('#56d6ea')}
+                  disabled={isComposing}
+                  className="w-4 h-4 text-primary"
+                />
+                <span className="flex items-center gap-2 text-sm">
+                  <span
+                    className="w-4 h-4 rounded border border-gray-300"
+                    style={{ backgroundColor: '#56d6ea' }}
+                  />
+                  水色
+                </span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="composeOutlineColor"
+                  value="#ff7aa2"
+                  checked={outlineColor === '#ff7aa2'}
+                  onChange={() => setOutlineColor('#ff7aa2')}
+                  disabled={isComposing}
+                  className="w-4 h-4 text-primary"
+                />
+                <span className="flex items-center gap-2 text-sm">
+                  <span
+                    className="w-4 h-4 rounded border border-gray-300"
+                    style={{ backgroundColor: '#ff7aa2' }}
+                  />
+                  ピンク
+                </span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="composeOutlineColor"
+                  value="#000000"
+                  checked={outlineColor === '#000000'}
+                  onChange={() => setOutlineColor('#000000')}
+                  disabled={isComposing}
+                  className="w-4 h-4 text-primary"
+                />
+                <span className="flex items-center gap-2 text-sm">
+                  <span
+                    className="w-4 h-4 rounded border border-gray-300"
+                    style={{ backgroundColor: '#000000' }}
+                  />
+                  黒
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* フォントサイズ選択 */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">フォントサイズ</Label>
             <div className="flex items-center gap-6">

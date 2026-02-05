@@ -11,6 +11,7 @@ import { uploadSubtitledClipToDrive } from '@/server/presentation/clip-video/act
 import type {
   ClipSubtitle,
   ClipSubtitleSegment,
+  OutlineColor,
   OutputFormat,
   PaddingColor,
   SubtitleFontSize,
@@ -164,6 +165,7 @@ export function SubtitleEditor({
     async (
       outputFormat?: OutputFormat,
       paddingColor?: PaddingColor,
+      outlineColor?: OutlineColor,
       fontSize?: SubtitleFontSize
     ) => {
       if (subtitle?.status !== 'confirmed') {
@@ -173,7 +175,12 @@ export function SubtitleEditor({
       setIsComposing(true);
       setMessage(null);
       try {
-        const result = await composeSubtitledClip(clipId, { outputFormat, paddingColor, fontSize });
+        const result = await composeSubtitledClip(clipId, {
+          outputFormat,
+          paddingColor,
+          outlineColor,
+          fontSize,
+        });
         setSubtitledVideoUrl(result.subtitledVideoUrl);
         showMessage('success', '動画の合成に成功しました');
       } catch (error) {
