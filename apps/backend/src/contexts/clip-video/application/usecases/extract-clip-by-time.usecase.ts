@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { pipeline } from 'node:stream/promises';
+import type { AiGateway } from '@clip-video/domain/gateways/ai.gateway.js';
 import type { ClipRepositoryGateway } from '@clip-video/domain/gateways/clip-repository.gateway.js';
 import type { RefinedTranscriptionRepositoryGateway } from '@clip-video/domain/gateways/refined-transcription-repository.gateway.js';
 import type { StorageGateway } from '@clip-video/domain/gateways/storage.gateway.js';
@@ -18,8 +19,6 @@ import { NotFoundError, ValidationError } from '../errors/errors.js';
 
 const log = createLogger('ExtractClipByTimeUseCase');
 
-/** 最小クリップ長（秒） */
-const MIN_CLIP_DURATION_SECONDS = 5;
 /** 最大クリップ長（秒） = 10分 */
 const MAX_CLIP_DURATION_SECONDS = 600;
 /** クリップ終端のパディング（秒） */
@@ -42,6 +41,7 @@ export interface ExtractClipByTimeUseCaseDeps {
   storageGateway: StorageGateway;
   tempStorageGateway: TempStorageGateway;
   videoProcessingGateway: VideoProcessingGateway;
+  aiGateway: AiGateway;
   generateId: () => string;
   outputFolderId?: string;
 }
@@ -54,6 +54,7 @@ export class ExtractClipByTimeUseCase {
   private readonly storageGateway: StorageGateway;
   private readonly tempStorageGateway: TempStorageGateway;
   private readonly videoProcessingGateway: VideoProcessingGateway;
+  private readonly aiGateway: AiGateway;
   private readonly generateId: () => string;
   private readonly outputFolderId?: string;
 
@@ -65,6 +66,7 @@ export class ExtractClipByTimeUseCase {
     this.storageGateway = deps.storageGateway;
     this.tempStorageGateway = deps.tempStorageGateway;
     this.videoProcessingGateway = deps.videoProcessingGateway;
+    this.aiGateway = deps.aiGateway;
     this.generateId = deps.generateId;
     this.outputFolderId = deps.outputFolderId;
   }
@@ -202,13 +204,28 @@ export class ExtractClipByTimeUseCase {
         await fs.promises.unlink(clipOutputPath).catch(() => {});
 
         // 15. Update clip with Google Drive info
-        const completedClip = clip
+        let completedClip = clip
           .withGoogleDriveInfo(uploadedFile.id, uploadedFile.webViewLink)
           .withStatus('completed');
         await this.clipRepository.save(completedClip);
         log.info('Clip completed', { clipId: completedClip.id });
 
-        // 16. Update video to completed (keep at completed or transcribed)
+        // 16. Post-process: generate title via LLM
+        try {
+          const aiTitle = await this.generateTitleWithAi(clipTranscript);
+          if (aiTitle) {
+            completedClip = completedClip.withTitle(aiTitle);
+            await this.clipRepository.save(completedClip);
+            log.info('Clip title updated via LLM', { clipId: completedClip.id, title: aiTitle });
+          }
+        } catch (aiError) {
+          log.warn('Failed to generate title via LLM, keeping fallback title', {
+            clipId: completedClip.id,
+            error: aiError instanceof Error ? aiError.message : 'Unknown error',
+          });
+        }
+
+        // 17. Update video to completed (keep at completed or transcribed)
         const finalStatus = video.status === 'completed' ? 'completed' : 'transcribed';
         await this.videoRepository.save(updatedVideo.withStatus(finalStatus));
         log.info('Processing completed successfully');
@@ -245,6 +262,21 @@ export class ExtractClipByTimeUseCase {
     }
   }
 
+  private async generateTitleWithAi(transcript: string | null): Promise<string | null> {
+    if (!transcript) return null;
+
+    const prompt = `以下の動画クリップの文字起こしから、内容を端的に表す短いタイトル（30文字以内）を1つだけ生成してください。
+タイトルのみを出力してください。説明や装飾は不要です。
+
+## 文字起こし
+${transcript}`;
+
+    const response = await this.aiGateway.generate(prompt);
+    const title = response.trim();
+    if (!title) return null;
+    return title;
+  }
+
   private validateInput(input: ExtractClipByTimeInput): void {
     const { startTimeSeconds, endTimeSeconds } = input;
 
@@ -257,12 +289,6 @@ export class ExtractClipByTimeUseCase {
     }
 
     const duration = endTimeSeconds - startTimeSeconds;
-    if (duration < MIN_CLIP_DURATION_SECONDS) {
-      throw new ValidationError(
-        `Clip duration must be at least ${MIN_CLIP_DURATION_SECONDS} seconds (got ${duration})`
-      );
-    }
-
     if (duration > MAX_CLIP_DURATION_SECONDS) {
       throw new ValidationError(
         `Clip duration must not exceed ${MAX_CLIP_DURATION_SECONDS} seconds (${MAX_CLIP_DURATION_SECONDS / 60} minutes, got ${duration})`
