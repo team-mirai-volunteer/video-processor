@@ -48,7 +48,8 @@ describe('SubtitleSegmentationPromptService', () => {
       expect(prompt).toContain('動画字幕の編集者');
       expect(prompt).toContain('0秒 〜 1.5秒');
       expect(prompt).toContain('今日は良い天気です。');
-      expect(prompt).toContain('15〜25文字程度');
+      expect(prompt).toContain('1行は16文字以内');
+      expect(prompt).toContain('最大2行まで');
       expect(prompt).toContain('segments');
     });
 
@@ -64,14 +65,37 @@ describe('SubtitleSegmentationPromptService', () => {
       expect(prompt).toContain('"startTimeSeconds"');
       expect(prompt).toContain('"endTimeSeconds"');
     });
+
+    it('should include lines array example in prompt', () => {
+      const prompt = service.buildPrompt({
+        clipStartSeconds: 0.0,
+        clipEndSeconds: 1.5,
+        transcriptionSegments: mockTranscriptionSegments,
+        refinedFullText: '今日は良い天気です。',
+      });
+
+      expect(prompt).toContain('"lines"');
+    });
+
+    it('should include no punctuation rule in prompt', () => {
+      const prompt = service.buildPrompt({
+        clipStartSeconds: 0.0,
+        clipEndSeconds: 1.5,
+        transcriptionSegments: mockTranscriptionSegments,
+        refinedFullText: '今日は良い天気です。',
+      });
+
+      expect(prompt).toContain('句読点');
+      expect(prompt).toContain('入れない');
+    });
   });
 
   describe('parseResponse', () => {
-    it('should parse valid JSON response', () => {
+    it('should parse valid JSON response with lines array', () => {
       const response = `{
         "segments": [
           {
-            "text": "今日は良い天気です",
+            "lines": ["今日は良い天気です"],
             "startTimeSeconds": 0.0,
             "endTimeSeconds": 1.5
           }
@@ -82,9 +106,26 @@ describe('SubtitleSegmentationPromptService', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0]?.index).toBe(0);
-      expect(result[0]?.text).toBe('今日は良い天気です');
+      expect(result[0]?.lines).toEqual(['今日は良い天気です']);
       expect(result[0]?.startTimeSeconds).toBe(0.0);
       expect(result[0]?.endTimeSeconds).toBe(1.5);
+    });
+
+    it('should parse response with 2 lines', () => {
+      const response = `{
+        "segments": [
+          {
+            "lines": ["こんにちは", "世界"],
+            "startTimeSeconds": 0.0,
+            "endTimeSeconds": 1.5
+          }
+        ]
+      }`;
+
+      const result = service.parseResponse(response, 0);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.lines).toEqual(['こんにちは', '世界']);
     });
 
     it('should parse response with surrounding text', () => {
@@ -92,12 +133,12 @@ describe('SubtitleSegmentationPromptService', () => {
       {
         "segments": [
           {
-            "text": "こんにちは",
+            "lines": ["こんにちは"],
             "startTimeSeconds": 0.0,
             "endTimeSeconds": 1.0
           },
           {
-            "text": "さようなら",
+            "lines": ["さようなら"],
             "startTimeSeconds": 1.0,
             "endTimeSeconds": 2.0
           }
@@ -124,25 +165,53 @@ describe('SubtitleSegmentationPromptService', () => {
       expect(() => service.parseResponse(response, 0)).toThrow('missing segments array');
     });
 
-    it('should throw error when segment has empty text', () => {
+    it('should throw error when segment has empty lines', () => {
       const response = `{
         "segments": [
           {
-            "text": "",
+            "lines": [],
             "startTimeSeconds": 0.0,
             "endTimeSeconds": 1.0
           }
         ]
       }`;
 
-      expect(() => service.parseResponse(response, 0)).toThrow('missing or empty text');
+      expect(() => service.parseResponse(response, 0)).toThrow('missing or empty lines');
+    });
+
+    it('should throw error when segment has too many lines', () => {
+      const response = `{
+        "segments": [
+          {
+            "lines": ["行1", "行2", "行3"],
+            "startTimeSeconds": 0.0,
+            "endTimeSeconds": 1.0
+          }
+        ]
+      }`;
+
+      expect(() => service.parseResponse(response, 0)).toThrow('too many lines');
+    });
+
+    it('should throw error when line exceeds max characters', () => {
+      const response = `{
+        "segments": [
+          {
+            "lines": ["これは確実に十七文字を超えています"],
+            "startTimeSeconds": 0.0,
+            "endTimeSeconds": 1.0
+          }
+        ]
+      }`;
+
+      expect(() => service.parseResponse(response, 0)).toThrow('too long');
     });
 
     it('should throw error when segment has invalid time range', () => {
       const response = `{
         "segments": [
           {
-            "text": "テスト",
+            "lines": ["テスト"],
             "startTimeSeconds": 2.0,
             "endTimeSeconds": 1.0
           }
@@ -158,7 +227,7 @@ describe('SubtitleSegmentationPromptService', () => {
       const response = `{
         "segments": [
           {
-            "text": "テスト",
+            "lines": ["テスト"],
             "endTimeSeconds": 1.0
           }
         ]
@@ -167,11 +236,11 @@ describe('SubtitleSegmentationPromptService', () => {
       expect(() => service.parseResponse(response, 0)).toThrow('missing startTimeSeconds');
     });
 
-    it('should trim whitespace from text', () => {
+    it('should trim whitespace from lines', () => {
       const response = `{
         "segments": [
           {
-            "text": "  テスト  ",
+            "lines": ["  テスト  ", "  テスト2  "],
             "startTimeSeconds": 0.0,
             "endTimeSeconds": 1.0
           }
@@ -180,14 +249,14 @@ describe('SubtitleSegmentationPromptService', () => {
 
       const result = service.parseResponse(response, 0);
 
-      expect(result[0]?.text).toBe('テスト');
+      expect(result[0]?.lines).toEqual(['テスト', 'テスト2']);
     });
 
     it('should convert absolute time to relative time based on clipStartSeconds', () => {
       const response = `{
         "segments": [
           {
-            "text": "テスト",
+            "lines": ["テスト"],
             "startTimeSeconds": 120.0,
             "endTimeSeconds": 122.5
           }

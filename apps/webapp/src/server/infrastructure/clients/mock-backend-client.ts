@@ -242,11 +242,11 @@ export const mockBackendClient = {
         id: `subtitle-${clipId}`,
         clipId,
         segments: [
-          { index: 0, text: 'これはモックの字幕です', startTimeSeconds: 0, endTimeSeconds: 5 },
-          { index: 1, text: '字幕の編集が可能です', startTimeSeconds: 5, endTimeSeconds: 10 },
+          { index: 0, lines: ['これはモックの字幕です'], startTimeSeconds: 0, endTimeSeconds: 5 },
+          { index: 1, lines: ['字幕の編集が可能です'], startTimeSeconds: 5, endTimeSeconds: 10 },
           {
             index: 2,
-            text: 'セグメントは15〜25文字程度',
+            lines: ['1行は16文字以内', '最大2行まで'],
             startTimeSeconds: 10,
             endTimeSeconds: 15,
           },
@@ -264,8 +264,8 @@ export const mockBackendClient = {
         id: `subtitle-${clipId}`,
         clipId,
         segments: [
-          { index: 0, text: 'これはモックの字幕です', startTimeSeconds: 0, endTimeSeconds: 5 },
-          { index: 1, text: '字幕の編集が可能です', startTimeSeconds: 5, endTimeSeconds: 10 },
+          { index: 0, lines: ['これはモックの字幕です'], startTimeSeconds: 0, endTimeSeconds: 5 },
+          { index: 1, lines: ['字幕の編集が可能です'], startTimeSeconds: 5, endTimeSeconds: 10 },
         ],
         status: 'draft',
         createdAt: new Date(),
@@ -296,7 +296,7 @@ export const mockBackendClient = {
         id: `subtitle-${clipId}`,
         clipId,
         segments: [
-          { index: 0, text: 'これはモックの字幕です', startTimeSeconds: 0, endTimeSeconds: 5 },
+          { index: 0, lines: ['これはモックの字幕です'], startTimeSeconds: 0, endTimeSeconds: 5 },
         ],
         status: 'confirmed',
         createdAt: new Date(),

@@ -8,8 +8,8 @@ describe('GetClipSubtitlesUseCase', () => {
   let mockClipSubtitleRepository: ClipSubtitleRepositoryGateway;
 
   const validSegments = [
-    { index: 0, text: 'こんにちは', startTimeSeconds: 0.0, endTimeSeconds: 1.5 },
-    { index: 1, text: 'これはテストです', startTimeSeconds: 1.5, endTimeSeconds: 3.0 },
+    { index: 0, lines: ['こんにちは'], startTimeSeconds: 0.0, endTimeSeconds: 1.5 },
+    { index: 1, lines: ['これはテストです'], startTimeSeconds: 1.5, endTimeSeconds: 3.0 },
   ];
 
   beforeEach(() => {

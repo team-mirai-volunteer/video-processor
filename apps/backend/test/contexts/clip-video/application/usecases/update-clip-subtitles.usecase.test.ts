@@ -13,12 +13,12 @@ describe('UpdateClipSubtitlesUseCase', () => {
   let mockClipSubtitleRepository: ClipSubtitleRepositoryGateway;
 
   const validSegments = [
-    { index: 0, text: 'こんにちは', startTimeSeconds: 0.0, endTimeSeconds: 1.5 },
-    { index: 1, text: 'これはテストです', startTimeSeconds: 1.5, endTimeSeconds: 3.0 },
+    { index: 0, lines: ['こんにちは'], startTimeSeconds: 0.0, endTimeSeconds: 1.5 },
+    { index: 1, lines: ['これはテストです'], startTimeSeconds: 1.5, endTimeSeconds: 3.0 },
   ];
 
   const newSegments = [
-    { index: 0, text: '更新されたテキスト', startTimeSeconds: 0.0, endTimeSeconds: 2.0 },
+    { index: 0, lines: ['更新されたテキスト'], startTimeSeconds: 0.0, endTimeSeconds: 2.0 },
   ];
 
   beforeEach(() => {
@@ -50,7 +50,7 @@ describe('UpdateClipSubtitlesUseCase', () => {
     });
 
     expect(result.subtitle.segments).toHaveLength(1);
-    expect(result.subtitle.segments[0]?.text).toBe('更新されたテキスト');
+    expect(result.subtitle.segments[0]?.lines).toEqual(['更新されたテキスト']);
     expect(mockClipSubtitleRepository.save).toHaveBeenCalled();
   });
 

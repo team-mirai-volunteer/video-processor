@@ -3,7 +3,7 @@
 import { ClipVideoPlayer, SubtitleEditor } from '@/components/features/clip-detail';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ClipSubtitle, GetClipResponse } from '@video-processor/shared';
 import { ArrowLeft, Clock, ExternalLink, FileText, Video } from 'lucide-react';
 import Link from 'next/link';
@@ -73,7 +73,7 @@ export function ClipDetailClient({ clip, videoTitle, initialSubtitle }: ClipDeta
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <CardTitle className="text-xl">{clip.title || 'タイトルなし'}</CardTitle>
-              <CardDescription className="space-y-1">
+              <div className="space-y-1 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Video className="h-3 w-3" />
                   <span>元動画: </span>
@@ -91,7 +91,7 @@ export function ClipDetailClient({ clip, videoTitle, initialSubtitle }: ClipDeta
                   </span>
                   <span>({formatDuration(clip.durationSeconds)})</span>
                 </div>
-              </CardDescription>
+              </div>
             </div>
             <Badge variant={config.variant}>{config.label}</Badge>
           </div>
