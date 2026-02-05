@@ -16,6 +16,8 @@ import { refineTranscript } from '@/server/presentation/clip-video/actions/refin
 import type {
   GetRefinedTranscriptionResponse,
   GetTranscriptionResponse,
+  OutputFormat,
+  PaddingColor,
   VideoWithRelations,
 } from '@video-processor/shared';
 import {
@@ -64,6 +66,8 @@ export function VideoDetailClient({
   const [isRefining, setIsRefining] = useState(false);
   const [clipInstructions, setClipInstructions] = useState('');
   const [multipleClips, setMultipleClips] = useState(false);
+  const [outputFormat, setOutputFormat] = useState<OutputFormat>('original');
+  const [paddingColor, setPaddingColor] = useState<PaddingColor>('#000000');
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
 
@@ -109,10 +113,17 @@ export function VideoDetailClient({
     setExtractError(null);
 
     try {
-      await extractClips(video.id, { clipInstructions, multipleClips });
+      await extractClips(video.id, {
+        clipInstructions,
+        multipleClips,
+        outputFormat,
+        paddingColor: outputFormat === 'vertical' ? paddingColor : undefined,
+      });
       await pollStatus();
       setClipInstructions('');
       setMultipleClips(false);
+      setOutputFormat('original');
+      setPaddingColor('#000000');
     } catch (err) {
       setExtractError(err instanceof Error ? err.message : '切り抜き処理の開始に失敗しました');
     } finally {
@@ -284,6 +295,83 @@ export function VideoDetailClient({
                     <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                     <div>
                       複数クリップを作成する場合は、AIが各クリップの区切りを判別できるよう、明確に記載してください。
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">出力フォーマット</Label>
+                  <div className="flex items-center gap-6">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="outputFormat"
+                        value="original"
+                        checked={outputFormat === 'original'}
+                        onChange={() => setOutputFormat('original')}
+                        disabled={extracting}
+                        className="w-4 h-4 text-primary"
+                      />
+                      <span className="text-sm">オリジナル</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="outputFormat"
+                        value="vertical"
+                        checked={outputFormat === 'vertical'}
+                        onChange={() => setOutputFormat('vertical')}
+                        disabled={extracting}
+                        className="w-4 h-4 text-primary"
+                      />
+                      <span className="text-sm">縦動画（9:16）</span>
+                    </label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    縦動画を選択すると、9:16フレームに中央配置し、余白を指定色で埋めます。
+                  </p>
+                </div>
+
+                {outputFormat === 'vertical' && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">余白の色</Label>
+                    <div className="flex items-center gap-6">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="paddingColor"
+                          value="#000000"
+                          checked={paddingColor === '#000000'}
+                          onChange={() => setPaddingColor('#000000')}
+                          disabled={extracting}
+                          className="w-4 h-4 text-primary"
+                        />
+                        <span className="flex items-center gap-2 text-sm">
+                          <span
+                            className="w-4 h-4 rounded border border-gray-300"
+                            style={{ backgroundColor: '#000000' }}
+                          />
+                          黒
+                        </span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="paddingColor"
+                          value="#30bca7"
+                          checked={paddingColor === '#30bca7'}
+                          onChange={() => setPaddingColor('#30bca7')}
+                          disabled={extracting}
+                          className="w-4 h-4 text-primary"
+                        />
+                        <span className="flex items-center gap-2 text-sm">
+                          <span
+                            className="w-4 h-4 rounded border border-gray-300"
+                            style={{ backgroundColor: '#30bca7' }}
+                          />
+                          チームみらいグリーン
+                        </span>
+                      </label>
                     </div>
                   </div>
                 )}
