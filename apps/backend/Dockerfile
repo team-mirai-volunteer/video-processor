@@ -30,13 +30,20 @@ WORKDIR /app/apps/backend
 
 CMD ["./scripts/migrate.sh"]
 
+# FFmpeg stage - copy static ffmpeg/ffprobe binaries (v7.1)
+FROM mwader/static-ffmpeg:7.1 AS ffmpeg
+
 # Production stage
 FROM node:22-slim AS runner
 
-# Install FFmpeg, OpenSSL, and Japanese fonts (including extra weights like Black)
+# Copy static FFmpeg binaries (v7.1) for consistent behavior across environments
+COPY --from=ffmpeg /ffmpeg /usr/local/bin/ffmpeg
+COPY --from=ffmpeg /ffprobe /usr/local/bin/ffprobe
+
+# Install OpenSSL, fontconfig, and Japanese fonts (including extra weights like Black)
 RUN apt-get update && apt-get install -y \
-    ffmpeg \
     openssl \
+    fontconfig \
     fonts-noto-cjk \
     fonts-noto-cjk-extra \
     && rm -rf /var/lib/apt/lists/* \
