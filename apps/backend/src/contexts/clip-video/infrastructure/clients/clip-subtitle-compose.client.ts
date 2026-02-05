@@ -12,20 +12,35 @@ import type { SubtitleFontSize } from '@video-processor/shared';
 import ffmpeg from 'fluent-ffmpeg';
 
 /**
- * フォントサイズに応じたピクセル値
+ * 動画横幅に対するフォントサイズの比率
+ * 例: 1920px幅の場合 small=96px, medium=120px, large=148px
  */
-const FONT_SIZE_PX: Record<SubtitleFontSize, number> = {
-  medium: 64,
-  large: 96,
+const FONT_SIZE_RATIO: Record<SubtitleFontSize, number> = {
+  small: 96 / 1920,
+  medium: 120 / 1920,
+  large: 148 / 1920,
 };
 
 /**
- * フォントサイズに応じたアウトライン幅
+ * フォントサイズに対するアウトライン幅の比率
  */
-const OUTLINE_WIDTH_PX: Record<SubtitleFontSize, number> = {
-  medium: 8,
-  large: 12,
+const OUTLINE_RATIO: Record<SubtitleFontSize, number> = {
+  small: 8 / 64,
+  medium: 10 / 80,
+  large: 12 / 96,
 };
+
+/**
+ * 動画横幅からフォントサイズとアウトライン幅を算出する
+ */
+function calcFontMetrics(
+  fontSizeKey: SubtitleFontSize,
+  videoWidth: number
+): { fontSize: number; outlineWidth: number } {
+  const fontSize = Math.round(videoWidth * FONT_SIZE_RATIO[fontSizeKey]);
+  const outlineWidth = Math.round(fontSize * OUTLINE_RATIO[fontSizeKey]);
+  return { fontSize, outlineWidth };
+}
 
 /**
  * Clip Subtitle Compose Client
@@ -67,10 +82,12 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
     const tempDir = path.dirname(params.inputVideoPath);
     const subtitleImages: { path: string; startTime: number; endTime: number }[] = [];
 
-    // フォントサイズの決定
-    const fontSizeKey = params.fontSize ?? 'medium';
-    const fontSizePx = FONT_SIZE_PX[fontSizeKey];
-    const outlineWidthPx = OUTLINE_WIDTH_PX[fontSizeKey];
+    // フォントサイズの決定（動画横幅ベース）
+    const fontSizeKey = params.fontSize ?? 'small';
+    const { fontSize: fontSizePx, outlineWidth: outlineWidthPx } = calcFontMetrics(
+      fontSizeKey,
+      params.width
+    );
 
     // 縦位置の計算（縦動画の場合は正方形下端付近に配置）
     const verticalPosition = this.calculateVerticalPosition(params.width, params.height);

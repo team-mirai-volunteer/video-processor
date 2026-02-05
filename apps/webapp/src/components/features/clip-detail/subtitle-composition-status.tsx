@@ -44,7 +44,7 @@ export function SubtitleCompositionStatus({
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('original');
   const [paddingColor, setPaddingColor] = useState<PaddingColor>('#000000');
   const [outlineColor, setOutlineColor] = useState<OutlineColor>('#30bca7');
-  const [fontSize, setFontSize] = useState<SubtitleFontSize>('medium');
+  const [fontSize, setFontSize] = useState<SubtitleFontSize>('large');
 
   const showComposeButton = step === 'idle' && canCompose;
   const showUploadButton = (step === 'composed' || subtitledVideoUrl) && !subtitledVideoDriveUrl;
@@ -109,257 +109,120 @@ export function SubtitleCompositionStatus({
           </Badge>
         </div>
 
-        {/* 出力フォーマット選択 */}
+        {/* 設定項目 */}
         <div className="space-y-3">
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">出力フォーマット</Label>
-            <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="composeOutputFormat"
-                  value="original"
-                  checked={outputFormat === 'original'}
-                  onChange={() => setOutputFormat('original')}
+          {/* サイズ */}
+          <div className="flex items-center gap-3">
+            <Label className="text-sm font-medium shrink-0 w-20">サイズ</Label>
+            <div className="inline-flex rounded-lg border border-gray-200 bg-muted p-1">
+              {(
+                [
+                  { value: 'original' as OutputFormat, label: 'オリジナル' },
+                  { value: 'vertical' as OutputFormat, label: '縦動画（9:16）' },
+                  { value: 'horizontal' as OutputFormat, label: '横動画（16:9）' },
+                ] as const
+              ).map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setOutputFormat(value)}
                   disabled={isComposing}
-                  className="w-4 h-4 text-primary"
-                />
-                <span className="text-sm">オリジナル</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="composeOutputFormat"
-                  value="vertical"
-                  checked={outputFormat === 'vertical'}
-                  onChange={() => setOutputFormat('vertical')}
-                  disabled={isComposing}
-                  className="w-4 h-4 text-primary"
-                />
-                <span className="text-sm">縦動画（9:16）</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="composeOutputFormat"
-                  value="horizontal"
-                  checked={outputFormat === 'horizontal'}
-                  onChange={() => setOutputFormat('horizontal')}
-                  disabled={isComposing}
-                  className="w-4 h-4 text-primary"
-                />
-                <span className="text-sm">横動画（16:9）</span>
-              </label>
+                  className={`px-3 py-1.5 text-sm rounded-md transition-all ${
+                    outputFormat === value
+                      ? 'bg-background text-foreground shadow-sm font-medium'
+                      : 'text-muted-foreground hover:text-foreground'
+                  } ${isComposing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
+          {/* フォントサイズ */}
+          <div className="flex items-center gap-3">
+            <Label className="text-sm font-medium shrink-0 w-20">フォント</Label>
+            <div className="inline-flex rounded-lg border border-gray-200 bg-muted p-1">
+              {(
+                [
+                  { value: 'large' as SubtitleFontSize, label: '大' },
+                  { value: 'medium' as SubtitleFontSize, label: '中' },
+                  { value: 'small' as SubtitleFontSize, label: '小' },
+                ] as const
+              ).map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setFontSize(value)}
+                  disabled={isComposing}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-all ${
+                    fontSize === value
+                      ? 'bg-background text-foreground shadow-sm font-medium'
+                      : 'text-muted-foreground hover:text-foreground'
+                  } ${isComposing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* テキスト枠の色 */}
+          <div className="flex items-center gap-3">
+            <Label className="text-sm font-medium shrink-0 w-20">テキスト</Label>
+            {(
+              [
+                { value: '#30bca7' as OutlineColor, label: '緑' },
+                { value: '#56d6ea' as OutlineColor, label: '水色' },
+                { value: '#ff7aa2' as OutlineColor, label: 'ピンク' },
+                { value: '#000000' as OutlineColor, label: '黒' },
+              ] as const
+            ).map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setOutlineColor(value)}
+                disabled={isComposing}
+                title={label}
+                className={`w-8 h-8 rounded-full border-2 transition-all ${
+                  outlineColor === value
+                    ? 'border-primary ring-2 ring-primary/30 scale-110'
+                    : 'border-gray-300 hover:scale-105'
+                } ${isComposing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                style={{ backgroundColor: value }}
+              />
+            ))}
+          </div>
+
+          {/* 余白の色 */}
           {(outputFormat === 'vertical' || outputFormat === 'horizontal') && (
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">余白の色</Label>
-              <div className="flex items-center gap-4 flex-wrap">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="composePaddingColor"
-                    value="#000000"
-                    checked={paddingColor === '#000000'}
-                    onChange={() => setPaddingColor('#000000')}
-                    disabled={isComposing}
-                    className="w-4 h-4 text-primary"
-                  />
-                  <span className="flex items-center gap-2 text-sm">
-                    <span
-                      className="w-4 h-4 rounded border border-gray-300"
-                      style={{ backgroundColor: '#000000' }}
-                    />
-                    黒
-                  </span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="composePaddingColor"
-                    value="#30bca7"
-                    checked={paddingColor === '#30bca7'}
-                    onChange={() => setPaddingColor('#30bca7')}
-                    disabled={isComposing}
-                    className="w-4 h-4 text-primary"
-                  />
-                  <span className="flex items-center gap-2 text-sm">
-                    <span
-                      className="w-4 h-4 rounded border border-gray-300"
-                      style={{ backgroundColor: '#30bca7' }}
-                    />
-                    緑
-                  </span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="composePaddingColor"
-                    value="#56d6ea"
-                    checked={paddingColor === '#56d6ea'}
-                    onChange={() => setPaddingColor('#56d6ea')}
-                    disabled={isComposing}
-                    className="w-4 h-4 text-primary"
-                  />
-                  <span className="flex items-center gap-2 text-sm">
-                    <span
-                      className="w-4 h-4 rounded border border-gray-300"
-                      style={{ backgroundColor: '#56d6ea' }}
-                    />
-                    水色
-                  </span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="composePaddingColor"
-                    value="#ff7aa2"
-                    checked={paddingColor === '#ff7aa2'}
-                    onChange={() => setPaddingColor('#ff7aa2')}
-                    disabled={isComposing}
-                    className="w-4 h-4 text-primary"
-                  />
-                  <span className="flex items-center gap-2 text-sm">
-                    <span
-                      className="w-4 h-4 rounded border border-gray-300"
-                      style={{ backgroundColor: '#ff7aa2' }}
-                    />
-                    ピンク
-                  </span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="composePaddingColor"
-                    value="#ffffff"
-                    checked={paddingColor === '#ffffff'}
-                    onChange={() => setPaddingColor('#ffffff')}
-                    disabled={isComposing}
-                    className="w-4 h-4 text-primary"
-                  />
-                  <span className="flex items-center gap-2 text-sm">
-                    <span
-                      className="w-4 h-4 rounded border border-gray-300"
-                      style={{ backgroundColor: '#ffffff' }}
-                    />
-                    白
-                  </span>
-                </label>
-              </div>
+            <div className="flex items-center gap-3">
+              <Label className="text-sm font-medium shrink-0 w-20">背景色</Label>
+              {(
+                [
+                  { value: '#30bca7' as PaddingColor, label: '緑' },
+                  { value: '#56d6ea' as PaddingColor, label: '水色' },
+                  { value: '#ff7aa2' as PaddingColor, label: 'ピンク' },
+                  { value: '#000000' as PaddingColor, label: '黒' },
+                  { value: '#ffffff' as PaddingColor, label: '白' },
+                ] as const
+              ).map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setPaddingColor(value)}
+                  disabled={isComposing}
+                  title={label}
+                  className={`w-8 h-8 rounded-full border-2 transition-all ${
+                    paddingColor === value
+                      ? 'border-primary ring-2 ring-primary/30 scale-110'
+                      : 'border-gray-300 hover:scale-105'
+                  } ${isComposing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  style={{ backgroundColor: value }}
+                />
+              ))}
             </div>
           )}
-
-          {/* テキスト枠の色選択 */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">テキスト枠の色</Label>
-            <div className="flex items-center gap-4 flex-wrap">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="composeOutlineColor"
-                  value="#30bca7"
-                  checked={outlineColor === '#30bca7'}
-                  onChange={() => setOutlineColor('#30bca7')}
-                  disabled={isComposing}
-                  className="w-4 h-4 text-primary"
-                />
-                <span className="flex items-center gap-2 text-sm">
-                  <span
-                    className="w-4 h-4 rounded border border-gray-300"
-                    style={{ backgroundColor: '#30bca7' }}
-                  />
-                  緑
-                </span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="composeOutlineColor"
-                  value="#56d6ea"
-                  checked={outlineColor === '#56d6ea'}
-                  onChange={() => setOutlineColor('#56d6ea')}
-                  disabled={isComposing}
-                  className="w-4 h-4 text-primary"
-                />
-                <span className="flex items-center gap-2 text-sm">
-                  <span
-                    className="w-4 h-4 rounded border border-gray-300"
-                    style={{ backgroundColor: '#56d6ea' }}
-                  />
-                  水色
-                </span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="composeOutlineColor"
-                  value="#ff7aa2"
-                  checked={outlineColor === '#ff7aa2'}
-                  onChange={() => setOutlineColor('#ff7aa2')}
-                  disabled={isComposing}
-                  className="w-4 h-4 text-primary"
-                />
-                <span className="flex items-center gap-2 text-sm">
-                  <span
-                    className="w-4 h-4 rounded border border-gray-300"
-                    style={{ backgroundColor: '#ff7aa2' }}
-                  />
-                  ピンク
-                </span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="composeOutlineColor"
-                  value="#000000"
-                  checked={outlineColor === '#000000'}
-                  onChange={() => setOutlineColor('#000000')}
-                  disabled={isComposing}
-                  className="w-4 h-4 text-primary"
-                />
-                <span className="flex items-center gap-2 text-sm">
-                  <span
-                    className="w-4 h-4 rounded border border-gray-300"
-                    style={{ backgroundColor: '#000000' }}
-                  />
-                  黒
-                </span>
-              </label>
-            </div>
-          </div>
-
-          {/* フォントサイズ選択 */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">フォントサイズ</Label>
-            <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="composeFontSize"
-                  value="medium"
-                  checked={fontSize === 'medium'}
-                  onChange={() => setFontSize('medium')}
-                  disabled={isComposing}
-                  className="w-4 h-4 text-primary"
-                />
-                <span className="text-sm">中</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="composeFontSize"
-                  value="large"
-                  checked={fontSize === 'large'}
-                  onChange={() => setFontSize('large')}
-                  disabled={isComposing}
-                  className="w-4 h-4 text-primary"
-                />
-                <span className="text-sm">大</span>
-              </label>
-            </div>
-          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">

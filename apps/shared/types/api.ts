@@ -176,7 +176,7 @@ export type OutlineColor =
 export type OutputFormat = 'original' | 'vertical' | 'horizontal';
 
 /** 字幕フォントサイズ */
-export type SubtitleFontSize = 'medium' | 'large';
+export type SubtitleFontSize = 'small' | 'medium' | 'large';
 
 /**
  * POST /api/videos/:videoId/extract-clips request body
