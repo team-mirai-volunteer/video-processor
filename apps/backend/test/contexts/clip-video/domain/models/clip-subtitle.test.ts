@@ -220,9 +220,10 @@ describe('ClipSubtitle', () => {
         { index: 0, lines: ['更新されたテキスト'], startTimeSeconds: 0.0, endTimeSeconds: 2.0 },
       ]);
 
-      expect(updateResult.success).toBe(false);
-      if (!updateResult.success) {
-        expect(updateResult.error.type).toBe('ALREADY_CONFIRMED');
+      expect(updateResult.success).toBe(true);
+      if (updateResult.success) {
+        expect(updateResult.value.segments[0]?.lines).toEqual(['更新されたテキスト']);
+        expect(updateResult.value.status).toBe('draft');
       }
     });
   });

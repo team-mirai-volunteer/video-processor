@@ -1,5 +1,4 @@
 import {
-  SubtitleAlreadyConfirmedError,
   SubtitleNotFoundError,
   SubtitleValidationError,
 } from '@clip-video/application/errors/clip-subtitle.errors.js';
@@ -65,7 +64,7 @@ describe('UpdateClipSubtitlesUseCase', () => {
     ).rejects.toThrow(SubtitleNotFoundError);
   });
 
-  it('should throw SubtitleAlreadyConfirmedError when subtitle is confirmed', async () => {
+  it('should allow updating confirmed subtitle and reset status to draft', async () => {
     const subtitleResult = ClipSubtitle.create(
       { clipId: 'clip-123', segments: validSegments },
       () => 'subtitle-id-123'
@@ -78,13 +77,16 @@ describe('UpdateClipSubtitlesUseCase', () => {
     if (!confirmResult.success) return;
 
     vi.mocked(mockClipSubtitleRepository.findByClipId).mockResolvedValue(confirmResult.value);
+    vi.mocked(mockClipSubtitleRepository.save).mockResolvedValue();
 
-    await expect(
-      useCase.execute({
-        clipId: 'clip-123',
-        segments: newSegments,
-      })
-    ).rejects.toThrow(SubtitleAlreadyConfirmedError);
+    const result = await useCase.execute({
+      clipId: 'clip-123',
+      segments: newSegments,
+    });
+
+    expect(result.subtitle.segments).toHaveLength(1);
+    expect(result.subtitle.status).toBe('draft');
+    expect(mockClipSubtitleRepository.save).toHaveBeenCalled();
   });
 
   it('should throw SubtitleValidationError when new segments are invalid', async () => {

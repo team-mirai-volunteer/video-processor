@@ -116,13 +116,6 @@ export class ClipSubtitle {
    * セグメントを更新
    */
   withSegments(segments: ClipSubtitleSegment[]): Result<ClipSubtitle, ClipSubtitleError> {
-    if (this.status === 'confirmed') {
-      return err({
-        type: 'ALREADY_CONFIRMED',
-        message: 'Cannot update segments of a confirmed subtitle',
-      });
-    }
-
     const validationResult = ClipSubtitle.validateSegments(segments);
     if (!validationResult.success) {
       return validationResult;
@@ -132,6 +125,7 @@ export class ClipSubtitle {
       new ClipSubtitle({
         ...this.toProps(),
         segments,
+        status: 'draft',
         updatedAt: new Date(),
       })
     );

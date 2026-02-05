@@ -212,7 +212,7 @@ export function SubtitleEditor({
     }
   }, [clipId, showMessage]);
 
-  const isEditable = subtitle?.status === 'draft';
+  const isEditable = !!subtitle;
   const canCompose = subtitle?.status === 'confirmed' && !subtitledVideoUrl;
   const compositionStep = subtitledVideoDriveUrl
     ? 'uploaded'
@@ -328,7 +328,7 @@ export function SubtitleEditor({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {isEditable && (
+                  {subtitle.status === 'draft' && (
                     <Button
                       variant="default"
                       size="sm"
@@ -349,26 +349,24 @@ export function SubtitleEditor({
                     </Button>
                   )}
 
-                  {subtitle.status === 'confirmed' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleGenerate}
-                      disabled={isGenerating}
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                          再生成中...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="mr-2 h-3 w-3" />
-                          再生成
-                        </>
-                      )}
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGenerate}
+                    disabled={isGenerating}
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        再生成中...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-3 w-3" />
+                        再生成
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             </div>
