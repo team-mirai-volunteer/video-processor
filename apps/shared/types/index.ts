@@ -63,6 +63,7 @@ export type {
   HealthResponse,
   OutputFormat,
   PaddingColor,
+  SubtitleFontSize,
   Pagination,
   PaginatedResponse,
   RefinedSentence,

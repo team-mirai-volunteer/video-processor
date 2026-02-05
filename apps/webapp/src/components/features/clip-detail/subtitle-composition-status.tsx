@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import type { OutputFormat, PaddingColor } from '@video-processor/shared';
+import type { OutputFormat, PaddingColor, SubtitleFontSize } from '@video-processor/shared';
 import { CheckCircle, Download, ExternalLink, Loader2, RefreshCw, Video } from 'lucide-react';
 import { useState } from 'react';
 
@@ -14,7 +14,11 @@ interface SubtitleCompositionStatusProps {
   step: CompositionStep;
   subtitledVideoUrl?: string | null;
   subtitledVideoDriveUrl?: string | null;
-  onCompose?: (outputFormat?: OutputFormat, paddingColor?: PaddingColor) => void;
+  onCompose?: (
+    outputFormat?: OutputFormat,
+    paddingColor?: PaddingColor,
+    fontSize?: SubtitleFontSize
+  ) => void;
   onUpload?: () => void;
   isComposing?: boolean;
   isUploading?: boolean;
@@ -33,6 +37,7 @@ export function SubtitleCompositionStatus({
 }: SubtitleCompositionStatusProps) {
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('original');
   const [paddingColor, setPaddingColor] = useState<PaddingColor>('#000000');
+  const [fontSize, setFontSize] = useState<SubtitleFontSize>('medium');
 
   const showComposeButton = step === 'idle' && canCompose;
   const showUploadButton = (step === 'composed' || subtitledVideoUrl) && !subtitledVideoDriveUrl;
@@ -40,7 +45,7 @@ export function SubtitleCompositionStatus({
   const hasUploadedVideo = !!subtitledVideoDriveUrl;
 
   const handleCompose = () => {
-    onCompose?.(outputFormat, outputFormat !== 'original' ? paddingColor : undefined);
+    onCompose?.(outputFormat, outputFormat !== 'original' ? paddingColor : undefined, fontSize);
   };
 
   return (
@@ -179,6 +184,36 @@ export function SubtitleCompositionStatus({
               </div>
             </div>
           )}
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">フォントサイズ</Label>
+            <div className="flex items-center gap-6">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="composeFontSize"
+                  value="medium"
+                  checked={fontSize === 'medium'}
+                  onChange={() => setFontSize('medium')}
+                  disabled={isComposing}
+                  className="w-4 h-4 text-primary"
+                />
+                <span className="text-sm">中</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="composeFontSize"
+                  value="large"
+                  checked={fontSize === 'large'}
+                  onChange={() => setFontSize('large')}
+                  disabled={isComposing}
+                  className="w-4 h-4 text-primary"
+                />
+                <span className="text-sm">大</span>
+              </label>
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">

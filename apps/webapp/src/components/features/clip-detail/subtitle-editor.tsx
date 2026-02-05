@@ -13,6 +13,7 @@ import type {
   ClipSubtitleSegment,
   OutputFormat,
   PaddingColor,
+  SubtitleFontSize,
 } from '@video-processor/shared';
 import { AlertCircle, CheckCircle, Loader2, Pencil, Sparkles, Undo } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
@@ -160,7 +161,11 @@ export function SubtitleEditor({
   }, [clipId, hasChanges, onSubtitleUpdate, showMessage]);
 
   const handleCompose = useCallback(
-    async (outputFormat?: OutputFormat, paddingColor?: PaddingColor) => {
+    async (
+      outputFormat?: OutputFormat,
+      paddingColor?: PaddingColor,
+      fontSize?: SubtitleFontSize
+    ) => {
       if (subtitle?.status !== 'confirmed') {
         showMessage('warning', '動画合成には字幕の確定が必要です');
         return;
@@ -168,7 +173,7 @@ export function SubtitleEditor({
       setIsComposing(true);
       setMessage(null);
       try {
-        const result = await composeSubtitledClip(clipId, { outputFormat, paddingColor });
+        const result = await composeSubtitledClip(clipId, { outputFormat, paddingColor, fontSize });
         setSubtitledVideoUrl(result.subtitledVideoUrl);
         showMessage('success', '動画の合成に成功しました');
       } catch (error) {

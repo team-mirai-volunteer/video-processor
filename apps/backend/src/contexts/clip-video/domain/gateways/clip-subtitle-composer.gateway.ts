@@ -1,4 +1,5 @@
 import type { Result } from '@shared/domain/types/result.js';
+import type { SubtitleFontSize } from '@video-processor/shared';
 import type { ClipSubtitleSegment } from '../models/clip-subtitle.js';
 
 /**
@@ -43,6 +44,8 @@ export interface ClipSubtitleComposeParams {
   height: number;
   /** 字幕スタイル設定（省略時はデフォルト） */
   style?: SubtitleStyle;
+  /** 字幕フォントサイズ（省略時は 'medium'） */
+  fontSize?: SubtitleFontSize;
 }
 
 /**

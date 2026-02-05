@@ -163,6 +163,9 @@ export type PaddingColor = '#000000' | '#30bca7';
 /** 出力フォーマット */
 export type OutputFormat = 'original' | 'vertical' | 'horizontal';
 
+/** 字幕フォントサイズ */
+export type SubtitleFontSize = 'medium' | 'large';
+
 /**
  * POST /api/videos/:videoId/extract-clips request body
  */
@@ -349,6 +352,8 @@ export interface ConfirmClipSubtitleResponse {
 export interface ComposeSubtitledClipRequest {
   outputFormat?: OutputFormat;
   paddingColor?: PaddingColor;
+  /** 字幕フォントサイズ（デフォルト: 'medium'） */
+  fontSize?: SubtitleFontSize;
 }
 
 /**

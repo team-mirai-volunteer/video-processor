@@ -167,7 +167,7 @@ router.get('/clips/:clipId/video-url', async (req, res, next) => {
 router.post('/clips/:clipId/compose', async (req, res, next) => {
   try {
     const { clipId } = req.params;
-    const body = req.body as { outputFormat?: string; paddingColor?: string };
+    const body = req.body as { outputFormat?: string; paddingColor?: string; fontSize?: string };
     const outputFormat =
       body.outputFormat === 'vertical' ||
       body.outputFormat === 'horizontal' ||
@@ -175,10 +175,12 @@ router.post('/clips/:clipId/compose', async (req, res, next) => {
         ? body.outputFormat
         : 'original';
     const paddingColor = body.paddingColor === '#30bca7' ? '#30bca7' : ('#000000' as const);
+    const fontSize = body.fontSize === 'large' ? 'large' : ('medium' as const);
     const result = await composeSubtitledClipUseCase.execute({
       clipId: clipId ?? '',
       outputFormat,
       paddingColor,
+      fontSize,
     });
     res.json(result);
   } catch (error) {
