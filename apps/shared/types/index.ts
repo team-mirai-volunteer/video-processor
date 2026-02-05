@@ -43,6 +43,8 @@ export type {
   ConfirmClipSubtitleResponse,
   ErrorResponse,
   ExtractAudioResponse,
+  ExtractClipByTimeRequest,
+  ExtractClipByTimeResponse,
   ExtractClipsRequest,
   ExtractClipsResponse,
   GenerateClipSubtitlesResponse,

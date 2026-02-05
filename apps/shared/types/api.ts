@@ -185,6 +185,32 @@ export interface ExtractClipsResponse {
 }
 
 // ============================================================================
+// Extract Clip by Time API (タイムライン指定切り抜き)
+// ============================================================================
+
+/**
+ * POST /api/videos/:videoId/extract-clip-by-time request body
+ * タイムスタンプを直接指定してクリップを抽出
+ */
+export interface ExtractClipByTimeRequest {
+  /** 開始時間（秒）。0以上 */
+  startTimeSeconds: number;
+  /** 終了時間（秒）。startTimeSecondsより大きい値 */
+  endTimeSeconds: number;
+  /** クリップのタイトル（オプション）。省略時は選択範囲のテキストから自動生成 */
+  title?: string;
+}
+
+/**
+ * POST /api/videos/:videoId/extract-clip-by-time response
+ */
+export interface ExtractClipByTimeResponse {
+  videoId: string;
+  clipId: string;
+  status: 'extracting' | 'completed' | 'failed';
+}
+
+// ============================================================================
 // Transcription API
 // ============================================================================
 
