@@ -14,6 +14,7 @@ import type {
   OutlineColor,
   OutputFormat,
   PaddingColor,
+  SubtitleFontSize,
 } from '@video-processor/shared';
 import { AlertCircle, CheckCircle, Loader2, Pencil, Sparkles, Undo } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
@@ -164,7 +165,8 @@ export function SubtitleEditor({
     async (
       outputFormat?: OutputFormat,
       paddingColor?: PaddingColor,
-      outlineColor?: OutlineColor
+      outlineColor?: OutlineColor,
+      fontSize?: SubtitleFontSize
     ) => {
       if (subtitle?.status !== 'confirmed') {
         showMessage('warning', '動画合成には字幕の確定が必要です');
@@ -177,6 +179,7 @@ export function SubtitleEditor({
           outputFormat,
           paddingColor,
           outlineColor,
+          fontSize,
         });
         setSubtitledVideoUrl(result.subtitledVideoUrl);
         showMessage('success', '動画の合成に成功しました');

@@ -175,6 +175,9 @@ export type OutlineColor =
 /** 出力フォーマット */
 export type OutputFormat = 'original' | 'vertical' | 'horizontal';
 
+/** 字幕フォントサイズ */
+export type SubtitleFontSize = 'medium' | 'large';
+
 /**
  * POST /api/videos/:videoId/extract-clips request body
  */
@@ -362,6 +365,8 @@ export interface ComposeSubtitledClipRequest {
   outputFormat?: OutputFormat;
   paddingColor?: PaddingColor;
   outlineColor?: OutlineColor;
+  /** 字幕フォントサイズ（デフォルト: 'medium'） */
+  fontSize?: SubtitleFontSize;
 }
 
 /**

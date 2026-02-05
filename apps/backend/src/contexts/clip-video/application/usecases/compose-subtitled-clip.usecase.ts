@@ -6,7 +6,12 @@ import type { ClipRepositoryGateway } from '@clip-video/domain/gateways/clip-rep
 import type { ClipSubtitleComposerGateway } from '@clip-video/domain/gateways/clip-subtitle-composer.gateway.js';
 import type { ClipSubtitleRepositoryGateway } from '@clip-video/domain/gateways/clip-subtitle-repository.gateway.js';
 import type { TempStorageGateway } from '@shared/domain/gateways/temp-storage.gateway.js';
-import type { OutlineColor, OutputFormat, PaddingColor } from '@video-processor/shared';
+import type {
+  OutlineColor,
+  OutputFormat,
+  PaddingColor,
+  SubtitleFontSize,
+} from '@video-processor/shared';
 import ffmpeg from 'fluent-ffmpeg';
 
 export interface ComposeSubtitledClipInput {
@@ -14,6 +19,7 @@ export interface ComposeSubtitledClipInput {
   outputFormat?: OutputFormat;
   paddingColor?: PaddingColor;
   outlineColor?: OutlineColor;
+  fontSize?: SubtitleFontSize;
 }
 
 export interface ComposeSubtitledClipOutput {
@@ -41,6 +47,7 @@ export class ComposeSubtitledClipUseCase {
       outputFormat = 'original',
       paddingColor = '#000000',
       outlineColor = '#30bca7',
+      fontSize = 'medium',
     } = input;
 
     // 1. Get clip
@@ -109,6 +116,7 @@ export class ComposeSubtitledClipUseCase {
         style: {
           outlineColor,
         },
+        fontSize,
       });
 
       if (!composeResult.success) {

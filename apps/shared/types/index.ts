@@ -64,6 +64,7 @@ export type {
   OutlineColor,
   OutputFormat,
   PaddingColor,
+  SubtitleFontSize,
   Pagination,
   PaginatedResponse,
   RefinedSentence,

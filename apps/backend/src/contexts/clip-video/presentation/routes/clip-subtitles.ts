@@ -171,6 +171,7 @@ router.post('/clips/:clipId/compose', async (req, res, next) => {
       outputFormat?: string;
       paddingColor?: string;
       outlineColor?: string;
+      fontSize?: string;
     };
     const outputFormat =
       body.outputFormat === 'vertical' ||
@@ -192,11 +193,13 @@ router.post('/clips/:clipId/compose', async (req, res, next) => {
     )
       ? (body.outlineColor as (typeof validOutlineColors)[number])
       : '#30bca7';
+    const fontSize = body.fontSize === 'large' ? 'large' : ('medium' as const);
     const result = await composeSubtitledClipUseCase.execute({
       clipId: clipId ?? '',
       outputFormat,
       paddingColor,
       outlineColor,
+      fontSize,
     });
     res.json(result);
   } catch (error) {
