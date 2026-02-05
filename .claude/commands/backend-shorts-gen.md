@@ -10,5 +10,6 @@ description: shorts-gen機能のバックエンド修正を行う
 
 ## 関連ドキュメント
 
+- バックエンドアーキテクチャの全体像は [docs/backend-architecture-guide.md](docs/backend-architecture-guide.md) を参照
 - フロントエンドの修正も必要な場合は [docs/shorts-gen-frontend-guide.md](docs/shorts-gen-frontend-guide.md) も参照
 - インフラ構成の修正も必要な場合は [docs/infra-guide.md](docs/infra-guide.md) も参照
