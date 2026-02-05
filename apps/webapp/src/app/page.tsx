@@ -127,6 +127,9 @@ export default function HomePage() {
           <Link href="/terms" className="hover:text-foreground">
             利用規約
           </Link>
+          <Link href="/privacy" className="hover:text-foreground">
+            プライバシーポリシー
+          </Link>
         </div>
       </div>
     </div>
