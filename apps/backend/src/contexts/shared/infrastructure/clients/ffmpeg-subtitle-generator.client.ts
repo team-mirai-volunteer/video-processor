@@ -294,6 +294,21 @@ export class FFmpegSubtitleGeneratorClient implements SubtitleGeneratorGateway {
       }
     }
 
+    // Build text_align value for multi-line text alignment
+    // L=left, C=center, R=right (applies to each line within multi-line text)
+    let textAlign: string;
+    switch (style.alignment) {
+      case 'left':
+        textAlign = 'L';
+        break;
+      case 'right':
+        textAlign = 'R';
+        break;
+      default:
+        textAlign = 'C';
+        break;
+    }
+
     const drawtextFilter = [
       `drawtext=text='${escapedText}'`,
       `font='${fontName}'`,
@@ -306,6 +321,7 @@ export class FFmpegSubtitleGeneratorClient implements SubtitleGeneratorGateway {
       `shadowy=${style.shadowOffsetY}`,
       `x=${xPosition}`,
       `y=${yPosition}`,
+      `text_align=${textAlign}`,
     ].join(':');
 
     return [
@@ -327,11 +343,14 @@ export class FFmpegSubtitleGeneratorClient implements SubtitleGeneratorGateway {
    */
   escapeText(text: string): string {
     // Escape special characters for FFmpeg drawtext filter
+    // Note: Order matters - escape backslash first to avoid double-escaping
+    // For newlines, FFmpeg drawtext expects the actual newline character (not escaped \n literal)
     return text
       .replace(/\\/g, '\\\\\\\\') // Escape backslash
       .replace(/'/g, "\\'") // Escape single quote
       .replace(/:/g, '\\:') // Escape colon
       .replace(/%/g, '\\%'); // Escape percent
+    // Note: newlines (\n) are kept as-is for FFmpeg drawtext to interpret as line breaks
   }
 
   /**

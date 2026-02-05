@@ -4,10 +4,11 @@ import { describe, expect, it } from 'vitest';
 describe('ClipSubtitle', () => {
   const generateId = () => 'subtitle-id-123';
 
+  // 新形式: lines 配列（1行16文字以内、最大2行）
   const validSegments = [
-    { index: 0, text: 'こんにちは', startTimeSeconds: 0.0, endTimeSeconds: 1.5 },
-    { index: 1, text: 'これはテストです', startTimeSeconds: 1.5, endTimeSeconds: 3.0 },
-    { index: 2, text: 'よろしくお願いします', startTimeSeconds: 3.0, endTimeSeconds: 5.0 },
+    { index: 0, lines: ['こんにちは'], startTimeSeconds: 0.0, endTimeSeconds: 1.5 },
+    { index: 1, lines: ['これはテストです'], startTimeSeconds: 1.5, endTimeSeconds: 3.0 },
+    { index: 2, lines: ['よろしく', 'お願いします'], startTimeSeconds: 3.0, endTimeSeconds: 5.0 },
   ];
 
   describe('create', () => {
@@ -48,7 +49,7 @@ describe('ClipSubtitle', () => {
       const result = ClipSubtitle.create(
         {
           clipId: 'clip-123',
-          segments: [{ index: 0, text: 'テスト', startTimeSeconds: 5.0, endTimeSeconds: 3.0 }],
+          segments: [{ index: 0, lines: ['テスト'], startTimeSeconds: 5.0, endTimeSeconds: 3.0 }],
         },
         generateId
       );
@@ -64,8 +65,8 @@ describe('ClipSubtitle', () => {
         {
           clipId: 'clip-123',
           segments: [
-            { index: 0, text: 'テスト1', startTimeSeconds: 0.0, endTimeSeconds: 1.0 },
-            { index: 2, text: 'テスト2', startTimeSeconds: 1.0, endTimeSeconds: 2.0 }, // should be 1
+            { index: 0, lines: ['テスト1'], startTimeSeconds: 0.0, endTimeSeconds: 1.0 },
+            { index: 2, lines: ['テスト2'], startTimeSeconds: 1.0, endTimeSeconds: 2.0 }, // should be 1
           ],
         },
         generateId
@@ -74,6 +75,101 @@ describe('ClipSubtitle', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.type).toBe('INVALID_SEGMENT_ORDER');
+      }
+    });
+
+    it('should return error when lines is empty', () => {
+      const result = ClipSubtitle.create(
+        {
+          clipId: 'clip-123',
+          segments: [{ index: 0, lines: [], startTimeSeconds: 0.0, endTimeSeconds: 1.0 }],
+        },
+        generateId
+      );
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe('EMPTY_LINES');
+      }
+    });
+
+    it('should return error when too many lines (more than 2)', () => {
+      const result = ClipSubtitle.create(
+        {
+          clipId: 'clip-123',
+          segments: [
+            {
+              index: 0,
+              lines: ['行1', '行2', '行3'], // 3行は不可
+              startTimeSeconds: 0.0,
+              endTimeSeconds: 1.0,
+            },
+          ],
+        },
+        generateId
+      );
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe('TOO_MANY_LINES');
+      }
+    });
+
+    it('should return error when line exceeds 16 characters', () => {
+      const result = ClipSubtitle.create(
+        {
+          clipId: 'clip-123',
+          segments: [
+            {
+              index: 0,
+              lines: ['これは十七文字になりますよ'], // 13文字
+              startTimeSeconds: 0.0,
+              endTimeSeconds: 1.0,
+            },
+          ],
+        },
+        generateId
+      );
+
+      // 13文字は許可される
+      expect(result.success).toBe(true);
+
+      // 17文字を超える場合
+      const result2 = ClipSubtitle.create(
+        {
+          clipId: 'clip-123',
+          segments: [
+            {
+              index: 0,
+              lines: ['これは十七文字を超えています'], // 14文字（許可）
+              startTimeSeconds: 0.0,
+              endTimeSeconds: 1.0,
+            },
+          ],
+        },
+        generateId
+      );
+      expect(result2.success).toBe(true);
+
+      // 17文字を超える場合
+      const result3 = ClipSubtitle.create(
+        {
+          clipId: 'clip-123',
+          segments: [
+            {
+              index: 0,
+              lines: ['これは確実に十七文字を超えています'], // 17文字以上
+              startTimeSeconds: 0.0,
+              endTimeSeconds: 1.0,
+            },
+          ],
+        },
+        generateId
+      );
+
+      expect(result3.success).toBe(false);
+      if (!result3.success) {
+        expect(result3.error.type).toBe('LINE_TOO_LONG');
       }
     });
   });
@@ -92,7 +188,7 @@ describe('ClipSubtitle', () => {
       if (!createResult.success) return;
 
       const newSegments = [
-        { index: 0, text: '更新されたテキスト', startTimeSeconds: 0.0, endTimeSeconds: 2.0 },
+        { index: 0, lines: ['更新されたテキスト'], startTimeSeconds: 0.0, endTimeSeconds: 2.0 },
       ];
 
       const updateResult = createResult.value.withSegments(newSegments);
@@ -100,7 +196,7 @@ describe('ClipSubtitle', () => {
       expect(updateResult.success).toBe(true);
       if (updateResult.success) {
         expect(updateResult.value.segments).toHaveLength(1);
-        expect(updateResult.value.segments[0]?.text).toBe('更新されたテキスト');
+        expect(updateResult.value.segments[0]?.lines).toEqual(['更新されたテキスト']);
       }
     });
 
@@ -121,7 +217,7 @@ describe('ClipSubtitle', () => {
       if (!confirmResult.success) return;
 
       const updateResult = confirmResult.value.withSegments([
-        { index: 0, text: '更新されたテキスト', startTimeSeconds: 0.0, endTimeSeconds: 2.0 },
+        { index: 0, lines: ['更新されたテキスト'], startTimeSeconds: 0.0, endTimeSeconds: 2.0 },
       ]);
 
       expect(updateResult.success).toBe(false);

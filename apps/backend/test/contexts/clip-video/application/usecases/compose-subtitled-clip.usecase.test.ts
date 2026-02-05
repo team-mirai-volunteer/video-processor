@@ -84,8 +84,8 @@ describe('ComposeSubtitledClipUseCase', () => {
       id: 'test-subtitle-id',
       clipId: 'test-clip-id',
       segments: [
-        { index: 0, text: 'Hello world', startTimeSeconds: 0, endTimeSeconds: 5 },
-        { index: 1, text: 'This is a test', startTimeSeconds: 5, endTimeSeconds: 10 },
+        { index: 0, lines: ['Hello world'], startTimeSeconds: 0, endTimeSeconds: 5 },
+        { index: 1, lines: ['This is a test'], startTimeSeconds: 5, endTimeSeconds: 10 },
       ],
       status: 'confirmed',
       createdAt: new Date(),

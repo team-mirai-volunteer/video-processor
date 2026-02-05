@@ -92,8 +92,8 @@ export function SubtitleEditor({
     }
   }, [clipId, onSubtitleUpdate, showMessage]);
 
-  const handleTextChange = useCallback((index: number, text: string) => {
-    setEditedSegments((prev) => prev.map((seg) => (seg.index === index ? { ...seg, text } : seg)));
+  const handleLinesChange = useCallback((index: number, lines: string[]) => {
+    setEditedSegments((prev) => prev.map((seg) => (seg.index === index ? { ...seg, lines } : seg)));
   }, []);
 
   const handleTimeChange = useCallback(
@@ -271,7 +271,7 @@ export function SubtitleEditor({
                     segment={segment}
                     isActive={segment.index === activeSegmentIndex}
                     isEditable={isEditable}
-                    onTextChange={handleTextChange}
+                    onLinesChange={handleLinesChange}
                     onTimeChange={handleTimeChange}
                     onSeek={onSeek}
                   />

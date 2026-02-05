@@ -152,4 +152,52 @@ describe.skipIf(!runIntegrationTests)('FFmpegSubtitleGeneratorClient (shared) In
       }
     });
   });
+
+  describe('Multi-line text (center aligned)', () => {
+    it('should generate centered multi-line subtitle', async () => {
+      // Multi-line text with newline character
+      const text = '政治と金の問題\nこれは大変だ';
+
+      const result = await client.generate({
+        text,
+        width: 1080,
+        height: 1920,
+        style: {
+          bold: true,
+          fontSize: 64,
+          outlineWidth: 8,
+          alignment: 'center',
+        },
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(isPNG(result.value.imageBuffer)).toBe(true);
+        await saveOutput('subtitle_multiline_center.png', result.value.imageBuffer);
+      }
+    });
+
+    it('should generate 2-line subtitle with different lengths', async () => {
+      // Two lines with different lengths to verify center alignment
+      const text = '短い行\nこれは長めの2行目です';
+
+      const result = await client.generate({
+        text,
+        width: 1080,
+        height: 1920,
+        style: {
+          bold: true,
+          fontSize: 64,
+          outlineWidth: 8,
+          alignment: 'center',
+        },
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(isPNG(result.value.imageBuffer)).toBe(true);
+        await saveOutput('subtitle_multiline_different_lengths.png', result.value.imageBuffer);
+      }
+    });
+  });
 });

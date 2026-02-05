@@ -101,38 +101,8 @@ export function SubtitleCompositionStatus({
             </Button>
           )}
 
-          {showUploadButton && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onUpload}
-              disabled={isUploading || !hasComposedVideo}
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                  Driveにアップロード中...
-                </>
-              ) : (
-                'Driveにアップロード'
-              )}
-            </Button>
-          )}
-
           {hasComposedVideo && subtitledVideoUrl && (
             <>
-              <Button variant="outline" size="sm" asChild>
-                <a href={subtitledVideoUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="mr-2 h-3 w-3" />
-                  プレビュー
-                </a>
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <a href={subtitledVideoUrl} download>
-                  <Download className="mr-2 h-3 w-3" />
-                  ダウンロード
-                </a>
-              </Button>
               <Button variant="outline" size="sm" onClick={onCompose} disabled={isComposing}>
                 {isComposing ? (
                   <>
@@ -146,16 +116,44 @@ export function SubtitleCompositionStatus({
                   </>
                 )}
               </Button>
+              <Button variant="outline" size="sm" asChild>
+                <a href={subtitledVideoUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="mr-2 h-3 w-3" />
+                  プレビュー
+                </a>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <a href={subtitledVideoUrl} download>
+                  <Download className="mr-2 h-3 w-3" />
+                  ダウンロード
+                </a>
+              </Button>
+              {showUploadButton && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onUpload}
+                  disabled={isUploading || !hasComposedVideo}
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      Driveにアップロード中...
+                    </>
+                  ) : (
+                    'Driveにアップロード'
+                  )}
+                </Button>
+              )}
+              {hasUploadedVideo && subtitledVideoDriveUrl && (
+                <Button variant="outline" size="sm" asChild>
+                  <a href={subtitledVideoDriveUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="mr-2 h-3 w-3" />
+                    Google Driveで開く
+                  </a>
+                </Button>
+              )}
             </>
-          )}
-
-          {hasUploadedVideo && subtitledVideoDriveUrl && (
-            <Button variant="outline" size="sm" asChild>
-              <a href={subtitledVideoDriveUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-2 h-3 w-3" />
-                Google Driveで開く
-              </a>
-            </Button>
           )}
         </div>
       </CardContent>

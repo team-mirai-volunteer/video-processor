@@ -1,12 +1,23 @@
 import { type Result, err, ok } from '@shared/domain/types/result.js';
 
 /**
+ * 字幕1行の最大文字数
+ */
+export const SUBTITLE_MAX_CHARS_PER_LINE = 16;
+
+/**
+ * 字幕の最大行数
+ */
+export const SUBTITLE_MAX_LINES = 2;
+
+/**
  * 字幕セグメント
  * 画面に表示される1単位の字幕
+ * lines: 字幕テキストの配列（1行16文字以内、最大2行）
  */
 export interface ClipSubtitleSegment {
   index: number;
-  text: string;
+  lines: string[];
   startTimeSeconds: number;
   endTimeSeconds: number;
 }
@@ -23,7 +34,10 @@ export type ClipSubtitleError =
   | { type: 'EMPTY_SEGMENTS'; message: string }
   | { type: 'INVALID_SEGMENT_ORDER'; message: string }
   | { type: 'INVALID_TIME_RANGE'; message: string }
-  | { type: 'ALREADY_CONFIRMED'; message: string };
+  | { type: 'ALREADY_CONFIRMED'; message: string }
+  | { type: 'EMPTY_LINES'; message: string }
+  | { type: 'TOO_MANY_LINES'; message: string }
+  | { type: 'LINE_TOO_LONG'; message: string };
 
 /**
  * ClipSubtitle プロパティ
@@ -182,6 +196,48 @@ export class ClipSubtitle {
         return err({
           type: 'INVALID_SEGMENT_ORDER',
           message: `Segment index mismatch at position ${i}`,
+        });
+      }
+
+      // lines のバリデーション
+      const linesValidation = ClipSubtitle.validateLines(segment.lines, i);
+      if (!linesValidation.success) {
+        return linesValidation;
+      }
+    }
+
+    return ok(undefined);
+  }
+
+  /**
+   * 字幕行のバリデーション
+   * - 最低1行必要
+   * - 最大2行まで
+   * - 各行は16文字以内
+   */
+  private static validateLines(
+    lines: string[],
+    segmentIndex: number
+  ): Result<void, ClipSubtitleError> {
+    if (!lines || lines.length === 0) {
+      return err({
+        type: 'EMPTY_LINES',
+        message: `Segment ${segmentIndex}: lines cannot be empty`,
+      });
+    }
+
+    if (lines.length > SUBTITLE_MAX_LINES) {
+      return err({
+        type: 'TOO_MANY_LINES',
+        message: `Segment ${segmentIndex}: maximum ${SUBTITLE_MAX_LINES} lines allowed, got ${lines.length}`,
+      });
+    }
+
+    for (const [lineIndex, line] of lines.entries()) {
+      if (line.length > SUBTITLE_MAX_CHARS_PER_LINE) {
+        return err({
+          type: 'LINE_TOO_LONG',
+          message: `Segment ${segmentIndex}, line ${lineIndex + 1}: maximum ${SUBTITLE_MAX_CHARS_PER_LINE} characters allowed, got ${line.length}`,
         });
       }
     }

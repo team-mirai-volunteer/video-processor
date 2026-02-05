@@ -59,8 +59,11 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
       for (const segment of params.segments) {
         const imagePath = path.join(tempDir, `subtitle_${segment.index}.png`);
 
+        // lines 配列を改行で結合してテキストにする
+        const text = segment.lines.join('\n');
+
         const result = await this.subtitleGenerator.generate({
-          text: segment.text,
+          text,
           width: params.width,
           height: params.height,
           style: params.style,
@@ -86,8 +89,9 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
           endTime: segment.endTimeSeconds,
         });
 
+        const previewText = segment.lines.join(' ').substring(0, 20);
         console.log(
-          `[ClipSubtitleComposeClient] Generated subtitle ${segment.index}: "${segment.text.substring(0, 20)}..." (${segment.startTimeSeconds}s - ${segment.endTimeSeconds}s)`
+          `[ClipSubtitleComposeClient] Generated subtitle ${segment.index}: "${previewText}..." (${segment.startTimeSeconds}s - ${segment.endTimeSeconds}s)`
         );
       }
 

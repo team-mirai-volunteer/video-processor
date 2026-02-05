@@ -7,9 +7,15 @@ import {
 } from '@clip-video/domain/models/clip-subtitle.js';
 import type { Prisma, PrismaClient } from '@prisma/client';
 
+/**
+ * Prisma JSON から読み込まれるセグメントの型
+ * 新形式: lines 配列を持つ
+ * 旧形式: text 文字列を持つ（後方互換性のため）
+ */
 interface PrismaClipSubtitleSegment {
   index: number;
-  text: string;
+  lines?: string[];
+  text?: string; // 旧形式との後方互換性
   startTimeSeconds: number;
   endTimeSeconds: number;
 }
@@ -71,7 +77,9 @@ export class ClipSubtitleRepository implements ClipSubtitleRepositoryGateway {
       segments: segments.map(
         (s): ClipSubtitleSegment => ({
           index: s.index,
-          text: s.text,
+          // 旧形式（text）から新形式（lines）への変換
+          // 旧形式の場合は text を1行として lines に変換
+          lines: s.lines ?? (s.text ? [s.text] : []),
           startTimeSeconds: s.startTimeSeconds,
           endTimeSeconds: s.endTimeSeconds,
         })

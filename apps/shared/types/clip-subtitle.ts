@@ -1,10 +1,21 @@
 /**
+ * 字幕1行の最大文字数
+ */
+export const SUBTITLE_MAX_CHARS_PER_LINE = 16;
+
+/**
+ * 字幕の最大行数
+ */
+export const SUBTITLE_MAX_LINES = 2;
+
+/**
  * Clip subtitle segment
  * 字幕の1セグメント（画面に表示される1単位）
+ * lines: 字幕テキストの配列（1行16文字以内、最大2行）
  */
 export interface ClipSubtitleSegment {
   index: number;
-  text: string;
+  lines: string[];
   startTimeSeconds: number;
   endTimeSeconds: number;
 }

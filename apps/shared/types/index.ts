@@ -25,6 +25,9 @@ export type {
   ClipSubtitleStatus,
 } from './clip-subtitle.js';
 
+// ClipSubtitle constants
+export { SUBTITLE_MAX_CHARS_PER_LINE, SUBTITLE_MAX_LINES } from './clip-subtitle.js';
+
 // ProcessingJob types
 export type {
   ProcessingJob,

@@ -1,4 +1,8 @@
-import type { ClipSubtitleSegment } from '@clip-video/domain/models/clip-subtitle.js';
+import {
+  type ClipSubtitleSegment,
+  SUBTITLE_MAX_CHARS_PER_LINE,
+  SUBTITLE_MAX_LINES,
+} from '@clip-video/domain/models/clip-subtitle.js';
 import type { TranscriptionSegment } from '@clip-video/domain/models/transcription.js';
 
 /**
@@ -6,7 +10,7 @@ import type { TranscriptionSegment } from '@clip-video/domain/models/transcripti
  */
 export interface SubtitleSegmentationResponse {
   segments: Array<{
-    text: string;
+    lines: string[];
     startTimeSeconds: number;
     endTimeSeconds: number;
   }>;
@@ -86,12 +90,12 @@ ${input.refinedFullText}
 {
   "segments": [
     {
-      "text": "字幕テキスト1",
+      "lines": ["今日はとても"],
       "startTimeSeconds": 120.04,
       "endTimeSeconds": 122.5
     },
     {
-      "text": "字幕テキスト2",
+      "lines": ["良い天気ですね", "皆さん"],
       "startTimeSeconds": 122.5,
       "endTimeSeconds": 125.2
     }
@@ -100,13 +104,16 @@ ${input.refinedFullText}
 \`\`\`
 
 ## ルール
-1. 1セグメントは15〜25文字程度を目安にする
-2. 文の切れ目、句読点、意味の区切りで分割する
-3. テキストは「校正済みテキスト」を参考に決定する（漢字変換が正しい）
-4. **タイムスタンプは入力の「単語単位データ」と同じ絶対時間で指定する**（相対時間ではない）
-5. 読みやすさを優先し、1画面に表示する量を適切に調整する
-6. セグメントは時系列順に並べる
-7. 隣接するセグメントのタイムスタンプは連続させる（endTimeSecondsと次のstartTimeSecondsは同じか近い値）`;
+1. **1行は${SUBTITLE_MAX_CHARS_PER_LINE}文字以内にすること（厳守）**
+2. **1セグメントは最大${SUBTITLE_MAX_LINES}行まで（厳守）**
+3. **句読点（、。）は入れないこと** - 字幕なので句読点は不要
+4. 文の切れ目、意味の区切りで分割する
+5. テキストは「校正済みテキスト」を参考に決定する（漢字変換が正しい）
+6. **タイムスタンプは入力の「単語単位データ」と同じ絶対時間で指定する**（相対時間ではない）
+7. 読みやすさを優先し、1画面に表示する量を適切に調整する
+8. セグメントは時系列順に並べる
+9. 隣接するセグメントのタイムスタンプは連続させる（endTimeSecondsと次のstartTimeSecondsは同じか近い値）
+10. 長い文は適切に2行に分割するか、複数のセグメントに分ける`;
   }
 
   /**
@@ -136,9 +143,26 @@ ${input.refinedFullText}
     }
 
     return parsed.segments.map((seg, index) => {
-      if (typeof seg.text !== 'string' || seg.text.trim() === '') {
-        throw new Error(`Invalid segment at index ${index}: missing or empty text`);
+      // lines のバリデーション
+      if (!Array.isArray(seg.lines) || seg.lines.length === 0) {
+        throw new Error(`Invalid segment at index ${index}: missing or empty lines`);
       }
+      if (seg.lines.length > SUBTITLE_MAX_LINES) {
+        throw new Error(
+          `Invalid segment at index ${index}: too many lines (max ${SUBTITLE_MAX_LINES}, got ${seg.lines.length})`
+        );
+      }
+      for (const [lineIndex, line] of seg.lines.entries()) {
+        if (typeof line !== 'string') {
+          throw new Error(`Invalid segment at index ${index}, line ${lineIndex}: not a string`);
+        }
+        if (line.length > SUBTITLE_MAX_CHARS_PER_LINE) {
+          throw new Error(
+            `Invalid segment at index ${index}, line ${lineIndex + 1}: too long (max ${SUBTITLE_MAX_CHARS_PER_LINE} chars, got ${line.length})`
+          );
+        }
+      }
+
       if (typeof seg.startTimeSeconds !== 'number') {
         throw new Error(`Invalid segment at index ${index}: missing startTimeSeconds`);
       }
@@ -157,7 +181,7 @@ ${input.refinedFullText}
 
       return {
         index,
-        text: seg.text.trim(),
+        lines: seg.lines.map((line) => line.trim()),
         startTimeSeconds: relativeStart,
         endTimeSeconds: relativeEnd,
       };
