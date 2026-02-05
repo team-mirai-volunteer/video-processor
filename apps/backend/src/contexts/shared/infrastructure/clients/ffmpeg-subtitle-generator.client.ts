@@ -245,6 +245,7 @@ export class FFmpegSubtitleGeneratorClient implements SubtitleGeneratorGateway {
 
   /**
    * Build FFmpeg command arguments for subtitle generation
+   * Handles multi-line text by creating separate drawtext filters for each line
    */
   private buildFFmpegCommand(
     text: string,
@@ -255,8 +256,8 @@ export class FFmpegSubtitleGeneratorClient implements SubtitleGeneratorGateway {
     style: Required<SubtitleStyle>,
     outputPath: string
   ): string[] {
-    // Escape text for FFmpeg drawtext filter
-    const escapedText = this.escapeText(text);
+    // Split text into lines
+    const lines = text.split('\n');
 
     // Convert hex color to FFmpeg format (remove # and add alpha)
     const fontColor = this.hexToFFmpegColor(style.fontColor);
@@ -277,9 +278,6 @@ export class FFmpegSubtitleGeneratorClient implements SubtitleGeneratorGateway {
         break;
     }
 
-    // Calculate Y position (verticalPosition is 0-1, where 0 is top)
-    const yPosition = `h*${verticalPosition}-text_h/2`;
-
     // Build drawtext filter
     // Note: Using font instead of fontfile for system fonts
     // For bold text, select appropriate bold variant based on font family
@@ -294,19 +292,37 @@ export class FFmpegSubtitleGeneratorClient implements SubtitleGeneratorGateway {
       }
     }
 
-    const drawtextFilter = [
-      `drawtext=text='${escapedText}'`,
-      `font='${fontName}'`,
-      `fontsize=${style.fontSize}`,
-      `fontcolor=${fontColor}`,
-      `bordercolor=${outlineColor}`,
-      `borderw=${style.outlineWidth}`,
-      `shadowcolor=${shadowColor}`,
-      `shadowx=${style.shadowOffsetX}`,
-      `shadowy=${style.shadowOffsetY}`,
-      `x=${xPosition}`,
-      `y=${yPosition}`,
-    ].join(':');
+    // Line height multiplier for vertical spacing between lines
+    const lineHeightMultiplier = 1.5;
+    const lineHeight = style.fontSize * lineHeightMultiplier;
+
+    // Calculate total height of all lines and starting Y position
+    // Center the text block around the vertical position
+    const totalTextHeight = lines.length * lineHeight;
+    const baseY = height * verticalPosition - totalTextHeight / 2;
+
+    // Build drawtext filters for each line
+    const drawtextFilters = lines.map((line, index) => {
+      const escapedLine = this.escapeText(line);
+      const yPosition = baseY + index * lineHeight;
+
+      return [
+        `drawtext=text='${escapedLine}'`,
+        `font='${fontName}'`,
+        `fontsize=${style.fontSize}`,
+        `fontcolor=${fontColor}`,
+        `bordercolor=${outlineColor}`,
+        `borderw=${style.outlineWidth}`,
+        `shadowcolor=${shadowColor}`,
+        `shadowx=${style.shadowOffsetX}`,
+        `shadowy=${style.shadowOffsetY}`,
+        `x=${xPosition}`,
+        `y=${yPosition}`,
+      ].join(':');
+    });
+
+    // Join multiple drawtext filters with comma
+    const combinedFilter = drawtextFilters.join(',');
 
     return [
       '-f',
@@ -314,7 +330,7 @@ export class FFmpegSubtitleGeneratorClient implements SubtitleGeneratorGateway {
       '-i',
       `color=c=black@0.0:s=${width}x${height},format=rgba`,
       '-vf',
-      drawtextFilter,
+      combinedFilter,
       '-frames:v',
       '1',
       '-y',
@@ -328,12 +344,12 @@ export class FFmpegSubtitleGeneratorClient implements SubtitleGeneratorGateway {
   escapeText(text: string): string {
     // Escape special characters for FFmpeg drawtext filter
     // Note: Order matters - escape backslash first to avoid double-escaping
+    // Newlines are preserved as-is (FFmpeg drawtext interprets actual newline chars as line breaks)
     return text
       .replace(/\\/g, '\\\\\\\\') // Escape backslash
       .replace(/'/g, "\\'") // Escape single quote
       .replace(/:/g, '\\:') // Escape colon
-      .replace(/%/g, '\\%') // Escape percent
-      .replace(/\n/g, '\\n'); // Convert newline to literal \n for FFmpeg drawtext
+      .replace(/%/g, '\\%'); // Escape percent
   }
 
   /**
