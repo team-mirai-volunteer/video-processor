@@ -1,8 +1,10 @@
 import type {
   CacheVideoResponse,
+  ComposeSubtitledClipResponse,
   ComposeVideoAcceptedResponse,
   ComposeVideoRequest,
   ComposeVideoResponse,
+  ConfirmClipSubtitleResponse,
   CreateReferenceCharacterResponse,
   CreateShortsProjectRequest,
   CreateShortsProjectResponse,
@@ -10,10 +12,14 @@ import type {
   ExtractAudioResponse,
   ExtractClipsRequest,
   ExtractClipsResponse,
+  GenerateClipSubtitlesResponse,
   GeneratePublishTextRequest,
   GeneratePublishTextResponse,
   GetAllClipsQuery,
   GetAllClipsResponse,
+  GetClipResponse,
+  GetClipSubtitleResponse,
+  GetClipVideoUrlResponse,
   GetClipsResponse,
   GetComposedVideoResponse,
   GetPublishTextResponse,
@@ -35,7 +41,10 @@ import type {
   SubmitVideoResponse,
   TranscribeAudioResponse,
   TranscribeVideoResponse,
+  UpdateClipSubtitleRequest,
+  UpdateClipSubtitleResponse,
   UpdatePublishTextRequest,
+  UploadSubtitledClipResponse,
 } from '@video-processor/shared';
 
 const BACKEND_URL = process.env.BACKEND_URL || '';
@@ -143,6 +152,76 @@ export const backendClient = {
     await fetchBackend(`/api/clips/${id}`, {
       method: 'DELETE',
     });
+  },
+
+  async getClip(
+    id: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetClipResponse | null> {
+    try {
+      return await fetchBackend<GetClipResponse>(`/api/clips/${id}`, options);
+    } catch (error) {
+      if (error instanceof BackendApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  // Clip Subtitles
+  async generateClipSubtitles(clipId: string): Promise<GenerateClipSubtitlesResponse> {
+    return fetchBackend<GenerateClipSubtitlesResponse>(`/api/clips/${clipId}/subtitles/generate`, {
+      method: 'POST',
+    });
+  },
+
+  async getClipSubtitle(
+    clipId: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetClipSubtitleResponse> {
+    return fetchBackend<GetClipSubtitleResponse>(`/api/clips/${clipId}/subtitles`, options);
+  },
+
+  async updateClipSubtitle(
+    clipId: string,
+    request: UpdateClipSubtitleRequest
+  ): Promise<UpdateClipSubtitleResponse> {
+    return fetchBackend<UpdateClipSubtitleResponse>(`/api/clips/${clipId}/subtitles`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async confirmClipSubtitle(clipId: string): Promise<ConfirmClipSubtitleResponse> {
+    return fetchBackend<ConfirmClipSubtitleResponse>(`/api/clips/${clipId}/subtitles/confirm`, {
+      method: 'POST',
+    });
+  },
+
+  async composeSubtitledClip(clipId: string): Promise<ComposeSubtitledClipResponse> {
+    return fetchBackend<ComposeSubtitledClipResponse>(`/api/clips/${clipId}/compose`, {
+      method: 'POST',
+    });
+  },
+
+  async uploadSubtitledClipToDrive(clipId: string): Promise<UploadSubtitledClipResponse> {
+    return fetchBackend<UploadSubtitledClipResponse>(`/api/clips/${clipId}/upload-to-drive`, {
+      method: 'POST',
+    });
+  },
+
+  async getClipVideoUrl(
+    clipId: string,
+    options?: { revalidate?: number | false }
+  ): Promise<GetClipVideoUrlResponse | null> {
+    try {
+      return await fetchBackend<GetClipVideoUrlResponse>(`/api/clips/${clipId}/video-url`, options);
+    } catch (error) {
+      if (error instanceof BackendApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   async extractClips(videoId: string, request: ExtractClipsRequest): Promise<ExtractClipsResponse> {

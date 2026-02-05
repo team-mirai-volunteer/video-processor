@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDuration } from '@/lib/utils';
 import type { Clip } from '@video-processor/shared';
-import { Clock, ExternalLink, FileText } from 'lucide-react';
+import { Clock, ExternalLink, FileText, Subtitles } from 'lucide-react';
+import Link from 'next/link';
 
 interface ClipCardProps {
   clip: Clip;
@@ -26,7 +27,11 @@ export function ClipCard({ clip }: ClipCardProps) {
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <CardTitle className="text-lg">{clip.title || 'タイトルなし'}</CardTitle>
+            <CardTitle className="text-lg">
+              <Link href={`/clips/${clip.id}`} className="hover:underline hover:text-primary">
+                {clip.title || 'タイトルなし'}
+              </Link>
+            </CardTitle>
             <CardDescription className="flex items-center gap-4">
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
@@ -49,13 +54,21 @@ export function ClipCard({ clip }: ClipCardProps) {
           </div>
         )}
 
-        {clip.googleDriveUrl && clip.status === 'completed' && (
-          <div className="flex justify-end">
+        {clip.status === 'completed' && (
+          <div className="flex justify-end gap-2">
+            {clip.googleDriveUrl && (
+              <Button variant="outline" size="sm" asChild>
+                <a href={clip.googleDriveUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="mr-2 h-3 w-3" />
+                  Google Driveで開く
+                </a>
+              </Button>
+            )}
             <Button variant="outline" size="sm" asChild>
-              <a href={clip.googleDriveUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-2 h-3 w-3" />
-                Google Driveで開く
-              </a>
+              <Link href={`/clips/${clip.id}`}>
+                <Subtitles className="mr-2 h-3 w-3" />
+                字幕をつける
+              </Link>
             </Button>
           </div>
         )}

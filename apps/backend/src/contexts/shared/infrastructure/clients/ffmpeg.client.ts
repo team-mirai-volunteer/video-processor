@@ -125,7 +125,16 @@ export class FFmpegClient implements VideoProcessingGateway {
       ffmpeg(inputPath)
         .setStartTime(startTimeSeconds)
         .setDuration(duration)
-        .outputOptions(['-c:v copy', '-c:a copy', '-avoid_negative_ts make_zero'])
+        // Re-encode to ensure accurate frame-level cutting
+        // Using -ss before input is faster but less accurate, so we use it after input
+        .outputOptions([
+          '-c:v libx264', // Re-encode video for accurate cutting
+          '-preset fast', // Balance between speed and compression
+          '-crf 18', // High quality (lower = better, 18 is visually lossless)
+          '-c:a aac', // Re-encode audio
+          '-b:a 192k', // Audio bitrate
+          '-avoid_negative_ts make_zero',
+        ])
         .output(outputPath)
         .on('end', () => resolve())
         .on('error', (err: Error) => reject(err))

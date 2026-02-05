@@ -1,3 +1,4 @@
+import type { ClipSubtitle, ClipSubtitleSegment } from './clip-subtitle.js';
 import type { ClipSummary } from './clip.js';
 import type { VideoStatus, VideoSummary, VideoWithRelations } from './video.js';
 
@@ -142,6 +143,14 @@ export interface GetClipResponse {
   errorMessage: string | null;
   createdAt: Date;
   updatedAt: Date;
+  // 字幕付き動画関連
+  subtitledVideoGcsUri: string | null;
+  subtitledVideoUrl: string | null;
+  subtitledVideoDriveId: string | null;
+  subtitledVideoDriveUrl: string | null;
+  // 動画プレイヤー用キャッシュ
+  clipVideoGcsUri: string | null;
+  clipVideoGcsExpiresAt: Date | null;
 }
 
 // ============================================================================
@@ -255,5 +264,71 @@ export interface TranscribeAudioResponse {
   videoId: string;
   transcriptionId: string;
   segmentsCount: number;
+  durationSeconds: number;
+}
+
+// ============================================================================
+// Clip Subtitle API
+// ============================================================================
+
+/**
+ * POST /api/clips/:clipId/subtitles/generate response
+ */
+export interface GenerateClipSubtitlesResponse {
+  clipId: string;
+  subtitle: ClipSubtitle;
+}
+
+/**
+ * GET /api/clips/:clipId/subtitles response
+ */
+export interface GetClipSubtitleResponse {
+  subtitle: ClipSubtitle | null;
+}
+
+/**
+ * PUT /api/clips/:clipId/subtitles request body
+ */
+export interface UpdateClipSubtitleRequest {
+  segments: ClipSubtitleSegment[];
+}
+
+/**
+ * PUT /api/clips/:clipId/subtitles response
+ */
+export interface UpdateClipSubtitleResponse {
+  subtitle: ClipSubtitle;
+}
+
+/**
+ * POST /api/clips/:clipId/subtitles/confirm response
+ */
+export interface ConfirmClipSubtitleResponse {
+  subtitle: ClipSubtitle;
+}
+
+/**
+ * POST /api/clips/:clipId/compose response
+ */
+export interface ComposeSubtitledClipResponse {
+  clipId: string;
+  subtitledVideoUrl: string;
+}
+
+/**
+ * POST /api/clips/:clipId/upload-to-drive response
+ */
+export interface UploadSubtitledClipResponse {
+  clipId: string;
+  driveFileId: string;
+  driveUrl: string;
+}
+
+/**
+ * GET /api/clips/:clipId/video-url response
+ */
+export interface GetClipVideoUrlResponse {
+  videoUrl: string;
+  expiresAt: Date;
   durationSeconds: number;
 }

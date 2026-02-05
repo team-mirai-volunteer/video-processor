@@ -1,5 +1,7 @@
 import type {
   CacheVideoResponse,
+  ComposeSubtitledClipResponse,
+  ConfirmClipSubtitleResponse,
   CreateReferenceCharacterResponse,
   CreateShortsProjectRequest,
   CreateShortsProjectResponse,
@@ -7,8 +9,12 @@ import type {
   ExtractAudioResponse,
   ExtractClipsRequest,
   ExtractClipsResponse,
+  GenerateClipSubtitlesResponse,
   GetAllClipsQuery,
   GetAllClipsResponse,
+  GetClipResponse,
+  GetClipSubtitleResponse,
+  GetClipVideoUrlResponse,
   GetReferenceCharactersResponse,
   GetRefinedTranscriptionResponse,
   GetShortsImagesResponse,
@@ -29,6 +35,9 @@ import type {
   SubmitVideoResponse,
   TranscribeAudioResponse,
   TranscribeVideoResponse,
+  UpdateClipSubtitleRequest,
+  UpdateClipSubtitleResponse,
+  UploadSubtitledClipResponse,
   VideoSummary,
 } from '@video-processor/shared';
 
@@ -197,6 +206,126 @@ export const mockBackendClient = {
 
   async deleteClip(_id: string): Promise<void> {
     // Mock deletion - do nothing
+  },
+
+  async getClip(id: string): Promise<GetClipResponse | null> {
+    return {
+      id,
+      videoId: '1',
+      googleDriveFileId: 'mock-drive-file-id',
+      googleDriveUrl: 'https://drive.google.com/file/d/mock-drive-file-id/view',
+      title: 'Mock Clip',
+      startTimeSeconds: 0,
+      endTimeSeconds: 30,
+      durationSeconds: 30,
+      transcript: 'これはモックのクリップです',
+      status: 'completed',
+      errorMessage: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      // 字幕付き動画関連
+      subtitledVideoGcsUri: null,
+      subtitledVideoUrl: null,
+      subtitledVideoDriveId: null,
+      subtitledVideoDriveUrl: null,
+      // 動画プレイヤー用キャッシュ
+      clipVideoGcsUri: null,
+      clipVideoGcsExpiresAt: null,
+    };
+  },
+
+  // Clip Subtitles
+  async generateClipSubtitles(clipId: string): Promise<GenerateClipSubtitlesResponse> {
+    return {
+      clipId,
+      subtitle: {
+        id: `subtitle-${clipId}`,
+        clipId,
+        segments: [
+          { index: 0, lines: ['これはモックの字幕です'], startTimeSeconds: 0, endTimeSeconds: 5 },
+          { index: 1, lines: ['字幕の編集が可能です'], startTimeSeconds: 5, endTimeSeconds: 10 },
+          {
+            index: 2,
+            lines: ['1行は16文字以内', '最大2行まで'],
+            startTimeSeconds: 10,
+            endTimeSeconds: 15,
+          },
+        ],
+        status: 'draft',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    };
+  },
+
+  async getClipSubtitle(clipId: string): Promise<GetClipSubtitleResponse> {
+    return {
+      subtitle: {
+        id: `subtitle-${clipId}`,
+        clipId,
+        segments: [
+          { index: 0, lines: ['これはモックの字幕です'], startTimeSeconds: 0, endTimeSeconds: 5 },
+          { index: 1, lines: ['字幕の編集が可能です'], startTimeSeconds: 5, endTimeSeconds: 10 },
+        ],
+        status: 'draft',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    };
+  },
+
+  async updateClipSubtitle(
+    clipId: string,
+    request: UpdateClipSubtitleRequest
+  ): Promise<UpdateClipSubtitleResponse> {
+    return {
+      subtitle: {
+        id: `subtitle-${clipId}`,
+        clipId,
+        segments: request.segments,
+        status: 'draft',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    };
+  },
+
+  async confirmClipSubtitle(clipId: string): Promise<ConfirmClipSubtitleResponse> {
+    return {
+      subtitle: {
+        id: `subtitle-${clipId}`,
+        clipId,
+        segments: [
+          { index: 0, lines: ['これはモックの字幕です'], startTimeSeconds: 0, endTimeSeconds: 5 },
+        ],
+        status: 'confirmed',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    };
+  },
+
+  async composeSubtitledClip(clipId: string): Promise<ComposeSubtitledClipResponse> {
+    return {
+      clipId,
+      subtitledVideoUrl: `https://storage.googleapis.com/mock-bucket/clips/${clipId}/subtitled.mp4`,
+    };
+  },
+
+  async uploadSubtitledClipToDrive(clipId: string): Promise<UploadSubtitledClipResponse> {
+    return {
+      clipId,
+      driveFileId: `mock-subtitled-drive-file-${clipId}`,
+      driveUrl: `https://drive.google.com/file/d/mock-subtitled-drive-file-${clipId}/view`,
+    };
+  },
+
+  async getClipVideoUrl(clipId: string): Promise<GetClipVideoUrlResponse | null> {
+    return {
+      videoUrl: `https://storage.googleapis.com/mock-bucket/clips/${clipId}/video.mp4?signed=true`,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      durationSeconds: 30,
+    };
   },
 
   // Pipeline Steps

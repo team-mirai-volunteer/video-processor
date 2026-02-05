@@ -1,10 +1,10 @@
 import { Readable } from 'node:stream';
+import { auth, drive, type drive_v3 } from '@googleapis/drive';
 import type {
   FileMetadata,
   StorageGateway,
   UploadFileParams,
 } from '@shared/domain/gateways/storage.gateway.js';
-import { type drive_v3, google } from 'googleapis';
 import {
   AccessDeniedError,
   DownloadForbiddenError,
@@ -30,13 +30,13 @@ export class GoogleDriveClient implements StorageGateway {
   private drive: drive_v3.Drive;
 
   constructor(config: GoogleDriveClientConfig) {
-    const auth = new google.auth.JWT({
+    const jwtClient = new auth.JWT({
       email: config.serviceAccountEmail,
       key: config.privateKey,
       scopes: ['https://www.googleapis.com/auth/drive'],
     });
 
-    this.drive = google.drive({ version: 'v3', auth });
+    this.drive = drive({ version: 'v3', auth: jwtClient });
   }
 
   /**

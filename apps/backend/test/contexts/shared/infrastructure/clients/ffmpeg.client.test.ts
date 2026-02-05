@@ -20,9 +20,9 @@ function isFFmpegAvailable(): boolean {
 const runIntegrationTests = process.env.INTEGRATION_TEST === 'true' && isFFmpegAvailable();
 
 // Path to the test fixture video
-const SAMPLE_VIDEO_PATH = path.join(__dirname, '../../../../fixtures/sample.mp4');
+const SAMPLE_VIDEO_PATH = path.join(__dirname, '../../fixtures/sample.mp4');
 const SAMPLE_VIDEO_DURATION = 12.8; // approximate duration in seconds
-const OUTPUT_DIR = path.join(__dirname, '../../../../fixtures/output');
+const OUTPUT_DIR = path.join(__dirname, '../../fixtures/output');
 
 /**
  * Save buffer to output directory for inspection

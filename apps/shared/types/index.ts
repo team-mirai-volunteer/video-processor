@@ -18,6 +18,16 @@ export type {
   ClipSummary,
 } from './clip.js';
 
+// ClipSubtitle types
+export type {
+  ClipSubtitle,
+  ClipSubtitleSegment,
+  ClipSubtitleStatus,
+} from './clip-subtitle.js';
+
+// ClipSubtitle constants
+export { SUBTITLE_MAX_CHARS_PER_LINE, SUBTITLE_MAX_LINES } from './clip-subtitle.js';
+
 // ProcessingJob types
 export type {
   ProcessingJob,
@@ -29,14 +39,19 @@ export type {
 export type {
   AllClipSummary,
   CacheVideoResponse,
+  ComposeSubtitledClipResponse,
+  ConfirmClipSubtitleResponse,
   ErrorResponse,
   ExtractAudioResponse,
   ExtractClipsRequest,
   ExtractClipsResponse,
+  GenerateClipSubtitlesResponse,
   GetAllClipsQuery,
   GetAllClipsResponse,
   GetClipResponse,
   GetClipsResponse,
+  GetClipSubtitleResponse,
+  GetClipVideoUrlResponse,
   GetRefinedTranscriptionResponse,
   GetTranscriptionResponse,
   GetVideoResponse,
@@ -51,6 +66,9 @@ export type {
   SubmitVideoResponse,
   TranscribeAudioResponse,
   TranscribeVideoResponse,
+  UpdateClipSubtitleRequest,
+  UpdateClipSubtitleResponse,
+  UploadSubtitledClipResponse,
 } from './api.js';
 
 // Shorts-gen types

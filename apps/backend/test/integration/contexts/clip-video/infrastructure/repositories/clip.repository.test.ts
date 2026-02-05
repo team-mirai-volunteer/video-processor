@@ -24,7 +24,8 @@ describe.skipIf(!runIntegrationTests)('ClipRepository Integration', () => {
   });
 
   beforeEach(async () => {
-    // Clean up test data
+    // Clean up test data in correct order (respect foreign key constraints)
+    await prisma.clipSubtitle.deleteMany();
     await prisma.clip.deleteMany();
     await prisma.processingJob.deleteMany();
     await prisma.video.deleteMany();
@@ -65,6 +66,12 @@ describe.skipIf(!runIntegrationTests)('ClipRepository Integration', () => {
       errorMessage: null,
       createdAt: new Date(),
       updatedAt: new Date(),
+      subtitledVideoGcsUri: null,
+      subtitledVideoUrl: null,
+      subtitledVideoDriveId: null,
+      subtitledVideoDriveUrl: null,
+      clipVideoGcsUri: null,
+      clipVideoGcsExpiresAt: null,
     });
 
   describe('delete', () => {
