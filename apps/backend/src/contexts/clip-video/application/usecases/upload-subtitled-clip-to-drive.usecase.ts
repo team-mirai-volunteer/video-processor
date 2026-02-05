@@ -18,6 +18,8 @@ export interface UploadSubtitledClipToDriveUseCaseDeps {
   clipRepository: ClipRepositoryGateway;
   storage: StorageGateway;
   tempStorage: TempStorageGateway;
+  /** Default output folder ID (from env GOOGLE_DRIVE_OUTPUT_FOLDER_ID) */
+  outputFolderId?: string;
 }
 
 /**
@@ -49,15 +51,26 @@ export class UploadSubtitledClipToDriveUseCase {
     const clipTitle = clip.title || `clip-${clipId}`;
     const fileName = `${clipTitle}-subtitled.mp4`;
 
-    // 5. Upload to Google Drive
+    // 5. Determine target folder
+    // Priority: provided folderId > parent folder of clip > default outputFolderId
+    let targetFolderId = folderId;
+    if (!targetFolderId && clip.googleDriveFileId) {
+      const clipMetadata = await this.deps.storage.getFileMetadata(clip.googleDriveFileId);
+      targetFolderId = clipMetadata.parents?.[0];
+    }
+    if (!targetFolderId) {
+      targetFolderId = this.deps.outputFolderId;
+    }
+
+    // 6. Upload to Google Drive (must be shared drive for service account)
     const driveResult = await this.deps.storage.uploadFile({
       name: fileName,
       mimeType: 'video/mp4',
       content: videoBuffer,
-      parentFolderId: folderId,
+      parentFolderId: targetFolderId,
     });
 
-    // 6. Update clip with Drive info
+    // 7. Update clip with Drive info
     const updatedClip = clip.withSubtitledVideoDriveInfo(driveResult.id, driveResult.webViewLink);
     await this.deps.clipRepository.save(updatedClip);
 

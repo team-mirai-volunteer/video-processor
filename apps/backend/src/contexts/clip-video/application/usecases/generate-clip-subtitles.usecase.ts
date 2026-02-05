@@ -95,10 +95,17 @@ export class GenerateClipSubtitlesUseCase {
       );
     }
 
-    // 6. Parse AI response
+    // 6. Parse AI response and convert to clip-relative time
+    log.info('AI response received', { clipId, aiResponse: aiResponse.substring(0, 500) });
+    log.info('Clip start time for offset calculation', {
+      clipId,
+      clipStartSeconds: clip.startTimeSeconds,
+    });
+
     let segments: ClipSubtitleSegment[];
     try {
-      segments = this.promptService.parseResponse(aiResponse);
+      segments = this.promptService.parseResponse(aiResponse, clip.startTimeSeconds);
+      log.info('Parsed segments (relative time)', { clipId, segments: segments.slice(0, 3) });
     } catch (error) {
       log.error('Failed to parse AI response', error instanceof Error ? error : undefined, {
         clipId,

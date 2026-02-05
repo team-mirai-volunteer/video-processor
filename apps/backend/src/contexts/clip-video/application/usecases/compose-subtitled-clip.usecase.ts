@@ -75,6 +75,9 @@ export class ComposeSubtitledClipUseCase {
         outputPath: outputVideoPath,
         width,
         height,
+        style: {
+          outlineColor: '#30bca7',
+        },
       });
 
       if (!composeResult.success) {

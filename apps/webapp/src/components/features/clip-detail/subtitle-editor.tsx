@@ -35,14 +35,20 @@ export function SubtitleEditor({
   clipId,
   initialSubtitle,
   currentTimeSeconds = 0,
-  subtitledVideoUrl,
-  subtitledVideoDriveUrl,
+  subtitledVideoUrl: initialSubtitledVideoUrl,
+  subtitledVideoDriveUrl: initialSubtitledVideoDriveUrl,
   onSeek,
   onSubtitleUpdate,
 }: SubtitleEditorProps) {
   const [subtitle, setSubtitle] = useState<ClipSubtitle | null>(initialSubtitle);
   const [editedSegments, setEditedSegments] = useState<ClipSubtitleSegment[]>(
     initialSubtitle?.segments ?? []
+  );
+  const [subtitledVideoUrl, setSubtitledVideoUrl] = useState<string | null | undefined>(
+    initialSubtitledVideoUrl
+  );
+  const [subtitledVideoDriveUrl, setSubtitledVideoDriveUrl] = useState<string | null | undefined>(
+    initialSubtitledVideoDriveUrl
   );
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -156,8 +162,9 @@ export function SubtitleEditor({
     setIsComposing(true);
     setMessage(null);
     try {
-      await composeSubtitledClip(clipId);
-      showMessage('success', '動画の合成を開始しました');
+      const result = await composeSubtitledClip(clipId);
+      setSubtitledVideoUrl(result.subtitledVideoUrl);
+      showMessage('success', '動画の合成に成功しました');
     } catch (error) {
       showMessage(
         'error',
@@ -173,7 +180,8 @@ export function SubtitleEditor({
     setMessage(null);
     try {
       const result = await uploadSubtitledClipToDrive(clipId);
-      showMessage('success', `Driveにアップロードしました（ID: ${result.driveFileId}）`);
+      setSubtitledVideoDriveUrl(result.driveUrl);
+      showMessage('success', 'Driveにアップロードしました');
     } catch (error) {
       showMessage(
         'error',

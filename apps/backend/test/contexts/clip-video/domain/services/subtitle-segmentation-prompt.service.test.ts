@@ -78,7 +78,7 @@ describe('SubtitleSegmentationPromptService', () => {
         ]
       }`;
 
-      const result = service.parseResponse(response);
+      const result = service.parseResponse(response, 0);
 
       expect(result).toHaveLength(1);
       expect(result[0]?.index).toBe(0);
@@ -105,7 +105,7 @@ describe('SubtitleSegmentationPromptService', () => {
       }
       以上です。`;
 
-      const result = service.parseResponse(response);
+      const result = service.parseResponse(response, 0);
 
       expect(result).toHaveLength(2);
       expect(result[0]?.index).toBe(0);
@@ -113,7 +113,7 @@ describe('SubtitleSegmentationPromptService', () => {
     });
 
     it('should throw error when no JSON found', () => {
-      expect(() => service.parseResponse('これはJSONではありません')).toThrow(
+      expect(() => service.parseResponse('これはJSONではありません', 0)).toThrow(
         'No valid JSON found'
       );
     });
@@ -121,7 +121,7 @@ describe('SubtitleSegmentationPromptService', () => {
     it('should throw error when segments array is missing', () => {
       const response = '{"data": []}';
 
-      expect(() => service.parseResponse(response)).toThrow('missing segments array');
+      expect(() => service.parseResponse(response, 0)).toThrow('missing segments array');
     });
 
     it('should throw error when segment has empty text', () => {
@@ -135,7 +135,7 @@ describe('SubtitleSegmentationPromptService', () => {
         ]
       }`;
 
-      expect(() => service.parseResponse(response)).toThrow('missing or empty text');
+      expect(() => service.parseResponse(response, 0)).toThrow('missing or empty text');
     });
 
     it('should throw error when segment has invalid time range', () => {
@@ -149,7 +149,7 @@ describe('SubtitleSegmentationPromptService', () => {
         ]
       }`;
 
-      expect(() => service.parseResponse(response)).toThrow(
+      expect(() => service.parseResponse(response, 0)).toThrow(
         'startTimeSeconds must be before endTimeSeconds'
       );
     });
@@ -164,7 +164,7 @@ describe('SubtitleSegmentationPromptService', () => {
         ]
       }`;
 
-      expect(() => service.parseResponse(response)).toThrow('missing startTimeSeconds');
+      expect(() => service.parseResponse(response, 0)).toThrow('missing startTimeSeconds');
     });
 
     it('should trim whitespace from text', () => {
@@ -178,9 +178,26 @@ describe('SubtitleSegmentationPromptService', () => {
         ]
       }`;
 
-      const result = service.parseResponse(response);
+      const result = service.parseResponse(response, 0);
 
       expect(result[0]?.text).toBe('テスト');
+    });
+
+    it('should convert absolute time to relative time based on clipStartSeconds', () => {
+      const response = `{
+        "segments": [
+          {
+            "text": "テスト",
+            "startTimeSeconds": 120.0,
+            "endTimeSeconds": 122.5
+          }
+        ]
+      }`;
+
+      const result = service.parseResponse(response, 120);
+
+      expect(result[0]?.startTimeSeconds).toBe(0.0);
+      expect(result[0]?.endTimeSeconds).toBe(2.5);
     });
   });
 });
