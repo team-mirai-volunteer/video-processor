@@ -74,6 +74,12 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
             'message' in result.error
               ? result.error.message
               : `Font not found: ${result.error.fontFamily}`;
+          const stderr = 'stderr' in result.error ? result.error.stderr : '';
+          console.error(`[ClipSubtitleComposeClient] FFmpeg error for segment ${segment.index}:`, {
+            errorMessage,
+            stderr,
+            text,
+          });
           return err({
             type: 'SUBTITLE_GENERATION_ERROR',
             message: `Failed to generate subtitle image for segment ${segment.index}: ${errorMessage}`,
