@@ -54,7 +54,7 @@ export class GenerateClipSubtitlesUseCase {
       throw new ClipNotFoundError(clipId);
     }
 
-    // 2. Get transcription
+    // 2. Get transcription (needed to find refinedTranscription)
     const transcription = await this.transcriptionRepository.findByVideoId(clip.videoId);
     if (!transcription) {
       throw new TranscriptionNotFoundError(clip.videoId);
@@ -68,23 +68,25 @@ export class GenerateClipSubtitlesUseCase {
       throw new RefinedTranscriptionNotFoundError(clip.videoId);
     }
 
-    // 4. Extract relevant text from refined transcription
-    const relevantText = this.extractRelevantText(
-      refinedTranscription.fullText,
+    // 4. Filter sentences for clip range
+    const filteredSentences = this.promptService.filterSentencesForClip(
       refinedTranscription.sentences,
       clip.startTimeSeconds,
       clip.endTimeSeconds
     );
 
-    // 5. Build prompt and call AI
+    if (filteredSentences.length === 0) {
+      throw new SubtitleGenerationError('No sentences found for clip time range');
+    }
+
+    // 5. Build lightweight prompt and call AI
     const prompt = this.promptService.buildPrompt({
       clipStartSeconds: clip.startTimeSeconds,
       clipEndSeconds: clip.endTimeSeconds,
-      transcriptionSegments: transcription.segments,
-      refinedFullText: relevantText,
+      refinedSentences: filteredSentences,
     });
 
-    log.info('Calling AI for subtitle segmentation', { clipId });
+    log.info('Calling AI for subtitle segmentation (lightweight)', { clipId });
     let aiResponse: string;
     try {
       aiResponse = await this.aiGateway.generate(prompt);
@@ -95,17 +97,17 @@ export class GenerateClipSubtitlesUseCase {
       );
     }
 
-    // 6. Parse AI response and convert to clip-relative time
+    // 6. Parse AI response (text only, no timestamps)
     log.info('AI response received', { clipId, aiResponse: aiResponse.substring(0, 500) });
-    log.info('Clip start time for offset calculation', {
-      clipId,
-      clipStartSeconds: clip.startTimeSeconds,
-    });
 
-    let segments: ClipSubtitleSegment[];
+    let parsedSegments: Array<{ lines: string[] }>;
     try {
-      segments = this.promptService.parseResponse(aiResponse, clip.startTimeSeconds);
-      log.info('Parsed segments (relative time)', { clipId, segments: segments.slice(0, 3) });
+      parsedSegments = this.promptService.parseResponse(aiResponse);
+      log.info('Parsed segments (text only)', {
+        clipId,
+        segmentCount: parsedSegments.length,
+        firstSegment: parsedSegments[0],
+      });
     } catch (error) {
       log.error('Failed to parse AI response', error instanceof Error ? error : undefined, {
         clipId,
@@ -115,11 +117,29 @@ export class GenerateClipSubtitlesUseCase {
       );
     }
 
-    if (segments.length === 0) {
+    if (parsedSegments.length === 0) {
       throw new SubtitleGenerationError('AI returned no segments');
     }
 
-    // 7. Create ClipSubtitle entity
+    // 7. Assign timestamps using character-based interpolation
+    let segments: ClipSubtitleSegment[];
+    try {
+      segments = this.promptService.assignTimestamps(
+        parsedSegments,
+        filteredSentences,
+        clip.startTimeSeconds
+      );
+      log.info('Timestamps assigned (relative time)', { clipId, segments: segments.slice(0, 3) });
+    } catch (error) {
+      log.error('Failed to assign timestamps', error instanceof Error ? error : undefined, {
+        clipId,
+      });
+      throw new SubtitleGenerationError(
+        error instanceof Error ? error.message : 'Failed to assign timestamps'
+      );
+    }
+
+    // 8. Create ClipSubtitle entity
     const subtitleResult = ClipSubtitle.create(
       {
         clipId,
@@ -134,7 +154,7 @@ export class GenerateClipSubtitlesUseCase {
 
     const subtitle = subtitleResult.value;
 
-    // 8. Save to repository
+    // 9. Save to repository
     await this.clipSubtitleRepository.save(subtitle);
     log.info('Subtitle saved successfully', { clipId, segmentCount: segments.length });
 
@@ -149,26 +169,5 @@ export class GenerateClipSubtitlesUseCase {
         updatedAt: subtitle.updatedAt,
       },
     };
-  }
-
-  /**
-   * Extract relevant text from refined transcription based on clip time range
-   */
-  private extractRelevantText(
-    fullText: string,
-    sentences: Array<{ text: string; startTimeSeconds: number; endTimeSeconds: number }>,
-    clipStartSeconds: number,
-    clipEndSeconds: number
-  ): string {
-    const relevantSentences = sentences.filter(
-      (sentence) =>
-        sentence.startTimeSeconds < clipEndSeconds && sentence.endTimeSeconds > clipStartSeconds
-    );
-
-    if (relevantSentences.length === 0) {
-      return fullText;
-    }
-
-    return relevantSentences.map((s) => s.text).join('');
   }
 }
