@@ -26,6 +26,10 @@ export interface ExtractClipsInput {
   clipInstructions: string;
   /** true=複数クリップを許可, false=単一クリップのみ (デフォルト: false) */
   multipleClips?: boolean;
+  /** 出力フォーマット。'vertical' の場合は9:16に変換 (デフォルト: 'original') */
+  outputFormat?: 'original' | 'vertical';
+  /** 余白の色（プリセットから選択）。outputFormat: 'vertical' 時のみ有効 (デフォルト: '#000000') */
+  paddingColor?: '#000000' | '#30bca7';
 }
 
 export interface ExtractClipsUseCaseDeps {
@@ -72,10 +76,18 @@ export class ExtractClipsUseCase {
   }
 
   async execute(input: ExtractClipsInput): Promise<ExtractClipsResponse> {
-    const { videoId, clipInstructions, multipleClips = false } = input;
+    const {
+      videoId,
+      clipInstructions,
+      multipleClips = false,
+      outputFormat = 'original',
+      paddingColor = '#000000',
+    } = input;
     log.info('Starting execution', {
       videoId,
       clipInstructions: clipInstructions.substring(0, 100),
+      outputFormat,
+      paddingColor: outputFormat === 'vertical' ? paddingColor : undefined,
     });
 
     // Validate input
@@ -211,12 +223,13 @@ export class ExtractClipsUseCase {
             // Extract clip using FFmpeg (file-based, memory efficient)
             // Add padding to avoid cutting off the end of the clip
             const CLIP_END_PADDING_SECONDS = 0.5;
-            log.info(`Extracting clip ${i + 1}...`);
+            log.info(`Extracting clip ${i + 1}...`, { outputFormat, paddingColor });
             await this.videoProcessingGateway.extractClipFromFile(
               sourceVideoPath,
               clipOutputPath,
               clip.startTimeSeconds,
-              clip.endTimeSeconds + CLIP_END_PADDING_SECONDS
+              clip.endTimeSeconds + CLIP_END_PADDING_SECONDS,
+              outputFormat === 'vertical' ? { outputFormat, paddingColor } : undefined
             );
 
             const clipStats = await fs.promises.stat(clipOutputPath);

@@ -157,6 +157,12 @@ export interface GetClipResponse {
 // Extract Clips API
 // ============================================================================
 
+/** 余白カラープリセット */
+export type PaddingColor = '#000000' | '#30bca7';
+
+/** 出力フォーマット */
+export type OutputFormat = 'original' | 'vertical';
+
 /**
  * POST /api/videos/:videoId/extract-clips request body
  */
@@ -164,6 +170,10 @@ export interface ExtractClipsRequest {
   clipInstructions: string;
   /** true=複数クリップを許可, false=単一クリップのみ (デフォルト: false) */
   multipleClips?: boolean;
+  /** 出力フォーマット。'vertical' の場合は9:16に変換 (デフォルト: 'original') */
+  outputFormat?: OutputFormat;
+  /** 余白の色（プリセットから選択）。outputFormat: 'vertical' 時のみ有効 (デフォルト: '#000000') */
+  paddingColor?: PaddingColor;
 }
 
 /**

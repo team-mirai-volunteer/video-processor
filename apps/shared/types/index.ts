@@ -58,6 +58,8 @@ export type {
   GetVideosQuery,
   GetVideosResponse,
   HealthResponse,
+  OutputFormat,
+  PaddingColor,
   Pagination,
   PaginatedResponse,
   RefinedSentence,
