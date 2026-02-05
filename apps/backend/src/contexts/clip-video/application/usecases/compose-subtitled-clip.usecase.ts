@@ -6,13 +6,14 @@ import type { ClipRepositoryGateway } from '@clip-video/domain/gateways/clip-rep
 import type { ClipSubtitleComposerGateway } from '@clip-video/domain/gateways/clip-subtitle-composer.gateway.js';
 import type { ClipSubtitleRepositoryGateway } from '@clip-video/domain/gateways/clip-subtitle-repository.gateway.js';
 import type { TempStorageGateway } from '@shared/domain/gateways/temp-storage.gateway.js';
-import type { OutputFormat, PaddingColor } from '@video-processor/shared';
+import type { OutlineColor, OutputFormat, PaddingColor } from '@video-processor/shared';
 import ffmpeg from 'fluent-ffmpeg';
 
 export interface ComposeSubtitledClipInput {
   clipId: string;
   outputFormat?: OutputFormat;
   paddingColor?: PaddingColor;
+  outlineColor?: OutlineColor;
 }
 
 export interface ComposeSubtitledClipOutput {
@@ -35,7 +36,12 @@ export class ComposeSubtitledClipUseCase {
   constructor(private readonly deps: ComposeSubtitledClipUseCaseDeps) {}
 
   async execute(input: ComposeSubtitledClipInput): Promise<ComposeSubtitledClipOutput> {
-    const { clipId, outputFormat = 'original', paddingColor = '#000000' } = input;
+    const {
+      clipId,
+      outputFormat = 'original',
+      paddingColor = '#000000',
+      outlineColor = '#30bca7',
+    } = input;
 
     // 1. Get clip
     const clip = await this.deps.clipRepository.findById(clipId);
@@ -101,7 +107,7 @@ export class ComposeSubtitledClipUseCase {
         width,
         height,
         style: {
-          outlineColor: '#30bca7',
+          outlineColor,
         },
       });
 

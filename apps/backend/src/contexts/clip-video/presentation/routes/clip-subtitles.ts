@@ -167,18 +167,36 @@ router.get('/clips/:clipId/video-url', async (req, res, next) => {
 router.post('/clips/:clipId/compose', async (req, res, next) => {
   try {
     const { clipId } = req.params;
-    const body = req.body as { outputFormat?: string; paddingColor?: string };
+    const body = req.body as {
+      outputFormat?: string;
+      paddingColor?: string;
+      outlineColor?: string;
+    };
     const outputFormat =
       body.outputFormat === 'vertical' ||
       body.outputFormat === 'horizontal' ||
       body.outputFormat === 'original'
         ? body.outputFormat
         : 'original';
-    const paddingColor = body.paddingColor === '#30bca7' ? '#30bca7' : ('#000000' as const);
+    // 余白カラーの検証（白を含む）
+    const validPaddingColors = ['#000000', '#30bca7', '#56d6ea', '#ff7aa2', '#ffffff'] as const;
+    const paddingColor = validPaddingColors.includes(
+      body.paddingColor as (typeof validPaddingColors)[number]
+    )
+      ? (body.paddingColor as (typeof validPaddingColors)[number])
+      : '#000000';
+    // テキスト枠カラーの検証（白を除く）
+    const validOutlineColors = ['#000000', '#30bca7', '#56d6ea', '#ff7aa2'] as const;
+    const outlineColor = validOutlineColors.includes(
+      body.outlineColor as (typeof validOutlineColors)[number]
+    )
+      ? (body.outlineColor as (typeof validOutlineColors)[number])
+      : '#30bca7';
     const result = await composeSubtitledClipUseCase.execute({
       clipId: clipId ?? '',
       outputFormat,
       paddingColor,
+      outlineColor,
     });
     res.json(result);
   } catch (error) {

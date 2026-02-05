@@ -11,6 +11,7 @@ import { uploadSubtitledClipToDrive } from '@/server/presentation/clip-video/act
 import type {
   ClipSubtitle,
   ClipSubtitleSegment,
+  OutlineColor,
   OutputFormat,
   PaddingColor,
 } from '@video-processor/shared';
@@ -160,7 +161,11 @@ export function SubtitleEditor({
   }, [clipId, hasChanges, onSubtitleUpdate, showMessage]);
 
   const handleCompose = useCallback(
-    async (outputFormat?: OutputFormat, paddingColor?: PaddingColor) => {
+    async (
+      outputFormat?: OutputFormat,
+      paddingColor?: PaddingColor,
+      outlineColor?: OutlineColor
+    ) => {
       if (subtitle?.status !== 'confirmed') {
         showMessage('warning', '動画合成には字幕の確定が必要です');
         return;
@@ -168,7 +173,11 @@ export function SubtitleEditor({
       setIsComposing(true);
       setMessage(null);
       try {
-        const result = await composeSubtitledClip(clipId, { outputFormat, paddingColor });
+        const result = await composeSubtitledClip(clipId, {
+          outputFormat,
+          paddingColor,
+          outlineColor,
+        });
         setSubtitledVideoUrl(result.subtitledVideoUrl);
         showMessage('success', '動画の合成に成功しました');
       } catch (error) {
