@@ -19,7 +19,7 @@ function isFFmpegAvailable(): boolean {
 // Skip integration tests if INTEGRATION_TEST is not set or ffmpeg is not available
 const runIntegrationTests = process.env.INTEGRATION_TEST === 'true' && isFFmpegAvailable();
 
-const OUTPUT_DIR = path.join(__dirname, '../../../fixtures/output/shared-subtitle-generator');
+const OUTPUT_DIR = path.join(__dirname, '../../fixtures/output/shared-subtitle-generator');
 
 /**
  * Save buffer to output directory for inspection
