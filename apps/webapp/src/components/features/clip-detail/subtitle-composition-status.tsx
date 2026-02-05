@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, ExternalLink, Loader2, Video } from 'lucide-react';
+import { CheckCircle, Download, ExternalLink, Loader2, RefreshCw, Video } from 'lucide-react';
 
 type CompositionStep = 'idle' | 'composing' | 'composed' | 'uploading' | 'uploaded';
 
@@ -120,12 +120,33 @@ export function SubtitleCompositionStatus({
           )}
 
           {hasComposedVideo && subtitledVideoUrl && (
-            <Button variant="outline" size="sm" asChild>
-              <a href={subtitledVideoUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-2 h-3 w-3" />
-                プレビュー
-              </a>
-            </Button>
+            <>
+              <Button variant="outline" size="sm" asChild>
+                <a href={subtitledVideoUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="mr-2 h-3 w-3" />
+                  プレビュー
+                </a>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <a href={subtitledVideoUrl} download>
+                  <Download className="mr-2 h-3 w-3" />
+                  ダウンロード
+                </a>
+              </Button>
+              <Button variant="outline" size="sm" onClick={onCompose} disabled={isComposing}>
+                {isComposing ? (
+                  <>
+                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                    再合成中...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-3 w-3" />
+                    再合成
+                  </>
+                )}
+              </Button>
+            </>
           )}
 
           {hasUploadedVideo && subtitledVideoDriveUrl && (

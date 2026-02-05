@@ -1,10 +1,10 @@
 'use client';
 
-import { ClipVideoPlayer } from '@/components/features/clip-detail';
+import { ClipVideoPlayer, SubtitleEditor } from '@/components/features/clip-detail';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { GetClipResponse } from '@video-processor/shared';
+import type { ClipSubtitle, GetClipResponse } from '@video-processor/shared';
 import { ArrowLeft, Clock, ExternalLink, FileText, Video } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -12,6 +12,7 @@ import { useState } from 'react';
 interface ClipDetailClientProps {
   clip: GetClipResponse;
   videoTitle: string | null;
+  initialSubtitle: ClipSubtitle | null;
 }
 
 const statusConfig = {
@@ -32,12 +33,28 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
-export function ClipDetailClient({ clip, videoTitle }: ClipDetailClientProps) {
+export function ClipDetailClient({ clip, videoTitle, initialSubtitle }: ClipDetailClientProps) {
   const [currentTime, setCurrentTime] = useState(0);
+  const [subtitle, setSubtitle] = useState<ClipSubtitle | null>(initialSubtitle);
+  // These values are passed as initial values to SubtitleEditor,
+  // which manages its own local state for UI updates
+  const subtitledVideoUrl = clip.subtitledVideoUrl ?? null;
+  const subtitledVideoDriveUrl = clip.subtitledVideoDriveUrl ?? null;
   const config = statusConfig[clip.status as keyof typeof statusConfig] || statusConfig.pending;
+  const videoRef = { current: null as HTMLVideoElement | null };
 
   const handleTimeUpdate = (time: number) => {
     setCurrentTime(time);
+  };
+
+  const handleSeek = (timeSeconds: number) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = timeSeconds;
+    }
+  };
+
+  const handleSubtitleUpdate = (updatedSubtitle: ClipSubtitle) => {
+    setSubtitle(updatedSubtitle);
   };
 
   return (
@@ -112,50 +129,16 @@ export function ClipDetailClient({ clip, videoTitle }: ClipDetailClientProps) {
         </Card>
       )}
 
-      {/* Subtitle Section - Placeholder for Worker E */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">字幕</CardTitle>
-          <CardDescription>字幕の生成・編集機能は別タスクで実装予定です</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-            字幕編集UIは Worker E で実装されます
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Composed Video Section - Placeholder */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">合成動画</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {clip.subtitledVideoUrl ? (
-            <div className="space-y-4">
-              <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
-                <video src={clip.subtitledVideoUrl} controls className="w-full h-full" playsInline>
-                  <track kind="captions" />
-                </video>
-              </div>
-              {clip.subtitledVideoDriveUrl && (
-                <div className="flex justify-end">
-                  <Button variant="outline" size="sm" asChild>
-                    <a href={clip.subtitledVideoDriveUrl} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="mr-2 h-3 w-3" />
-                      Google Driveで開く
-                    </a>
-                  </Button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-              字幕確定後に動画を合成できます
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Subtitle Editor */}
+      <SubtitleEditor
+        clipId={clip.id}
+        initialSubtitle={subtitle}
+        currentTimeSeconds={currentTime}
+        subtitledVideoUrl={subtitledVideoUrl}
+        subtitledVideoDriveUrl={subtitledVideoDriveUrl}
+        onSeek={handleSeek}
+        onSubtitleUpdate={handleSubtitleUpdate}
+      />
 
       {/* Google Drive Link */}
       {clip.googleDriveUrl && clip.status === 'completed' && (

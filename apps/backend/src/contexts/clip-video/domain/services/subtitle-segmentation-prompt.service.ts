@@ -79,18 +79,21 @@ ${input.refinedFullText}
 
 ## 出力形式
 以下のJSON形式で出力してください。JSONのみを出力し、他のテキストは含めないでください。
+**重要: タイムスタンプは入力データと同じ絶対時間（元動画の時間）で指定してください。**
+
+例（クリップ範囲が120秒〜150秒の場合）:
 \`\`\`json
 {
   "segments": [
     {
       "text": "字幕テキスト1",
-      "startTimeSeconds": 0.04,
-      "endTimeSeconds": 1.5
+      "startTimeSeconds": 120.04,
+      "endTimeSeconds": 122.5
     },
     {
       "text": "字幕テキスト2",
-      "startTimeSeconds": 1.5,
-      "endTimeSeconds": 3.2
+      "startTimeSeconds": 122.5,
+      "endTimeSeconds": 125.2
     }
   ]
 }
@@ -100,7 +103,7 @@ ${input.refinedFullText}
 1. 1セグメントは15〜25文字程度を目安にする
 2. 文の切れ目、句読点、意味の区切りで分割する
 3. テキストは「校正済みテキスト」を参考に決定する（漢字変換が正しい）
-4. タイムスタンプは「単語単位データ」から計算する（精度が高い）
+4. **タイムスタンプは入力の「単語単位データ」と同じ絶対時間で指定する**（相対時間ではない）
 5. 読みやすさを優先し、1画面に表示する量を適切に調整する
 6. セグメントは時系列順に並べる
 7. 隣接するセグメントのタイムスタンプは連続させる（endTimeSecondsと次のstartTimeSecondsは同じか近い値）`;
@@ -108,8 +111,12 @@ ${input.refinedFullText}
 
   /**
    * LLMのレスポンスをパースしてClipSubtitleSegment配列に変換
+   * LLMは元動画の絶対時間で返すため、クリップ内相対時間に変換する
+   *
+   * @param response LLMからのレスポンス
+   * @param clipStartSeconds クリップの開始時間（元動画の絶対時間）
    */
-  parseResponse(response: string): ClipSubtitleSegment[] {
+  parseResponse(response: string, clipStartSeconds: number): ClipSubtitleSegment[] {
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new Error('Failed to parse AI response: No valid JSON found');
@@ -144,11 +151,15 @@ ${input.refinedFullText}
         );
       }
 
+      // 絶対時間からクリップ内相対時間に変換
+      const relativeStart = Math.max(0, seg.startTimeSeconds - clipStartSeconds);
+      const relativeEnd = Math.max(0, seg.endTimeSeconds - clipStartSeconds);
+
       return {
         index,
         text: seg.text.trim(),
-        startTimeSeconds: seg.startTimeSeconds,
-        endTimeSeconds: seg.endTimeSeconds,
+        startTimeSeconds: relativeStart,
+        endTimeSeconds: relativeEnd,
       };
     });
   }

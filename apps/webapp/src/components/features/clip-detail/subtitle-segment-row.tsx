@@ -4,6 +4,10 @@ import { Input } from '@/components/ui/input';
 import { cn, formatDuration } from '@/lib/utils';
 import type { ClipSubtitleSegment } from '@video-processor/shared';
 
+function formatTimeValue(seconds: number): string {
+  return (Math.round(seconds * 100) / 100).toFixed(2);
+}
+
 interface SubtitleSegmentRowProps {
   segment: ClipSubtitleSegment;
   isActive?: boolean;
@@ -83,7 +87,7 @@ export function SubtitleSegmentRow({
         <div className="flex items-center gap-1 shrink-0">
           <Input
             type="number"
-            value={segment.startTimeSeconds.toFixed(2)}
+            value={formatTimeValue(segment.startTimeSeconds)}
             onChange={handleStartTimeChange}
             className="w-20 h-8 text-xs"
             step={0.1}
@@ -93,7 +97,7 @@ export function SubtitleSegmentRow({
           <span className="text-muted-foreground">-</span>
           <Input
             type="number"
-            value={segment.endTimeSeconds.toFixed(2)}
+            value={formatTimeValue(segment.endTimeSeconds)}
             onChange={handleEndTimeChange}
             className="w-20 h-8 text-xs"
             step={0.1}

@@ -83,6 +83,7 @@ const uploadSubtitledClipToDriveUseCase = new UploadSubtitledClipToDriveUseCase(
   clipRepository,
   storage: googleDriveClient,
   tempStorage: gcsClient,
+  outputFolderId: process.env.GOOGLE_DRIVE_OUTPUT_FOLDER_ID,
 });
 
 /**

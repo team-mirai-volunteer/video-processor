@@ -1,49 +1,22 @@
 import * as fs from 'node:fs';
+import * as path from 'node:path';
 import type {
   ClipSubtitleComposeError,
   ClipSubtitleComposeParams,
   ClipSubtitleComposeResult,
   ClipSubtitleComposerGateway,
-  SubtitleStyle,
 } from '@clip-video/domain/gateways/clip-subtitle-composer.gateway.js';
 import { type Result, err, ok } from '@shared/domain/types/result.js';
 import { FFmpegSubtitleGeneratorClient } from '@shared/infrastructure/clients/ffmpeg-subtitle-generator.client.js';
 import ffmpeg from 'fluent-ffmpeg';
 
 /**
- * Default font family for subtitle generation
- */
-const DEFAULT_FONT_FAMILY = process.env.SUBTITLE_FONT_FAMILY || 'Noto Sans CJK JP';
-
-/**
- * Default subtitle style settings
- */
-const DEFAULT_STYLE: Required<SubtitleStyle> = {
-  fontFamily: DEFAULT_FONT_FAMILY,
-  fontSize: 64,
-  fontColor: '#FFFFFF',
-  outlineColor: '#000000',
-  outlineWidth: 3,
-  shadowColor: '#000000',
-  shadowOffsetX: 2,
-  shadowOffsetY: 2,
-  alignment: 'center',
-  bold: true,
-};
-
-/**
- * Default vertical position (80% from top = near bottom)
- */
-const DEFAULT_VERTICAL_POSITION = 0.8;
-
-/**
- * Default horizontal padding in pixels
- */
-const DEFAULT_HORIZONTAL_PADDING = 40;
-
-/**
  * Clip Subtitle Compose Client
- * Composes subtitles onto a video clip using FFmpeg drawtext filter
+ * Composes subtitles onto a video clip using PNG overlay method
+ *
+ * 処理フロー:
+ * 1. 字幕セグメントごとにPNG画像を生成 (FFmpegSubtitleGeneratorClient)
+ * 2. 元クリップ動画に字幕画像をoverlayで合成
  */
 export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
   private readonly subtitleGenerator: FFmpegSubtitleGeneratorClient;
@@ -74,21 +47,61 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
       });
     }
 
+    const tempDir = path.dirname(params.inputVideoPath);
+    const subtitleImages: { path: string; startTime: number; endTime: number }[] = [];
+
     try {
-      // Build drawtext filter for all segments
-      const style = this.mergeStyles(params.style);
-      const drawtextFilter = this.buildDrawtextFilter(
-        params.segments,
-        params.width,
-        params.height,
-        style
+      // 1. 各セグメントのPNG画像を生成
+      console.log(
+        `[ClipSubtitleComposeClient] Generating ${params.segments.length} subtitle images...`
       );
 
-      // Execute FFmpeg with drawtext filter
+      for (const segment of params.segments) {
+        const imagePath = path.join(tempDir, `subtitle_${segment.index}.png`);
+
+        const result = await this.subtitleGenerator.generate({
+          text: segment.text,
+          width: params.width,
+          height: params.height,
+          style: params.style,
+        });
+
+        if (!result.success) {
+          const errorMessage =
+            'message' in result.error
+              ? result.error.message
+              : `Font not found: ${result.error.fontFamily}`;
+          return err({
+            type: 'SUBTITLE_GENERATION_ERROR',
+            message: `Failed to generate subtitle image for segment ${segment.index}: ${errorMessage}`,
+          });
+        }
+
+        // 画像をファイルに保存
+        await fs.promises.writeFile(imagePath, result.value.imageBuffer);
+
+        subtitleImages.push({
+          path: imagePath,
+          startTime: segment.startTimeSeconds,
+          endTime: segment.endTimeSeconds,
+        });
+
+        console.log(
+          `[ClipSubtitleComposeClient] Generated subtitle ${segment.index}: "${segment.text.substring(0, 20)}..." (${segment.startTimeSeconds}s - ${segment.endTimeSeconds}s)`
+        );
+      }
+
+      // 2. 動画に字幕画像をoverlay合成
+      console.log('[ClipSubtitleComposeClient] Composing subtitles onto video...');
+
       const durationSeconds = await this.executeFFmpegCompose(
         params.inputVideoPath,
         params.outputPath,
-        drawtextFilter
+        subtitleImages
+      );
+
+      console.log(
+        `[ClipSubtitleComposeClient] Composition complete. Duration: ${durationSeconds}s`
       );
 
       return ok({
@@ -104,122 +117,49 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
         type: 'COMPOSE_FAILED',
         message: `Failed to compose subtitles: ${message}`,
       });
+    } finally {
+      // 一時的な字幕画像を削除
+      for (const img of subtitleImages) {
+        try {
+          await fs.promises.unlink(img.path);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
     }
   }
 
   /**
-   * Merge provided styles with defaults
-   */
-  private mergeStyles(style?: SubtitleStyle): Required<SubtitleStyle> {
-    return {
-      fontFamily: style?.fontFamily ?? DEFAULT_STYLE.fontFamily,
-      fontSize: style?.fontSize ?? DEFAULT_STYLE.fontSize,
-      fontColor: style?.fontColor ?? DEFAULT_STYLE.fontColor,
-      outlineColor: style?.outlineColor ?? DEFAULT_STYLE.outlineColor,
-      outlineWidth: style?.outlineWidth ?? DEFAULT_STYLE.outlineWidth,
-      shadowColor: style?.shadowColor ?? DEFAULT_STYLE.shadowColor,
-      shadowOffsetX: style?.shadowOffsetX ?? DEFAULT_STYLE.shadowOffsetX,
-      shadowOffsetY: style?.shadowOffsetY ?? DEFAULT_STYLE.shadowOffsetY,
-      alignment: style?.alignment ?? DEFAULT_STYLE.alignment,
-      bold: style?.bold ?? DEFAULT_STYLE.bold,
-    };
-  }
-
-  /**
-   * Build drawtext filter string for all segments
-   * Each segment is displayed at its specified time range
-   */
-  private buildDrawtextFilter(
-    segments: ClipSubtitleComposeParams['segments'],
-    _width: number,
-    _height: number,
-    style: Required<SubtitleStyle>
-  ): string {
-    const filters: string[] = [];
-
-    // Convert hex color to FFmpeg format
-    const fontColor = this.hexToFFmpegColor(style.fontColor);
-    const outlineColor = this.hexToFFmpegColor(style.outlineColor);
-    const shadowColor = this.hexToFFmpegColor(style.shadowColor);
-
-    // Build font name
-    const fontName =
-      style.bold && style.fontFamily.includes('Hiragino')
-        ? `${style.fontFamily} W6`
-        : style.fontFamily;
-
-    // Calculate positions
-    const verticalPosition = DEFAULT_VERTICAL_POSITION;
-    const horizontalPadding = DEFAULT_HORIZONTAL_PADDING;
-
-    let xPosition: string;
-    switch (style.alignment) {
-      case 'left':
-        xPosition = `${horizontalPadding}`;
-        break;
-      case 'right':
-        xPosition = `w-text_w-${horizontalPadding}`;
-        break;
-      default:
-        xPosition = '(w-text_w)/2';
-        break;
-    }
-
-    const yPosition = `h*${verticalPosition}-text_h/2`;
-
-    for (const segment of segments) {
-      // Escape text for FFmpeg drawtext filter
-      const escapedText = this.subtitleGenerator.escapeText(segment.text);
-
-      // Create enable expression for time range
-      const enableExpr = `enable='between(t,${segment.startTimeSeconds},${segment.endTimeSeconds})'`;
-
-      const drawtextFilter = [
-        `drawtext=text='${escapedText}'`,
-        `font='${fontName}'`,
-        `fontsize=${style.fontSize}`,
-        `fontcolor=${fontColor}`,
-        `bordercolor=${outlineColor}`,
-        `borderw=${style.outlineWidth}`,
-        `shadowcolor=${shadowColor}`,
-        `shadowx=${style.shadowOffsetX}`,
-        `shadowy=${style.shadowOffsetY}`,
-        `x=${xPosition}`,
-        `y=${yPosition}`,
-        enableExpr,
-      ].join(':');
-
-      filters.push(drawtextFilter);
-    }
-
-    return filters.join(',');
-  }
-
-  /**
-   * Convert hex color (#RRGGBB) to FFmpeg format (0xRRGGBB)
-   */
-  private hexToFFmpegColor(hex: string): string {
-    const cleanHex = hex.replace('#', '');
-    return `0x${cleanHex}`;
-  }
-
-  /**
-   * Execute FFmpeg to compose subtitles onto video
+   * Execute FFmpeg to compose subtitle images onto video using overlay filter
    */
   private executeFFmpegCompose(
     inputPath: string,
     outputPath: string,
-    drawtextFilter: string
+    subtitleImages: { path: string; startTime: number; endTime: number }[]
   ): Promise<number> {
     return new Promise((resolve, reject) => {
       let durationSeconds = 0;
 
-      ffmpeg(inputPath)
-        .videoFilters(drawtextFilter)
-        .outputOptions(['-c:a copy'])
+      // Build complex filter for overlaying subtitle images
+      const { filterComplex } = this.buildOverlayFilter(subtitleImages);
+
+      console.log('[ClipSubtitleComposeClient] FFmpeg filter_complex:', filterComplex);
+
+      const command = ffmpeg(inputPath);
+
+      // Add subtitle images as inputs
+      for (const img of subtitleImages) {
+        command.input(img.path);
+      }
+
+      command
+        .complexFilter(filterComplex)
+        .outputOptions(['-map', `[v${subtitleImages.length}]`, '-map', '0:a?', '-c:a', 'copy'])
         .output(outputPath)
+        .on('start', (commandLine) => {
+          console.log('[ClipSubtitleComposeClient] FFmpeg command:', commandLine);
+        })
         .on('codecData', (data) => {
-          // Parse duration from codec data
           if (data.duration) {
             const parts = data.duration.split(':');
             if (parts.length === 3) {
@@ -240,5 +180,36 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
         })
         .run();
     });
+  }
+
+  /**
+   * Build FFmpeg complex filter for overlaying multiple subtitle images
+   *
+   * Example output for 3 subtitles:
+   * [0:v][1:v]overlay=enable='between(t,0,2)':x=0:y=0[v1];
+   * [v1][2:v]overlay=enable='between(t,2,4)':x=0:y=0[v2];
+   * [v2][3:v]overlay=enable='between(t,4,6)':x=0:y=0[v3]
+   */
+  private buildOverlayFilter(
+    subtitleImages: { path: string; startTime: number; endTime: number }[]
+  ): { filterComplex: string } {
+    const filters: string[] = [];
+
+    for (const [i, img] of subtitleImages.entries()) {
+      const inputIndex = i + 1; // 0 is the video, 1+ are subtitle images
+      const prevOutput = i === 0 ? '0:v' : `v${i}`;
+      const currentOutput = `v${i + 1}`;
+
+      // enable expression for time range
+      const enableExpr = `between(t,${img.startTime},${img.endTime})`;
+
+      // overlay filter: position at center-bottom (x=0, y=0 since PNG is already positioned)
+      const filter = `[${prevOutput}][${inputIndex}:v]overlay=enable='${enableExpr}':x=0:y=0[${currentOutput}]`;
+      filters.push(filter);
+    }
+
+    return {
+      filterComplex: filters.join(';'),
+    };
   }
 }

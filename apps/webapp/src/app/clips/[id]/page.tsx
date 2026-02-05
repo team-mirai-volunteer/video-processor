@@ -2,8 +2,10 @@ import { ClipDetailClient } from '@/app/clips/[id]/clip-detail-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { BackendApiError } from '@/server/infrastructure/clients/backend-client';
+import { getBackendClient } from '@/server/infrastructure/clients/get-backend-client';
 import { loadClipDetail } from '@/server/presentation/clip-video/loaders/loadClipDetail';
 import { loadVideo } from '@/server/presentation/clip-video/loaders/loadVideo';
+import type { ClipSubtitle } from '@video-processor/shared';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
@@ -35,16 +37,25 @@ export default async function ClipDetailPage({ params }: Props) {
       );
     }
 
-    // Fetch video information for the title
+    // Fetch video information and subtitle in parallel
     let videoTitle: string | null = null;
-    try {
-      const video = await loadVideo(clip.videoId);
-      videoTitle = video.title;
-    } catch {
-      // Video might not be accessible, continue without title
+    let initialSubtitle: ClipSubtitle | null = null;
+
+    const [videoResult, subtitleResult] = await Promise.allSettled([
+      loadVideo(clip.videoId),
+      getBackendClient().getClipSubtitle(clip.id, { revalidate: false }),
+    ]);
+
+    if (videoResult.status === 'fulfilled') {
+      videoTitle = videoResult.value.title;
+    }
+    if (subtitleResult.status === 'fulfilled' && subtitleResult.value.subtitle) {
+      initialSubtitle = subtitleResult.value.subtitle;
     }
 
-    return <ClipDetailClient clip={clip} videoTitle={videoTitle} />;
+    return (
+      <ClipDetailClient clip={clip} videoTitle={videoTitle} initialSubtitle={initialSubtitle} />
+    );
   } catch (err) {
     const errorMessage =
       err instanceof BackendApiError && err.status === 404

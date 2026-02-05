@@ -29,7 +29,7 @@ const DEFAULT_STYLE: Required<SubtitleStyle> = {
   fontSize: 64,
   fontColor: '#FFFFFF',
   outlineColor: '#000000',
-  outlineWidth: 3,
+  outlineWidth: 8, // Thick outline for better visibility
   shadowColor: '#000000',
   shadowOffsetX: 2,
   shadowOffsetY: 2,
@@ -282,11 +282,17 @@ export class FFmpegSubtitleGeneratorClient implements SubtitleGeneratorGateway {
 
     // Build drawtext filter
     // Note: Using font instead of fontfile for system fonts
-    // For bold text, we append W6 (weight 6) to Hiragino fonts, or use the font as-is for others
-    const fontName =
-      style.bold && style.fontFamily.includes('Hiragino')
-        ? `${style.fontFamily} W6`
-        : style.fontFamily;
+    // For bold text, select appropriate bold variant based on font family
+    // Noto Sans CJK has separate family names for each weight (e.g., "Noto Sans CJK JP Black")
+    let fontName = style.fontFamily;
+    if (style.bold) {
+      if (style.fontFamily.includes('Hiragino')) {
+        fontName = `${style.fontFamily} W6`;
+      } else if (style.fontFamily.includes('Noto Sans CJK')) {
+        // Noto Sans CJK JP Black is a separate font family, not a style variant
+        fontName = `${style.fontFamily} Black`;
+      }
+    }
 
     const drawtextFilter = [
       `drawtext=text='${escapedText}'`,
