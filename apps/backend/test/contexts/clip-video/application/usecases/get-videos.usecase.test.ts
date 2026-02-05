@@ -77,12 +77,12 @@ describe('GetVideosUseCase', () => {
     });
   });
 
-  it('should limit to maximum 100 items', async () => {
-    await useCase.execute({ limit: 200 });
+  it('should limit to maximum 500 items', async () => {
+    await useCase.execute({ limit: 1000 });
 
     expect(videoRepository.findMany).toHaveBeenCalledWith({
       page: 1,
-      limit: 100,
+      limit: 500,
       status: undefined,
     });
   });

@@ -5,7 +5,7 @@ import { loadVideos } from '@/server/presentation/clip-video/loaders/loadVideos'
 export const dynamic = 'force-dynamic';
 
 export default async function VideosPage() {
-  const response = await loadVideos();
+  const response = await loadVideos({ limit: 500 });
 
   return (
     <div className="space-y-6">
