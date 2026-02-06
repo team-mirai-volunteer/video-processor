@@ -91,10 +91,16 @@ export function ClipListTable({ clips, pagination }: ClipListTableProps) {
                   {clip.videoTitle || 'タイトルなし'}
                 </Link>
               </span>
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-1 font-semibold text-foreground">
                 <Clock className="h-3 w-3" />
                 {formatDuration(clip.durationSeconds)}
               </span>
+              {clip.hasSubtitledVideo && (
+                <span className="inline-flex items-center gap-1 text-blue-600">
+                  <Subtitles className="h-3 w-3" />
+                  字幕付き
+                </span>
+              )}
               <span>{formatDate(clip.createdAt)}</span>
             </div>
 
