@@ -8,7 +8,39 @@ import type {
 } from '@clip-video/domain/gateways/clip-subtitle-composer.gateway.js';
 import { type Result, err, ok } from '@shared/domain/types/result.js';
 import { FFmpegSubtitleGeneratorClient } from '@shared/infrastructure/clients/ffmpeg-subtitle-generator.client.js';
+import type { SubtitleFontSize } from '@video-processor/shared';
 import ffmpeg from 'fluent-ffmpeg';
+
+/**
+ * 動画横幅に対するフォントサイズの比率
+ * 例: 1920px幅の場合 small=96px, medium=120px, large=148px
+ */
+const FONT_SIZE_RATIO: Record<SubtitleFontSize, number> = {
+  small: 96 / 1920,
+  medium: 120 / 1920,
+  large: 148 / 1920,
+};
+
+/**
+ * フォントサイズに対するアウトライン幅の比率
+ */
+const OUTLINE_RATIO: Record<SubtitleFontSize, number> = {
+  small: 8 / 64,
+  medium: 10 / 80,
+  large: 12 / 96,
+};
+
+/**
+ * 動画横幅からフォントサイズとアウトライン幅を算出する
+ */
+function calcFontMetrics(
+  fontSizeKey: SubtitleFontSize,
+  videoWidth: number
+): { fontSize: number; outlineWidth: number } {
+  const fontSize = Math.round(videoWidth * FONT_SIZE_RATIO[fontSizeKey]);
+  const outlineWidth = Math.round(fontSize * OUTLINE_RATIO[fontSizeKey]);
+  return { fontSize, outlineWidth };
+}
 
 /**
  * Clip Subtitle Compose Client
@@ -50,6 +82,27 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
     const tempDir = path.dirname(params.inputVideoPath);
     const subtitleImages: { path: string; startTime: number; endTime: number }[] = [];
 
+    // フォントサイズの決定（動画横幅ベース）
+    const fontSizeKey = params.fontSize ?? 'small';
+    const { fontSize: fontSizePx, outlineWidth: outlineWidthPx } = calcFontMetrics(
+      fontSizeKey,
+      params.width
+    );
+
+    // 縦位置の計算（縦動画の場合は正方形下端付近に配置）
+    const verticalPosition = this.calculateVerticalPosition(params.width, params.height);
+
+    // スタイルの合成（fontSizeとoutlineWidthを上書き）
+    const mergedStyle = {
+      ...params.style,
+      fontSize: fontSizePx,
+      outlineWidth: outlineWidthPx,
+    };
+
+    console.log(
+      `[ClipSubtitleComposeClient] Font size: ${fontSizeKey} (${fontSizePx}px), vertical position: ${verticalPosition}`
+    );
+
     try {
       // 1. 各セグメントのPNG画像を生成
       console.log(
@@ -66,7 +119,8 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
           text,
           width: params.width,
           height: params.height,
-          style: params.style,
+          style: mergedStyle,
+          verticalPosition,
         });
 
         if (!result.success) {
@@ -221,5 +275,34 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
     return {
       filterComplex: filters.join(';'),
     };
+  }
+
+  /**
+   * Calculate vertical position for subtitle placement
+   *
+   * 縦動画（9:16）の場合は、動画の中央に9:9の正方形を置いたときの下端付近に字幕を配置する。
+   * - 9:16動画: 1080x1920 の場合、中央の正方形は 1080x1080
+   * - 正方形の下端: (1920 - 1080) / 2 + 1080 = 1500
+   * - 下端の相対位置: 1500 / 1920 ≈ 0.78125
+   * - 字幕の下端をこの位置より少し上（0.75付近）に配置
+   *
+   * 横動画/オリジナルの場合は従来通り 0.8 を使用
+   */
+  private calculateVerticalPosition(width: number, height: number): number {
+    // 縦動画かどうかを判定（アスペクト比が 0.7 以下 = 縦長）
+    const aspectRatio = width / height;
+    const isVertical = aspectRatio <= 0.7;
+
+    if (isVertical) {
+      // 縦動画の場合：中央の正方形の下端付近に配置
+      // 正方形の下端 = (height - width) / 2 + width = (height + width) / 2
+      // 相対位置 = (height + width) / 2 / height
+      // さらに少し上に配置するために 0.03 程度引く
+      const squareBottomRatio = (height + width) / (2 * height);
+      return squareBottomRatio - 0.03;
+    }
+
+    // 横動画/オリジナルの場合
+    return 0.8;
   }
 }

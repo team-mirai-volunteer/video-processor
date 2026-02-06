@@ -1,5 +1,6 @@
 import type {
   CacheVideoResponse,
+  ComposeSubtitledClipRequest,
   ComposeSubtitledClipResponse,
   ComposeVideoAcceptedResponse,
   ComposeVideoRequest,
@@ -10,6 +11,8 @@ import type {
   CreateShortsProjectResponse,
   DeleteReferenceCharacterResponse,
   ExtractAudioResponse,
+  ExtractClipByTimeRequest,
+  ExtractClipByTimeResponse,
   ExtractClipsRequest,
   ExtractClipsResponse,
   GenerateClipSubtitlesResponse,
@@ -198,9 +201,13 @@ export const backendClient = {
     });
   },
 
-  async composeSubtitledClip(clipId: string): Promise<ComposeSubtitledClipResponse> {
+  async composeSubtitledClip(
+    clipId: string,
+    request?: ComposeSubtitledClipRequest
+  ): Promise<ComposeSubtitledClipResponse> {
     return fetchBackend<ComposeSubtitledClipResponse>(`/api/clips/${clipId}/compose`, {
       method: 'POST',
+      body: JSON.stringify(request ?? {}),
     });
   },
 
@@ -226,6 +233,16 @@ export const backendClient = {
 
   async extractClips(videoId: string, request: ExtractClipsRequest): Promise<ExtractClipsResponse> {
     return fetchBackend<ExtractClipsResponse>(`/api/videos/${videoId}/extract-clips`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async extractClipByTime(
+    videoId: string,
+    request: ExtractClipByTimeRequest
+  ): Promise<ExtractClipByTimeResponse> {
+    return fetchBackend<ExtractClipByTimeResponse>(`/api/videos/${videoId}/extract-clip-by-time`, {
       method: 'POST',
       body: JSON.stringify(request),
     });

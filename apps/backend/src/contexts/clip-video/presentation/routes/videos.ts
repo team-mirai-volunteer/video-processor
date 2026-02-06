@@ -3,6 +3,7 @@ import { CacheVideoUseCase } from '@clip-video/application/usecases/cache-video.
 import { CreateTranscriptUseCase } from '@clip-video/application/usecases/create-transcript.usecase.js';
 import { DeleteVideoUseCase } from '@clip-video/application/usecases/delete-video.usecase.js';
 import { ExtractAudioUseCase } from '@clip-video/application/usecases/extract-audio.usecase.js';
+import { ExtractClipByTimeUseCase } from '@clip-video/application/usecases/extract-clip-by-time.usecase.js';
 import { ExtractClipsUseCase } from '@clip-video/application/usecases/extract-clips.usecase.js';
 import { GetVideoUseCase } from '@clip-video/application/usecases/get-video.usecase.js';
 import { GetVideosUseCase } from '@clip-video/application/usecases/get-videos.usecase.js';
@@ -21,6 +22,7 @@ import { ProcessingJobRepository } from '@clip-video/infrastructure/repositories
 import { RefinedTranscriptionRepository } from '@clip-video/infrastructure/repositories/refined-transcription.repository.js';
 import { TranscriptionRepository } from '@clip-video/infrastructure/repositories/transcription.repository.js';
 import { VideoRepository } from '@clip-video/infrastructure/repositories/video.repository.js';
+import { AnthropicClient } from '@shared/infrastructure/clients/anthropic.client.js';
 import { FFmpegClient } from '@shared/infrastructure/clients/ffmpeg.client.js';
 import { GcsClient } from '@shared/infrastructure/clients/gcs.client.js';
 import { GoogleDriveClient } from '@shared/infrastructure/clients/google-drive.client.js';
@@ -33,6 +35,7 @@ import { logger } from '@shared/infrastructure/logging/logger.js';
 import type {
   CacheVideoResponse,
   ExtractAudioResponse,
+  ExtractClipByTimeRequest,
   ExtractClipsRequest,
   GetRefinedTranscriptionResponse,
   GetTranscriptionResponse,
@@ -104,6 +107,19 @@ const extractClipsUseCase = new ExtractClipsUseCase({
   tempStorageGateway,
   aiGateway: new OpenAIClient(),
   videoProcessingGateway: new FFmpegClient(),
+  generateId: () => uuidv4(),
+  outputFolderId: process.env.GOOGLE_DRIVE_OUTPUT_FOLDER_ID,
+});
+
+const extractClipByTimeUseCase = new ExtractClipByTimeUseCase({
+  videoRepository,
+  clipRepository,
+  transcriptionRepository,
+  refinedTranscriptionRepository,
+  storageGateway,
+  tempStorageGateway,
+  videoProcessingGateway: new FFmpegClient(),
+  aiGateway: new AnthropicClient(),
   generateId: () => uuidv4(),
   outputFolderId: process.env.GOOGLE_DRIVE_OUTPUT_FOLDER_ID,
 });
@@ -279,10 +295,42 @@ router.post('/:videoId/extract-clips', async (req, res, next) => {
   try {
     const { videoId } = req.params;
     const body = req.body as ExtractClipsRequest;
+
+    // Validate and normalize outputFormat
+    const outputFormat =
+      body.outputFormat === 'vertical' || body.outputFormat === 'original'
+        ? body.outputFormat
+        : 'original';
+
+    // Validate and normalize paddingColor (only for vertical format)
+    const paddingColor = body.paddingColor === '#30bca7' ? '#30bca7' : ('#000000' as const);
+
     const result = await extractClipsUseCase.execute({
       videoId: videoId ?? '',
       clipInstructions: body.clipInstructions,
       multipleClips: body.multipleClips ?? false,
+      outputFormat,
+      paddingColor,
+    });
+    res.status(202).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/videos/:videoId/extract-clip-by-time
+ * Extract a single clip using direct timestamp specification (no AI)
+ */
+router.post('/:videoId/extract-clip-by-time', async (req, res, next) => {
+  try {
+    const { videoId } = req.params;
+    const body = req.body as ExtractClipByTimeRequest;
+    const result = await extractClipByTimeUseCase.execute({
+      videoId: videoId ?? '',
+      startTimeSeconds: body.startTimeSeconds,
+      endTimeSeconds: body.endTimeSeconds,
+      title: body.title,
     });
     res.status(202).json(result);
   } catch (error) {

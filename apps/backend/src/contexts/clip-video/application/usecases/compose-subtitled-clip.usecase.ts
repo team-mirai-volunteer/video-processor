@@ -6,10 +6,20 @@ import type { ClipRepositoryGateway } from '@clip-video/domain/gateways/clip-rep
 import type { ClipSubtitleComposerGateway } from '@clip-video/domain/gateways/clip-subtitle-composer.gateway.js';
 import type { ClipSubtitleRepositoryGateway } from '@clip-video/domain/gateways/clip-subtitle-repository.gateway.js';
 import type { TempStorageGateway } from '@shared/domain/gateways/temp-storage.gateway.js';
+import type {
+  OutlineColor,
+  OutputFormat,
+  PaddingColor,
+  SubtitleFontSize,
+} from '@video-processor/shared';
 import ffmpeg from 'fluent-ffmpeg';
 
 export interface ComposeSubtitledClipInput {
   clipId: string;
+  outputFormat?: OutputFormat;
+  paddingColor?: PaddingColor;
+  outlineColor?: OutlineColor;
+  fontSize?: SubtitleFontSize;
 }
 
 export interface ComposeSubtitledClipOutput {
@@ -32,7 +42,13 @@ export class ComposeSubtitledClipUseCase {
   constructor(private readonly deps: ComposeSubtitledClipUseCaseDeps) {}
 
   async execute(input: ComposeSubtitledClipInput): Promise<ComposeSubtitledClipOutput> {
-    const { clipId } = input;
+    const {
+      clipId,
+      outputFormat = 'original',
+      paddingColor = '#000000',
+      outlineColor = '#30bca7',
+      fontSize = 'medium',
+    } = input;
 
     // 1. Get clip
     const clip = await this.deps.clipRepository.findById(clipId);
@@ -65,26 +81,51 @@ export class ComposeSubtitledClipUseCase {
       const videoBuffer = await this.deps.tempStorage.download(sourceGcsUri);
       await fs.promises.writeFile(inputVideoPath, videoBuffer);
 
-      // 6. Get video dimensions using ffprobe
-      const { width, height } = await this.getVideoDimensions(inputVideoPath);
+      // 6. Apply format conversion if requested (before subtitle composition)
+      let subtitleInputPath = inputVideoPath;
+      if (outputFormat === 'vertical' || outputFormat === 'horizontal') {
+        const convertedPath = path.join(tempDir, `${outputFormat}.mp4`);
+        const { width: srcWidth, height: srcHeight } =
+          await this.getVideoDimensions(inputVideoPath);
+        const target =
+          outputFormat === 'vertical'
+            ? { width: 1080, height: 1920 }
+            : { width: 1920, height: 1080 };
+        await this.convertToFormat(
+          inputVideoPath,
+          convertedPath,
+          srcWidth,
+          srcHeight,
+          target.width,
+          target.height,
+          paddingColor
+        );
+        subtitleInputPath = convertedPath;
+      }
 
-      // 7. Compose subtitles onto video
+      // 7. Get video dimensions for subtitle composition
+      const { width, height } = await this.getVideoDimensions(subtitleInputPath);
+
+      // 8. Compose subtitles onto video
       const composeResult = await this.deps.clipSubtitleComposer.compose({
-        inputVideoPath,
+        inputVideoPath: subtitleInputPath,
         segments: subtitle.segments,
         outputPath: outputVideoPath,
         width,
         height,
         style: {
-          outlineColor: '#30bca7',
+          outlineColor,
         },
+        fontSize,
       });
 
       if (!composeResult.success) {
         throw new Error(`Failed to compose subtitles: ${composeResult.error.message}`);
       }
 
-      // 8. Upload composed video to GCS
+      const finalOutputPath = outputVideoPath;
+
+      // 9. Upload composed video to GCS
       const gcsPath = `subtitled/${clip.videoId}/${clipId}.mp4`;
       const uploadResult = await this.deps.tempStorage.uploadFromStream(
         {
@@ -92,7 +133,7 @@ export class ComposeSubtitledClipUseCase {
           path: gcsPath,
           contentType: 'video/mp4',
         },
-        fs.createReadStream(outputVideoPath)
+        fs.createReadStream(finalOutputPath)
       );
 
       // 9. Generate signed URL for the uploaded video
@@ -110,6 +151,39 @@ export class ComposeSubtitledClipUseCase {
       // Cleanup temp files
       await this.cleanup(tempDir);
     }
+  }
+
+  /**
+   * Convert video to specified format with padding
+   */
+  private convertToFormat(
+    inputPath: string,
+    outputPath: string,
+    sourceWidth: number,
+    sourceHeight: number,
+    targetWidth: number,
+    targetHeight: number,
+    paddingColor: string
+  ): Promise<void> {
+    const sourceAspectRatio = sourceWidth / sourceHeight;
+    const targetAspectRatio = targetWidth / targetHeight;
+
+    const scaleFilter =
+      sourceAspectRatio > targetAspectRatio
+        ? `scale=${targetWidth}:-2`
+        : `scale=-2:${targetHeight}`;
+    const padFilter = `pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2:color=${paddingColor}`;
+    const videoFilter = `${scaleFilter},${padFilter}`;
+
+    return new Promise<void>((resolve, reject) => {
+      ffmpeg(inputPath)
+        .videoFilters(videoFilter)
+        .outputOptions(['-c:a', 'copy'])
+        .output(outputPath)
+        .on('end', () => resolve())
+        .on('error', (err: Error) => reject(err))
+        .run();
+    });
   }
 
   /**

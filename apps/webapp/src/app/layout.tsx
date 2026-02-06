@@ -17,10 +17,10 @@ function Header() {
           <span>みらい動画スタジオ β</span>
         </Link>
         <nav className="flex items-center gap-3 sm:gap-6">
-          <Link href="/videos" className="text-sm font-medium hover:text-primary">
+          <Link href="/videos" className="text-sm font-bold hover:text-primary">
             動画一覧
           </Link>
-          <Link href="/clips" className="text-sm font-medium hover:text-primary">
+          <Link href="/clips" className="text-sm font-bold hover:text-primary">
             クリップ一覧
           </Link>
         </nav>

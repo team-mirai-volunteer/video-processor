@@ -8,7 +8,14 @@ import { confirmClipSubtitles } from '@/server/presentation/clip-video/actions/c
 import { generateClipSubtitles } from '@/server/presentation/clip-video/actions/generateClipSubtitles';
 import { updateClipSubtitles } from '@/server/presentation/clip-video/actions/updateClipSubtitles';
 import { uploadSubtitledClipToDrive } from '@/server/presentation/clip-video/actions/uploadSubtitledClipToDrive';
-import type { ClipSubtitle, ClipSubtitleSegment } from '@video-processor/shared';
+import type {
+  ClipSubtitle,
+  ClipSubtitleSegment,
+  OutlineColor,
+  OutputFormat,
+  PaddingColor,
+  SubtitleFontSize,
+} from '@video-processor/shared';
 import { AlertCircle, CheckCircle, Loader2, Pencil, Sparkles, Undo } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { SubtitleCompositionStatus } from './subtitle-composition-status';
@@ -154,26 +161,39 @@ export function SubtitleEditor({
     }
   }, [clipId, hasChanges, onSubtitleUpdate, showMessage]);
 
-  const handleCompose = useCallback(async () => {
-    if (subtitle?.status !== 'confirmed') {
-      showMessage('warning', '動画合成には字幕の確定が必要です');
-      return;
-    }
-    setIsComposing(true);
-    setMessage(null);
-    try {
-      const result = await composeSubtitledClip(clipId);
-      setSubtitledVideoUrl(result.subtitledVideoUrl);
-      showMessage('success', '動画の合成に成功しました');
-    } catch (error) {
-      showMessage(
-        'error',
-        `動画合成に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`
-      );
-    } finally {
-      setIsComposing(false);
-    }
-  }, [clipId, subtitle?.status, showMessage]);
+  const handleCompose = useCallback(
+    async (
+      outputFormat?: OutputFormat,
+      paddingColor?: PaddingColor,
+      outlineColor?: OutlineColor,
+      fontSize?: SubtitleFontSize
+    ) => {
+      if (subtitle?.status !== 'confirmed') {
+        showMessage('warning', '動画合成には字幕の確定が必要です');
+        return;
+      }
+      setIsComposing(true);
+      setMessage(null);
+      try {
+        const result = await composeSubtitledClip(clipId, {
+          outputFormat,
+          paddingColor,
+          outlineColor,
+          fontSize,
+        });
+        setSubtitledVideoUrl(result.subtitledVideoUrl);
+        showMessage('success', '動画の合成に成功しました');
+      } catch (error) {
+        showMessage(
+          'error',
+          `動画合成に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`
+        );
+      } finally {
+        setIsComposing(false);
+      }
+    },
+    [clipId, subtitle?.status, showMessage]
+  );
 
   const handleUpload = useCallback(async () => {
     setIsUploading(true);
@@ -192,7 +212,7 @@ export function SubtitleEditor({
     }
   }, [clipId, showMessage]);
 
-  const isEditable = subtitle?.status === 'draft';
+  const isEditable = !!subtitle;
   const canCompose = subtitle?.status === 'confirmed' && !subtitledVideoUrl;
   const compositionStep = subtitledVideoDriveUrl
     ? 'uploaded'
@@ -308,7 +328,7 @@ export function SubtitleEditor({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {isEditable && (
+                  {subtitle.status === 'draft' && (
                     <Button
                       variant="default"
                       size="sm"
@@ -329,26 +349,24 @@ export function SubtitleEditor({
                     </Button>
                   )}
 
-                  {subtitle.status === 'confirmed' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleGenerate}
-                      disabled={isGenerating}
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                          再生成中...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="mr-2 h-3 w-3" />
-                          再生成
-                        </>
-                      )}
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGenerate}
+                    disabled={isGenerating}
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        再生成中...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-3 w-3" />
+                        再生成
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             </div>

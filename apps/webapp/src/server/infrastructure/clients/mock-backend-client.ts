@@ -7,6 +7,8 @@ import type {
   CreateShortsProjectResponse,
   DeleteReferenceCharacterResponse,
   ExtractAudioResponse,
+  ExtractClipByTimeRequest,
+  ExtractClipByTimeResponse,
   ExtractClipsRequest,
   ExtractClipsResponse,
   GenerateClipSubtitlesResponse,
@@ -188,6 +190,17 @@ export const mockBackendClient = {
   ): Promise<ExtractClipsResponse> {
     return {
       videoId,
+      status: 'extracting',
+    };
+  },
+
+  async extractClipByTime(
+    videoId: string,
+    _request: ExtractClipByTimeRequest
+  ): Promise<ExtractClipByTimeResponse> {
+    return {
+      videoId,
+      clipId: `mock-clip-${Date.now()}`,
       status: 'extracting',
     };
   },

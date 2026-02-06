@@ -157,6 +157,27 @@ export interface GetClipResponse {
 // Extract Clips API
 // ============================================================================
 
+/** 余白カラープリセット */
+export type PaddingColor =
+  | '#000000' // 黒
+  | '#30bca7' // チームみらいグリーン
+  | '#56d6ea' // 水色
+  | '#ff7aa2' // ピンク
+  | '#ffffff'; // 白
+
+/** テキスト枠カラープリセット（白は除く - 背景のみ） */
+export type OutlineColor =
+  | '#000000' // 黒
+  | '#30bca7' // チームみらいグリーン
+  | '#56d6ea' // 水色
+  | '#ff7aa2'; // ピンク
+
+/** 出力フォーマット */
+export type OutputFormat = 'original' | 'vertical' | 'horizontal';
+
+/** 字幕フォントサイズ */
+export type SubtitleFontSize = 'small' | 'medium' | 'large';
+
 /**
  * POST /api/videos/:videoId/extract-clips request body
  */
@@ -164,6 +185,10 @@ export interface ExtractClipsRequest {
   clipInstructions: string;
   /** true=複数クリップを許可, false=単一クリップのみ (デフォルト: false) */
   multipleClips?: boolean;
+  /** 出力フォーマット。'vertical' の場合は9:16に変換 (デフォルト: 'original') */
+  outputFormat?: OutputFormat;
+  /** 余白の色（プリセットから選択）。outputFormat: 'vertical' 時のみ有効 (デフォルト: '#000000') */
+  paddingColor?: PaddingColor;
 }
 
 /**
@@ -172,6 +197,32 @@ export interface ExtractClipsRequest {
 export interface ExtractClipsResponse {
   videoId: string;
   status: VideoStatus;
+}
+
+// ============================================================================
+// Extract Clip by Time API (タイムライン指定切り抜き)
+// ============================================================================
+
+/**
+ * POST /api/videos/:videoId/extract-clip-by-time request body
+ * タイムスタンプを直接指定してクリップを抽出
+ */
+export interface ExtractClipByTimeRequest {
+  /** 開始時間（秒）。0以上 */
+  startTimeSeconds: number;
+  /** 終了時間（秒）。startTimeSecondsより大きい値 */
+  endTimeSeconds: number;
+  /** クリップのタイトル（オプション）。省略時は選択範囲のテキストから自動生成 */
+  title?: string;
+}
+
+/**
+ * POST /api/videos/:videoId/extract-clip-by-time response
+ */
+export interface ExtractClipByTimeResponse {
+  videoId: string;
+  clipId: string;
+  status: 'extracting' | 'completed' | 'failed';
 }
 
 // ============================================================================
@@ -305,6 +356,17 @@ export interface UpdateClipSubtitleResponse {
  */
 export interface ConfirmClipSubtitleResponse {
   subtitle: ClipSubtitle;
+}
+
+/**
+ * POST /api/clips/:clipId/compose request body
+ */
+export interface ComposeSubtitledClipRequest {
+  outputFormat?: OutputFormat;
+  paddingColor?: PaddingColor;
+  outlineColor?: OutlineColor;
+  /** 字幕フォントサイズ（デフォルト: 'medium'） */
+  fontSize?: SubtitleFontSize;
 }
 
 /**

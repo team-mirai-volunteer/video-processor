@@ -2,14 +2,17 @@
 
 import { ClipList } from '@/components/features/clip-list';
 import { ProcessingPipeline } from '@/components/features/processing-pipeline';
+import { TimelineClipSelector } from '@/components/features/timeline-clip-selector';
 import { TranscriptViewer } from '@/components/features/transcript';
 import { StatusBadge } from '@/components/features/video-list';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { formatBytes, formatDate, formatDuration } from '@/lib/utils';
+import { extractClipByTime } from '@/server/presentation/clip-video/actions/extractClipByTime';
 import { extractClips } from '@/server/presentation/clip-video/actions/extractClips';
 import { getVideoStatus } from '@/server/presentation/clip-video/actions/getVideoStatus';
 import { refineTranscript } from '@/server/presentation/clip-video/actions/refineTranscript';
@@ -66,6 +69,9 @@ export function VideoDetailClient({
   const [multipleClips, setMultipleClips] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
+  const [clipExtractionMode, setClipExtractionMode] = useState<'transcript' | 'timeline'>(
+    'timeline'
+  );
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -109,7 +115,10 @@ export function VideoDetailClient({
     setExtractError(null);
 
     try {
-      await extractClips(video.id, { clipInstructions, multipleClips });
+      await extractClips(video.id, {
+        clipInstructions,
+        multipleClips,
+      });
       await pollStatus();
       setClipInstructions('');
       setMultipleClips(false);
@@ -118,6 +127,15 @@ export function VideoDetailClient({
     } finally {
       setExtracting(false);
     }
+  };
+
+  const handleExtractClipByTime = async (
+    startTimeSeconds: number,
+    endTimeSeconds: number,
+    title?: string
+  ) => {
+    await extractClipByTime(video.id, { startTimeSeconds, endTimeSeconds, title });
+    await pollStatus();
   };
 
   const handleRefineTranscript = async () => {
@@ -244,94 +262,115 @@ export function VideoDetailClient({
       {(video.status === 'transcribed' || video.status === 'completed') && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Scissors className="h-5 w-5" />
-              切り抜き作成
-            </CardTitle>
-            <CardDescription>
-              文字起こしを元に、切り抜きたい箇所を指示してください。
-            </CardDescription>
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Scissors className="h-5 w-5" />
+                切り抜き作成
+              </CardTitle>
+              <CardDescription>
+                切り抜きたい箇所を指定して、クリップを作成できます。
+              </CardDescription>
+            </div>
+            {refinedTranscription && (
+              <Tabs
+                value={clipExtractionMode}
+                onValueChange={(v) => setClipExtractionMode(v as 'transcript' | 'timeline')}
+              >
+                <TabsList>
+                  <TabsTrigger value="timeline">タイムラインで指定</TabsTrigger>
+                  <TabsTrigger value="transcript">文字起こしで指定</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
           </CardHeader>
           <CardContent>
             {refinedTranscription ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <Label htmlFor="multipleClips" className="text-sm font-medium">
-                    クリップ数
-                  </Label>
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`text-sm ${!multipleClips ? 'font-medium' : 'text-muted-foreground'}`}
-                    >
-                      単一
-                    </span>
-                    <Switch
-                      id="multipleClips"
-                      checked={multipleClips}
-                      onCheckedChange={setMultipleClips}
-                      disabled={extracting}
-                    />
-                    <span
-                      className={`text-sm ${multipleClips ? 'font-medium' : 'text-muted-foreground'}`}
-                    >
-                      複数
-                    </span>
-                  </div>
-                </div>
-
-                {multipleClips && (
-                  <div className="flex items-start gap-2 p-3 text-sm bg-amber-50 text-amber-800 rounded-md border border-amber-200">
-                    <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <div>
-                      複数クリップを作成する場合は、AIが各クリップの区切りを判別できるよう、明確に記載してください。
+              clipExtractionMode === 'transcript' ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <Label htmlFor="multipleClips" className="text-sm font-medium">
+                      クリップ数
+                    </Label>
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`text-sm ${!multipleClips ? 'font-medium' : 'text-muted-foreground'}`}
+                      >
+                        単一
+                      </span>
+                      <Switch
+                        id="multipleClips"
+                        checked={multipleClips}
+                        onCheckedChange={setMultipleClips}
+                        disabled={extracting}
+                      />
+                      <span
+                        className={`text-sm ${multipleClips ? 'font-medium' : 'text-muted-foreground'}`}
+                      >
+                        複数
+                      </span>
                     </div>
                   </div>
-                )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="clipInstructions">切り抜き指示</Label>
-                  <Textarea
-                    id="clipInstructions"
-                    placeholder={
-                      multipleClips
-                        ? CLIP_INSTRUCTIONS_PLACEHOLDER_MULTIPLE
-                        : CLIP_INSTRUCTIONS_PLACEHOLDER_SINGLE
-                    }
-                    value={clipInstructions}
-                    onChange={(e) => setClipInstructions(e.target.value)}
-                    rows={11}
-                    disabled={extracting}
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    どの箇所を切り抜きたいか、具体的に指示してください。
-                  </p>
-                </div>
+                  {multipleClips && (
+                    <div className="flex items-start gap-2 p-3 text-sm bg-amber-50 text-amber-800 rounded-md border border-amber-200">
+                      <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <div>
+                        複数クリップを作成する場合は、AIが各クリップの区切りを判別できるよう、明確に記載してください。
+                      </div>
+                    </div>
+                  )}
 
-                {extractError && (
-                  <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-                    {extractError}
+                  <div className="space-y-2">
+                    <Label htmlFor="clipInstructions">切り抜き指示</Label>
+                    <Textarea
+                      id="clipInstructions"
+                      placeholder={
+                        multipleClips
+                          ? CLIP_INSTRUCTIONS_PLACEHOLDER_MULTIPLE
+                          : CLIP_INSTRUCTIONS_PLACEHOLDER_SINGLE
+                      }
+                      value={clipInstructions}
+                      onChange={(e) => setClipInstructions(e.target.value)}
+                      rows={11}
+                      disabled={extracting}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      どの箇所を切り抜きたいか、具体的に指示してください。
+                    </p>
                   </div>
-                )}
 
-                <div className="flex justify-end">
-                  <Button
-                    onClick={handleExtractClips}
-                    disabled={extracting || !clipInstructions.trim()}
-                  >
-                    {extracting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        処理中...
-                      </>
-                    ) : (
-                      <>
-                        <Scissors className="mr-2 h-4 w-4" />
-                        切り抜きを作成
-                      </>
-                    )}
-                  </Button>
+                  {extractError && (
+                    <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+                      {extractError}
+                    </div>
+                  )}
+
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleExtractClips}
+                      disabled={extracting || !clipInstructions.trim()}
+                    >
+                      {extracting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          処理中...
+                        </>
+                      ) : (
+                        <>
+                          <Scissors className="mr-2 h-4 w-4" />
+                          切り抜きを作成
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <TimelineClipSelector
+                  refinedTranscription={refinedTranscription}
+                  onExtract={handleExtractClipByTime}
+                  disabled={extracting}
+                />
+              )
             ) : (
               <div className="text-center py-8">
                 <p className="text-muted-foreground mb-4">

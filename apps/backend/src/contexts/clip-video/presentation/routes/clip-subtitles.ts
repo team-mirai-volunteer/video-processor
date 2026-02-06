@@ -11,10 +11,10 @@ import { ClipSubtitleRepository } from '@clip-video/infrastructure/repositories/
 import { ClipRepository } from '@clip-video/infrastructure/repositories/clip.repository.js';
 import { RefinedTranscriptionRepository } from '@clip-video/infrastructure/repositories/refined-transcription.repository.js';
 import { TranscriptionRepository } from '@clip-video/infrastructure/repositories/transcription.repository.js';
+import { AnthropicClient } from '@shared/infrastructure/clients/anthropic.client.js';
 import { GcsClient } from '@shared/infrastructure/clients/gcs.client.js';
 import { GoogleDriveClient } from '@shared/infrastructure/clients/google-drive.client.js';
 import { LocalTempStorageClient } from '@shared/infrastructure/clients/local-temp-storage.client.js';
-import { OpenAIClient } from '@shared/infrastructure/clients/openai.client.js';
 import { prisma } from '@shared/infrastructure/database/connection.js';
 import type { UpdateClipSubtitleRequest } from '@video-processor/shared';
 import { type Router as ExpressRouter, Router } from 'express';
@@ -50,7 +50,7 @@ const generateClipSubtitlesUseCase = new GenerateClipSubtitlesUseCase({
   clipSubtitleRepository,
   transcriptionRepository,
   refinedTranscriptionRepository,
-  aiGateway: new OpenAIClient(),
+  aiGateway: new AnthropicClient(),
   generateId: () => uuidv4(),
 });
 
@@ -167,7 +167,43 @@ router.get('/clips/:clipId/video-url', async (req, res, next) => {
 router.post('/clips/:clipId/compose', async (req, res, next) => {
   try {
     const { clipId } = req.params;
-    const result = await composeSubtitledClipUseCase.execute({ clipId: clipId ?? '' });
+    const body = req.body as {
+      outputFormat?: string;
+      paddingColor?: string;
+      outlineColor?: string;
+      fontSize?: string;
+    };
+    const outputFormat =
+      body.outputFormat === 'vertical' ||
+      body.outputFormat === 'horizontal' ||
+      body.outputFormat === 'original'
+        ? body.outputFormat
+        : 'original';
+    // 余白カラーの検証（白を含む）
+    const validPaddingColors = ['#000000', '#30bca7', '#56d6ea', '#ff7aa2', '#ffffff'] as const;
+    const paddingColor = validPaddingColors.includes(
+      body.paddingColor as (typeof validPaddingColors)[number]
+    )
+      ? (body.paddingColor as (typeof validPaddingColors)[number])
+      : '#000000';
+    // テキスト枠カラーの検証（白を除く）
+    const validOutlineColors = ['#000000', '#30bca7', '#56d6ea', '#ff7aa2'] as const;
+    const outlineColor = validOutlineColors.includes(
+      body.outlineColor as (typeof validOutlineColors)[number]
+    )
+      ? (body.outlineColor as (typeof validOutlineColors)[number])
+      : '#30bca7';
+    const validFontSizes = ['small', 'medium', 'large'] as const;
+    const fontSize = validFontSizes.includes(body.fontSize as (typeof validFontSizes)[number])
+      ? (body.fontSize as (typeof validFontSizes)[number])
+      : ('small' as const);
+    const result = await composeSubtitledClipUseCase.execute({
+      clipId: clipId ?? '',
+      outputFormat,
+      paddingColor,
+      outlineColor,
+      fontSize,
+    });
     res.json(result);
   } catch (error) {
     next(error);
