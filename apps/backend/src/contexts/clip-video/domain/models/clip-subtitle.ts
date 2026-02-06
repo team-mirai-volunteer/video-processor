@@ -8,7 +8,7 @@ export const SUBTITLE_MAX_CHARS_PER_LINE = 16;
 /**
  * 字幕の最大行数
  */
-export const SUBTITLE_MAX_LINES = 2;
+const SUBTITLE_MAX_LINES = 2;
 
 /**
  * 字幕セグメント
