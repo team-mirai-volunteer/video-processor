@@ -1,19 +1,39 @@
+import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
-import * as path from 'node:path';
 import type {
   ClipSubtitleComposeError,
   ClipSubtitleComposeParams,
   ClipSubtitleComposeResult,
   ClipSubtitleComposerGateway,
+  SubtitleStyle,
 } from '@clip-video/domain/gateways/clip-subtitle-composer.gateway.js';
+import type { ClipSubtitleSegment } from '@clip-video/domain/models/clip-subtitle.js';
 import { type Result, err, ok } from '@shared/domain/types/result.js';
-import { FFmpegSubtitleGeneratorClient } from '@shared/infrastructure/clients/ffmpeg-subtitle-generator.client.js';
 import type { SubtitleFontSize } from '@video-processor/shared';
-import ffmpeg from 'fluent-ffmpeg';
+
+/**
+ * Default font family for subtitle generation
+ */
+const DEFAULT_FONT_FAMILY = process.env.SUBTITLE_FONT_FAMILY || 'Noto Sans CJK JP';
+
+/**
+ * Default subtitle style settings
+ */
+const DEFAULT_STYLE: Required<SubtitleStyle> = {
+  fontFamily: DEFAULT_FONT_FAMILY,
+  fontSize: 64,
+  fontColor: '#FFFFFF',
+  outlineColor: '#000000',
+  outlineWidth: 8,
+  shadowColor: '#000000',
+  shadowOffsetX: 2,
+  shadowOffsetY: 2,
+  alignment: 'center',
+  bold: true,
+};
 
 /**
  * 動画横幅に対するフォントサイズの比率
- * 例: 1920px幅の場合 small=96px, medium=120px, large=148px
  */
 const FONT_SIZE_RATIO: Record<SubtitleFontSize, number> = {
   small: 96 / 1920,
@@ -44,21 +64,16 @@ function calcFontMetrics(
 
 /**
  * Clip Subtitle Compose Client
- * Composes subtitles onto a video clip using PNG overlay method
+ * Composes subtitles onto a video clip using drawtext direct rendering
  *
- * 処理フロー:
- * 1. 字幕セグメントごとにPNG画像を生成 (FFmpegSubtitleGeneratorClient)
- * 2. 元クリップ動画に字幕画像をoverlayで合成
+ * 処理フロー（改善版）:
+ * 1. 字幕セグメントからdrawtextフィルタチェーンを構築
+ * 2. enable='between(t,start,end)' で時間指定描画
+ * 3. 1回のFFmpeg呼び出しで完結（PNG中間ステップ不要）
  */
 export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
-  private readonly subtitleGenerator: FFmpegSubtitleGeneratorClient;
-
-  constructor() {
-    this.subtitleGenerator = new FFmpegSubtitleGeneratorClient();
-  }
-
   /**
-   * Compose subtitles onto a video clip
+   * Compose subtitles onto a video clip using drawtext direct rendering
    */
   async compose(
     params: ClipSubtitleComposeParams
@@ -79,9 +94,6 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
       });
     }
 
-    const tempDir = path.dirname(params.inputVideoPath);
-    const subtitleImages: { path: string; startTime: number; endTime: number }[] = [];
-
     // フォントサイズの決定（動画横幅ベース）
     const fontSizeKey = params.fontSize ?? 'small';
     const { fontSize: fontSizePx, outlineWidth: outlineWidthPx } = calcFontMetrics(
@@ -89,79 +101,35 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
       params.width
     );
 
-    // 縦位置の計算（縦動画の場合は正方形下端付近に配置）
+    // 縦位置の計算
     const verticalPosition = this.calculateVerticalPosition(params.width, params.height);
 
-    // スタイルの合成（fontSizeとoutlineWidthを上書き）
-    const mergedStyle = {
-      ...params.style,
-      fontSize: fontSizePx,
-      outlineWidth: outlineWidthPx,
-    };
+    // スタイルの合成
+    const mergedStyle = this.mergeStyles(params.style, fontSizePx, outlineWidthPx);
 
     console.log(
       `[ClipSubtitleComposeClient] Font size: ${fontSizeKey} (${fontSizePx}px), vertical position: ${verticalPosition}`
     );
 
     try {
-      // 1. 各セグメントのPNG画像を生成
-      console.log(
-        `[ClipSubtitleComposeClient] Generating ${params.segments.length} subtitle images...`
+      // drawtext フィルタチェーンを構築
+      const drawtextFilter = this.buildDrawtextFilter(
+        params.segments,
+        params.width,
+        params.height,
+        verticalPosition,
+        mergedStyle
       );
 
-      for (const segment of params.segments) {
-        const imagePath = path.join(tempDir, `subtitle_${segment.index}.png`);
+      console.log(
+        `[ClipSubtitleComposeClient] Composing ${params.segments.length} subtitles using drawtext direct rendering...`
+      );
 
-        // lines 配列を改行で結合してテキストにする
-        const text = segment.lines.join('\n');
-
-        const result = await this.subtitleGenerator.generate({
-          text,
-          width: params.width,
-          height: params.height,
-          style: mergedStyle,
-          verticalPosition,
-        });
-
-        if (!result.success) {
-          const errorMessage =
-            'message' in result.error
-              ? result.error.message
-              : `Font not found: ${result.error.fontFamily}`;
-          const stderr = 'stderr' in result.error ? result.error.stderr : '';
-          console.error(`[ClipSubtitleComposeClient] FFmpeg error for segment ${segment.index}:`, {
-            errorMessage,
-            stderr,
-            text,
-          });
-          return err({
-            type: 'SUBTITLE_GENERATION_ERROR',
-            message: `Failed to generate subtitle image for segment ${segment.index}: ${errorMessage}`,
-          });
-        }
-
-        // 画像をファイルに保存
-        await fs.promises.writeFile(imagePath, result.value.imageBuffer);
-
-        subtitleImages.push({
-          path: imagePath,
-          startTime: segment.startTimeSeconds,
-          endTime: segment.endTimeSeconds,
-        });
-
-        const previewText = segment.lines.join(' ').substring(0, 20);
-        console.log(
-          `[ClipSubtitleComposeClient] Generated subtitle ${segment.index}: "${previewText}..." (${segment.startTimeSeconds}s - ${segment.endTimeSeconds}s)`
-        );
-      }
-
-      // 2. 動画に字幕画像をoverlay合成
-      console.log('[ClipSubtitleComposeClient] Composing subtitles onto video...');
-
-      const durationSeconds = await this.executeFFmpegCompose(
+      // FFmpeg実行
+      const durationSeconds = await this.executeFFmpeg(
         params.inputVideoPath,
         params.outputPath,
-        subtitleImages
+        drawtextFilter
       );
 
       console.log(
@@ -181,128 +149,188 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
         type: 'COMPOSE_FAILED',
         message: `Failed to compose subtitles: ${message}`,
       });
-    } finally {
-      // 一時的な字幕画像を削除
-      for (const img of subtitleImages) {
-        try {
-          await fs.promises.unlink(img.path);
-        } catch {
-          // Ignore cleanup errors
-        }
-      }
     }
   }
 
   /**
-   * Execute FFmpeg to compose subtitle images onto video using overlay filter
+   * Build drawtext filter chain for all segments
    */
-  private executeFFmpegCompose(
+  private buildDrawtextFilter(
+    segments: ClipSubtitleSegment[],
+    _width: number,
+    height: number,
+    verticalPosition: number,
+    style: Required<SubtitleStyle>
+  ): string {
+    const fontColor = this.hexToFFmpegColor(style.fontColor);
+    const outlineColor = this.hexToFFmpegColor(style.outlineColor);
+    const shadowColor = this.hexToFFmpegColor(style.shadowColor);
+
+    // Resolve font name (handle bold variants)
+    const fontName = this.resolveFontName(style.fontFamily, style.bold);
+
+    // Line height for multi-line text
+    const lineHeightMultiplier = 1.5;
+    const lineHeight = style.fontSize * lineHeightMultiplier;
+
+    const filters: string[] = [];
+
+    for (const segment of segments) {
+      const lines = segment.lines;
+      const totalTextHeight = lines.length * lineHeight;
+      const baseY = height * verticalPosition - totalTextHeight / 2;
+
+      // Create drawtext filter for each line
+      for (const [lineIndex, line] of lines.entries()) {
+        const escapedText = this.escapeDrawtext(line);
+        const yPosition = Math.round(baseY + lineIndex * lineHeight);
+
+        // Build drawtext filter with enable expression
+        const filter = [
+          `drawtext=text='${escapedText}'`,
+          `enable='between(t,${segment.startTimeSeconds},${segment.endTimeSeconds})'`,
+          `font='${fontName}'`,
+          `fontsize=${style.fontSize}`,
+          `fontcolor=${fontColor}`,
+          `bordercolor=${outlineColor}`,
+          `borderw=${style.outlineWidth}`,
+          `shadowcolor=${shadowColor}`,
+          `shadowx=${style.shadowOffsetX}`,
+          `shadowy=${style.shadowOffsetY}`,
+          'x=(w-text_w)/2',
+          `y=${yPosition}`,
+        ].join(':');
+
+        filters.push(filter);
+      }
+    }
+
+    return filters.join(',');
+  }
+
+  /**
+   * Execute FFmpeg with drawtext filter
+   */
+  private executeFFmpeg(
     inputPath: string,
     outputPath: string,
-    subtitleImages: { path: string; startTime: number; endTime: number }[]
+    drawtextFilter: string
   ): Promise<number> {
     return new Promise((resolve, reject) => {
-      let durationSeconds = 0;
+      const args = ['-y', '-i', inputPath, '-vf', drawtextFilter, '-c:a', 'copy', outputPath];
 
-      // Build complex filter for overlaying subtitle images
-      const { filterComplex } = this.buildOverlayFilter(subtitleImages);
+      console.log('[ClipSubtitleComposeClient] FFmpeg args:', args.join(' '));
 
-      console.log('[ClipSubtitleComposeClient] FFmpeg filter_complex:', filterComplex);
+      const ffmpeg = spawn('ffmpeg', args);
 
-      const command = ffmpeg(inputPath);
+      let stderr = '';
 
-      // Add subtitle images as inputs
-      for (const img of subtitleImages) {
-        command.input(img.path);
-      }
+      ffmpeg.stderr.on('data', (data: Buffer) => {
+        stderr += data.toString();
+      });
 
-      command
-        .complexFilter(filterComplex)
-        .outputOptions(['-map', `[v${subtitleImages.length}]`, '-map', '0:a?', '-c:a', 'copy'])
-        .output(outputPath)
-        .on('start', (commandLine) => {
-          console.log('[ClipSubtitleComposeClient] FFmpeg command:', commandLine);
-        })
-        .on('codecData', (data) => {
-          if (data.duration) {
-            const parts = data.duration.split(':');
-            if (parts.length === 3) {
-              const hours = Number.parseFloat(parts[0] || '0');
-              const minutes = Number.parseFloat(parts[1] || '0');
-              const seconds = Number.parseFloat(parts[2] || '0');
-              durationSeconds = hours * 3600 + minutes * 60 + seconds;
-            }
+      ffmpeg.on('close', (code) => {
+        if (code === 0) {
+          // Parse duration from stderr
+          const durationMatch = stderr.match(/Duration: (\d+):(\d+):(\d+\.\d+)/);
+          let durationSeconds = 0;
+          if (durationMatch) {
+            const hours = Number.parseFloat(durationMatch[1] || '0');
+            const minutes = Number.parseFloat(durationMatch[2] || '0');
+            const seconds = Number.parseFloat(durationMatch[3] || '0');
+            durationSeconds = hours * 3600 + minutes * 60 + seconds;
           }
-        })
-        .on('end', () => resolve(durationSeconds))
-        .on('error', (err: Error) => {
+          resolve(durationSeconds);
+        } else {
           reject({
             type: 'FFMPEG_ERROR',
-            message: `FFmpeg error: ${err.message}`,
-            stderr: err.message,
+            message: `FFmpeg exited with code ${code}`,
+            stderr,
           });
-        })
-        .run();
+        }
+      });
+
+      ffmpeg.on('error', (error) => {
+        reject({
+          type: 'FFMPEG_ERROR',
+          message: `Failed to spawn FFmpeg: ${error.message}`,
+          stderr,
+        });
+      });
     });
   }
 
   /**
-   * Build FFmpeg complex filter for overlaying multiple subtitle images
-   *
-   * Example output for 3 subtitles:
-   * [0:v][1:v]overlay=enable='between(t,0,2)':x=0:y=0[v1];
-   * [v1][2:v]overlay=enable='between(t,2,4)':x=0:y=0[v2];
-   * [v2][3:v]overlay=enable='between(t,4,6)':x=0:y=0[v3]
+   * Escape text for FFmpeg drawtext filter
    */
-  private buildOverlayFilter(
-    subtitleImages: { path: string; startTime: number; endTime: number }[]
-  ): { filterComplex: string } {
-    const filters: string[] = [];
+  private escapeDrawtext(text: string): string {
+    return text
+      .replace(/\\/g, '\\\\\\\\')
+      .replace(/'/g, "'\\''")
+      .replace(/:/g, '\\:')
+      .replace(/%/g, '\\%');
+  }
 
-    for (const [i, img] of subtitleImages.entries()) {
-      const inputIndex = i + 1; // 0 is the video, 1+ are subtitle images
-      const prevOutput = i === 0 ? '0:v' : `v${i}`;
-      const currentOutput = `v${i + 1}`;
+  /**
+   * Convert hex color (#RRGGBB) to FFmpeg format
+   */
+  private hexToFFmpegColor(hex: string): string {
+    const cleanHex = hex.replace('#', '');
+    return `0x${cleanHex}`;
+  }
 
-      // enable expression for time range
-      const enableExpr = `between(t,${img.startTime},${img.endTime})`;
-
-      // overlay filter: position at center-bottom (x=0, y=0 since PNG is already positioned)
-      const filter = `[${prevOutput}][${inputIndex}:v]overlay=enable='${enableExpr}':x=0:y=0[${currentOutput}]`;
-      filters.push(filter);
+  /**
+   * Resolve font name with bold variant
+   */
+  private resolveFontName(fontFamily: string, bold: boolean): string {
+    if (!bold) {
+      return fontFamily;
     }
 
+    if (fontFamily.includes('Hiragino')) {
+      return `${fontFamily} W6`;
+    }
+    if (fontFamily.includes('Noto Sans CJK')) {
+      return `${fontFamily} Black`;
+    }
+
+    return fontFamily;
+  }
+
+  /**
+   * Merge provided styles with defaults
+   */
+  private mergeStyles(
+    style: SubtitleStyle | undefined,
+    fontSizePx: number,
+    outlineWidthPx: number
+  ): Required<SubtitleStyle> {
     return {
-      filterComplex: filters.join(';'),
+      fontFamily: style?.fontFamily ?? DEFAULT_STYLE.fontFamily,
+      fontSize: fontSizePx,
+      fontColor: style?.fontColor ?? DEFAULT_STYLE.fontColor,
+      outlineColor: style?.outlineColor ?? DEFAULT_STYLE.outlineColor,
+      outlineWidth: outlineWidthPx,
+      shadowColor: style?.shadowColor ?? DEFAULT_STYLE.shadowColor,
+      shadowOffsetX: style?.shadowOffsetX ?? DEFAULT_STYLE.shadowOffsetX,
+      shadowOffsetY: style?.shadowOffsetY ?? DEFAULT_STYLE.shadowOffsetY,
+      alignment: style?.alignment ?? DEFAULT_STYLE.alignment,
+      bold: style?.bold ?? DEFAULT_STYLE.bold,
     };
   }
 
   /**
    * Calculate vertical position for subtitle placement
-   *
-   * 縦動画（9:16）の場合は、動画の中央に9:9の正方形を置いたときの下端付近に字幕を配置する。
-   * - 9:16動画: 1080x1920 の場合、中央の正方形は 1080x1080
-   * - 正方形の下端: (1920 - 1080) / 2 + 1080 = 1500
-   * - 下端の相対位置: 1500 / 1920 ≈ 0.78125
-   * - 字幕の下端をこの位置より少し上（0.75付近）に配置
-   *
-   * 横動画/オリジナルの場合は従来通り 0.8 を使用
    */
   private calculateVerticalPosition(width: number, height: number): number {
-    // 縦動画かどうかを判定（アスペクト比が 0.7 以下 = 縦長）
     const aspectRatio = width / height;
     const isVertical = aspectRatio <= 0.7;
 
     if (isVertical) {
-      // 縦動画の場合：中央の正方形の下端付近に配置
-      // 正方形の下端 = (height - width) / 2 + width = (height + width) / 2
-      // 相対位置 = (height + width) / 2 / height
-      // さらに少し上に配置するために 0.03 程度引く
       const squareBottomRatio = (height + width) / (2 * height);
       return squareBottomRatio - 0.03;
     }
 
-    // 横動画/オリジナルの場合
     return 0.8;
   }
 }
