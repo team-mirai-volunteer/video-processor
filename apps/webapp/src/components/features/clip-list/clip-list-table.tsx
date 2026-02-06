@@ -49,7 +49,7 @@ export function ClipListTable({ clips, pagination }: ClipListTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 px-4">
+      <div className="grid gap-3">
         {clips.map((clip) => (
           <div
             key={clip.id}
@@ -108,7 +108,7 @@ export function ClipListTable({ clips, pagination }: ClipListTableProps) {
         ))}
       </div>
 
-      <div className="flex items-center justify-between px-4">
+      <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           全{pagination.total}件中 {(pagination.page - 1) * pagination.limit + 1}-
           {Math.min(pagination.page * pagination.limit, pagination.total)}件を表示
