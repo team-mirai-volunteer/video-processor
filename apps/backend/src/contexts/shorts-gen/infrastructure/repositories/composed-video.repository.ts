@@ -2,6 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { Decimal } from '@prisma/client/runtime/library';
 import type { ShortsComposedVideoRepositoryGateway } from '@shorts-gen/domain/gateways/composed-video-repository.gateway.js';
 import {
+  type ComposedVideoProgressPhase,
   type ComposedVideoStatus,
   ShortsComposedVideo,
   type ShortsComposedVideoProps,
@@ -14,6 +15,8 @@ type ShortsComposedVideoRecord = {
   fileUrl: string | null;
   durationSeconds: Decimal | null;
   status: string;
+  progressPhase: string | null;
+  progressPercent: number | null;
   errorMessage: string | null;
   bgmKey: string | null;
   createdAt: Date;
@@ -34,6 +37,8 @@ export class ShortsComposedVideoRepository implements ShortsComposedVideoReposit
         fileUrl: props.fileUrl,
         durationSeconds: props.durationSeconds,
         status: props.status,
+        progressPhase: props.progressPhase,
+        progressPercent: props.progressPercent,
         errorMessage: props.errorMessage,
         bgmKey: props.bgmKey,
         createdAt: props.createdAt,
@@ -43,9 +48,26 @@ export class ShortsComposedVideoRepository implements ShortsComposedVideoReposit
         fileUrl: props.fileUrl,
         durationSeconds: props.durationSeconds,
         status: props.status,
+        progressPhase: props.progressPhase,
+        progressPercent: props.progressPercent,
         errorMessage: props.errorMessage,
         bgmKey: props.bgmKey,
         updatedAt: props.updatedAt,
+      },
+    });
+  }
+
+  async updateProgress(
+    id: string,
+    phase: ComposedVideoProgressPhase,
+    percent: number
+  ): Promise<void> {
+    await this.prisma.shortsComposedVideo.update({
+      where: { id },
+      data: {
+        progressPhase: phase,
+        progressPercent: Math.round(percent),
+        updatedAt: new Date(),
       },
     });
   }
@@ -117,6 +139,8 @@ export class ShortsComposedVideoRepository implements ShortsComposedVideoReposit
       fileUrl: record.fileUrl,
       durationSeconds: record.durationSeconds ? Number(record.durationSeconds) : null,
       status: record.status as ComposedVideoStatus,
+      progressPhase: record.progressPhase as ComposedVideoProgressPhase | null,
+      progressPercent: record.progressPercent,
       errorMessage: record.errorMessage,
       bgmKey: record.bgmKey,
       createdAt: record.createdAt,

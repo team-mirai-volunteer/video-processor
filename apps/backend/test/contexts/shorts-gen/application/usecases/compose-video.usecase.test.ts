@@ -151,6 +151,7 @@ describe('ComposeVideoUseCase', () => {
 
     composedVideoRepository = {
       save: vi.fn().mockResolvedValue(undefined),
+      updateProgress: vi.fn().mockResolvedValue(undefined),
       findById: vi.fn().mockResolvedValue(null),
       findByProjectId: vi.fn().mockResolvedValue(null),
       findByScriptId: vi.fn().mockResolvedValue(null),
@@ -302,6 +303,8 @@ describe('ComposeVideoUseCase', () => {
         fileUrl: null,
         durationSeconds: null,
         status: 'pending',
+        progressPhase: null,
+        progressPercent: null,
         errorMessage: null,
         bgmKey: null,
         createdAt: new Date(),

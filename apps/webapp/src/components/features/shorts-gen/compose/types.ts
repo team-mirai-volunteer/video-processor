@@ -26,6 +26,8 @@ export interface VideoPreviewProps {
   videoUrl: string | null;
   durationSeconds: number | null;
   status: string;
+  progressPhase: string | null;
+  progressPercent: number | null;
   errorMessage: string | null;
 }
 
