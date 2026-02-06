@@ -12,15 +12,22 @@ function Header() {
   return (
     <header className="border-b">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2 font-bold text-sm sm:text-xl">
-          <Video className="h-6 w-6 shrink-0" />
-          <span>みらい動画スタジオ β</span>
+        <Link href="/" className="flex items-center gap-1.5 font-bold text-sm sm:text-xl shrink-0">
+          <Video className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
+          <span className="hidden sm:inline">みらい動画スタジオ β</span>
+          <span className="sm:hidden">みらい動画 β</span>
         </Link>
-        <nav className="flex items-center gap-3 sm:gap-6">
-          <Link href="/clips" className="text-sm font-bold hover:text-primary">
+        <nav className="flex items-center gap-2 sm:gap-6">
+          <Link
+            href="/clips"
+            className="text-xs sm:text-sm font-bold hover:text-primary whitespace-nowrap"
+          >
             切り抜きを探す
           </Link>
-          <Link href="/videos" className="text-sm font-bold hover:text-primary">
+          <Link
+            href="/videos"
+            className="text-xs sm:text-sm font-bold hover:text-primary whitespace-nowrap"
+          >
             動画から作る
           </Link>
         </nav>
