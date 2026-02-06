@@ -20,7 +20,7 @@ export default async function ClipsPage({ searchParams }: ClipsPageProps) {
       <div>
         <h1 className="text-3xl font-bold">クリップ一覧</h1>
         <p className="text-muted-foreground mt-1">
-          全動画から切り抜かれたクリップを横断的に確認できます
+          気に入ったクリップを選んで、字幕をつけてSNSに投稿しよう！
         </p>
       </div>
 
