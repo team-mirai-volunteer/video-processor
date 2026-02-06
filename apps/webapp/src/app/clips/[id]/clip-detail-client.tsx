@@ -132,6 +132,7 @@ export function ClipDetailClient({ clip, videoTitle, initialSubtitle }: ClipDeta
       {/* Subtitle Editor */}
       <SubtitleEditor
         clipId={clip.id}
+        clipDurationSeconds={clip.durationSeconds}
         initialSubtitle={subtitle}
         currentTimeSeconds={currentTime}
         subtitledVideoUrl={subtitledVideoUrl}
