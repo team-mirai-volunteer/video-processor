@@ -1,11 +1,7 @@
 import type { ClipSubtitleRepositoryGateway } from '@clip-video/domain/gateways/clip-subtitle-repository.gateway.js';
 import type { ClipSubtitleSegment } from '@clip-video/domain/models/clip-subtitle.js';
 import type { UpdateClipSubtitleResponse } from '@video-processor/shared';
-import {
-  SubtitleAlreadyConfirmedError,
-  SubtitleNotFoundError,
-  SubtitleValidationError,
-} from '../errors/clip-subtitle.errors.js';
+import { SubtitleNotFoundError, SubtitleValidationError } from '../errors/clip-subtitle.errors.js';
 
 export interface UpdateClipSubtitlesUseCaseDeps {
   clipSubtitleRepository: ClipSubtitleRepositoryGateway;
@@ -35,11 +31,7 @@ export class UpdateClipSubtitlesUseCase {
     // 2. Update segments
     const updateResult = existingSubtitle.withSegments(segments);
     if (!updateResult.success) {
-      const error = updateResult.error;
-      if (error.type === 'ALREADY_CONFIRMED') {
-        throw new SubtitleAlreadyConfirmedError(clipId);
-      }
-      throw new SubtitleValidationError(error.message);
+      throw new SubtitleValidationError(updateResult.error.message);
     }
 
     const updatedSubtitle = updateResult.value;

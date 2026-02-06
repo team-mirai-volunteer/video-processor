@@ -97,16 +97,19 @@ export class GenerateClipSubtitlesUseCase {
       );
     }
 
-    // 6. Parse AI response (text only, no timestamps)
+    // 6. Build normalized full text for keyword position resolution
+    const fullText = this.promptService.buildNormalizedFullText(filteredSentences);
+
+    // 7. Parse AI response (chunk lines → keyword search → slice restoration)
     log.info('AI response received', { clipId, aiResponse: aiResponse.substring(0, 500) });
 
-    let parsedSegments: Array<{ lines: string[] }>;
+    let builtSegments: Array<{ lines: string[] }>;
     try {
-      parsedSegments = this.promptService.parseResponse(aiResponse);
-      log.info('Parsed segments (text only)', {
+      builtSegments = this.promptService.parseResponse(aiResponse, fullText);
+      log.info('Parsed segments from chunks', {
         clipId,
-        segmentCount: parsedSegments.length,
-        firstSegment: parsedSegments[0],
+        segmentCount: builtSegments.length,
+        segments: builtSegments.slice(0, 3),
       });
     } catch (error) {
       log.error('Failed to parse AI response', error instanceof Error ? error : undefined, {
@@ -117,15 +120,15 @@ export class GenerateClipSubtitlesUseCase {
       );
     }
 
-    if (parsedSegments.length === 0) {
-      throw new SubtitleGenerationError('AI returned no segments');
-    }
+    // 8. Split long lines (fallback for lines exceeding 16 chars)
+    builtSegments = this.promptService.splitLongLines(builtSegments);
+    log.info('Segments after splitLongLines', { clipId, segmentCount: builtSegments.length });
 
-    // 7. Assign timestamps using character-based interpolation
+    // 9. Assign timestamps using character-based interpolation
     let segments: ClipSubtitleSegment[];
     try {
       segments = this.promptService.assignTimestamps(
-        parsedSegments,
+        builtSegments,
         filteredSentences,
         clip.startTimeSeconds
       );

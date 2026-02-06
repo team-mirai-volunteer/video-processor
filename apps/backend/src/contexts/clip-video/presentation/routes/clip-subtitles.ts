@@ -11,10 +11,10 @@ import { ClipSubtitleRepository } from '@clip-video/infrastructure/repositories/
 import { ClipRepository } from '@clip-video/infrastructure/repositories/clip.repository.js';
 import { RefinedTranscriptionRepository } from '@clip-video/infrastructure/repositories/refined-transcription.repository.js';
 import { TranscriptionRepository } from '@clip-video/infrastructure/repositories/transcription.repository.js';
+import { AnthropicClient } from '@shared/infrastructure/clients/anthropic.client.js';
 import { GcsClient } from '@shared/infrastructure/clients/gcs.client.js';
 import { GoogleDriveClient } from '@shared/infrastructure/clients/google-drive.client.js';
 import { LocalTempStorageClient } from '@shared/infrastructure/clients/local-temp-storage.client.js';
-import { OpenAIClient } from '@shared/infrastructure/clients/openai.client.js';
 import { prisma } from '@shared/infrastructure/database/connection.js';
 import type { UpdateClipSubtitleRequest } from '@video-processor/shared';
 import { type Router as ExpressRouter, Router } from 'express';
@@ -50,7 +50,7 @@ const generateClipSubtitlesUseCase = new GenerateClipSubtitlesUseCase({
   clipSubtitleRepository,
   transcriptionRepository,
   refinedTranscriptionRepository,
-  aiGateway: new OpenAIClient(),
+  aiGateway: new AnthropicClient(),
   generateId: () => uuidv4(),
 });
 
