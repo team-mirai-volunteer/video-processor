@@ -25,31 +25,35 @@ export function VideoTable({ videos }: VideoTableProps) {
   }
 
   return (
-    <Table className="text-xs sm:text-sm">
-      <TableHeader>
-        <TableRow>
-          <TableHead>タイトル</TableHead>
-          <TableHead className="w-32">ステータス</TableHead>
-          <TableHead className="text-center">クリップ数</TableHead>
-          <TableHead>登録日時</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {videos.map((video) => (
-          <TableRow key={video.id}>
-            <TableCell className="font-medium">
-              <Link href={`/videos/${video.id}`} className="underline">
-                {video.title || 'タイトルなし'}
-              </Link>
-            </TableCell>
-            <TableCell className="w-32">
-              <StatusBadge status={video.status} />
-            </TableCell>
-            <TableCell className="text-center">{video.clipCount}</TableCell>
-            <TableCell>{formatDate(video.createdAt)}</TableCell>
+    <div className="overflow-x-auto">
+      <Table className="text-xs sm:text-sm">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="px-2">タイトル</TableHead>
+            <TableHead className="px-2 min-w-32 whitespace-nowrap">ステータス</TableHead>
+            <TableHead className="px-2 min-w-24 whitespace-nowrap text-center">
+              クリップ数
+            </TableHead>
+            <TableHead className="px-2 min-w-28 whitespace-nowrap">登録日時</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {videos.map((video) => (
+            <TableRow key={video.id}>
+              <TableCell className="px-2 font-medium min-w-52">
+                <Link href={`/videos/${video.id}`} className="underline">
+                  {video.title || 'タイトルなし'}
+                </Link>
+              </TableCell>
+              <TableCell className="px-2 min-w-32">
+                <StatusBadge status={video.status} />
+              </TableCell>
+              <TableCell className="px-2 min-w-24 text-center">{video.clipCount}</TableCell>
+              <TableCell className="px-2 min-w-28">{formatDate(video.createdAt)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

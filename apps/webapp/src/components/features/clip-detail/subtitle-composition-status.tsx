@@ -11,7 +11,36 @@ import type {
   SubtitleFontSize,
 } from '@video-processor/shared';
 import { CheckCircle, Download, ExternalLink, Loader2, RefreshCw, Video } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+function useElapsedTime(isRunning: boolean): number {
+  const [elapsed, setElapsed] = useState(0);
+  const startTimeRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (isRunning) {
+      startTimeRef.current = Date.now();
+      setElapsed(0);
+      const interval = setInterval(() => {
+        if (startTimeRef.current) {
+          setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
+        }
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+    startTimeRef.current = null;
+    setElapsed(0);
+    return undefined;
+  }, [isRunning]);
+
+  return elapsed;
+}
+
+function formatElapsed(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
 
 type CompositionStep = 'idle' | 'composing' | 'composed' | 'uploading' | 'uploaded';
 
@@ -45,6 +74,9 @@ export function SubtitleCompositionStatus({
   const [paddingColor, setPaddingColor] = useState<PaddingColor>('#000000');
   const [outlineColor, setOutlineColor] = useState<OutlineColor>('#30bca7');
   const [fontSize, setFontSize] = useState<SubtitleFontSize>('large');
+
+  const composeElapsed = useElapsedTime(isComposing);
+  const uploadElapsed = useElapsedTime(isUploading);
 
   const showComposeButton = step === 'idle' && canCompose;
   const showUploadButton = (step === 'composed' || subtitledVideoUrl) && !subtitledVideoDriveUrl;
@@ -225,6 +257,10 @@ export function SubtitleCompositionStatus({
           )}
         </div>
 
+        <p className="text-xs text-muted-foreground">
+          長い動画では合成に1〜2分かかります。合成中はページを離れないでください。
+        </p>
+
         <div className="flex flex-wrap gap-2">
           {showComposeButton && (
             <Button
@@ -236,7 +272,7 @@ export function SubtitleCompositionStatus({
               {isComposing ? (
                 <>
                   <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                  動画を合成中...
+                  合成中... {formatElapsed(composeElapsed)}
                 </>
               ) : (
                 '動画を合成'
@@ -250,7 +286,7 @@ export function SubtitleCompositionStatus({
                 {isComposing ? (
                   <>
                     <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                    再合成中...
+                    再合成中... {formatElapsed(composeElapsed)}
                   </>
                 ) : (
                   <>
@@ -275,7 +311,7 @@ export function SubtitleCompositionStatus({
                   {isUploading ? (
                     <>
                       <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                      Driveにアップロード中...
+                      アップロード中... {formatElapsed(uploadElapsed)}
                     </>
                   ) : (
                     'Driveにアップロード'
