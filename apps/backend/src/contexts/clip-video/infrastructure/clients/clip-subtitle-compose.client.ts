@@ -129,7 +129,8 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
       const durationSeconds = await this.executeFFmpeg(
         params.inputVideoPath,
         params.outputPath,
-        drawtextFilter
+        drawtextFilter,
+        params.onProgress
       );
 
       console.log(
@@ -209,38 +210,67 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
   }
 
   /**
+   * Parse timemark string (HH:MM:SS.ss) to seconds
+   */
+  private parseTimemark(timemark: string): number {
+    const match = timemark.match(/(\d+):(\d+):(\d+(?:\.\d+)?)/);
+    if (!match) return 0;
+    const hours = Number.parseFloat(match[1] || '0');
+    const minutes = Number.parseFloat(match[2] || '0');
+    const seconds = Number.parseFloat(match[3] || '0');
+    return hours * 3600 + minutes * 60 + seconds;
+  }
+
+  /**
    * Execute FFmpeg with drawtext filter
    */
   private executeFFmpeg(
     inputPath: string,
     outputPath: string,
-    drawtextFilter: string
+    drawtextFilter: string,
+    onProgress?: (percent: number) => void
   ): Promise<number> {
     return new Promise((resolve, reject) => {
       const args = ['-y', '-i', inputPath, '-vf', drawtextFilter, '-c:a', 'copy', outputPath];
 
       console.log('[ClipSubtitleComposeClient] FFmpeg args:', args.join(' '));
 
-      const ffmpeg = spawn('ffmpeg', args);
+      const ffmpegProcess = spawn('ffmpeg', args);
 
       let stderr = '';
+      let totalDuration = 0;
+      let lastReportedPercent = -1;
 
-      ffmpeg.stderr.on('data', (data: Buffer) => {
-        stderr += data.toString();
+      ffmpegProcess.stderr.on('data', (data: Buffer) => {
+        const chunk = data.toString();
+        stderr += chunk;
+
+        // Parse total duration from initial output (e.g., "Duration: 00:01:30.50")
+        if (totalDuration === 0) {
+          const durationMatch = stderr.match(/Duration: (\d+:\d+:\d+\.\d+)/);
+          if (durationMatch?.[1]) {
+            totalDuration = this.parseTimemark(durationMatch[1]);
+          }
+        }
+
+        // Parse current progress from FFmpeg output (e.g., "time=00:00:15.00")
+        if (onProgress && totalDuration > 0) {
+          const timeMatch = chunk.match(/time=(\d+:\d+:\d+\.\d+)/);
+          if (timeMatch?.[1]) {
+            const currentTime = this.parseTimemark(timeMatch[1]);
+            const percent = Math.min(Math.round((currentTime / totalDuration) * 100), 100);
+            if (percent !== lastReportedPercent) {
+              lastReportedPercent = percent;
+              onProgress(percent);
+            }
+          }
+        }
       });
 
-      ffmpeg.on('close', (code) => {
+      ffmpegProcess.on('close', (code) => {
         if (code === 0) {
-          // Parse duration from stderr
-          const durationMatch = stderr.match(/Duration: (\d+):(\d+):(\d+\.\d+)/);
-          let durationSeconds = 0;
-          if (durationMatch) {
-            const hours = Number.parseFloat(durationMatch[1] || '0');
-            const minutes = Number.parseFloat(durationMatch[2] || '0');
-            const seconds = Number.parseFloat(durationMatch[3] || '0');
-            durationSeconds = hours * 3600 + minutes * 60 + seconds;
-          }
-          resolve(durationSeconds);
+          onProgress?.(100);
+          resolve(totalDuration);
         } else {
           reject({
             type: 'FFMPEG_ERROR',
@@ -250,7 +280,7 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
         }
       });
 
-      ffmpeg.on('error', (error) => {
+      ffmpegProcess.on('error', (error) => {
         reject({
           type: 'FFMPEG_ERROR',
           message: `Failed to spawn FFmpeg: ${error.message}`,

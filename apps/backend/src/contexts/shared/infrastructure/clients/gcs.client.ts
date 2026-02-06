@@ -177,6 +177,17 @@ export class GcsClient implements TempStorageGateway {
   }
 
   /**
+   * Get the file size in bytes
+   */
+  async getFileSize(gcsUri: string): Promise<number> {
+    const { bucketName, filePath } = this.parseGcsUri(gcsUri);
+    const bucket = this.storage.bucket(bucketName);
+    const file = bucket.file(filePath);
+    const [metadata] = await file.getMetadata();
+    return Number(metadata.size);
+  }
+
+  /**
    * Check if video exists in temporary storage
    */
   async exists(gcsUri: string): Promise<boolean> {

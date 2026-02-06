@@ -46,6 +46,8 @@ export interface ClipSubtitleComposeParams {
   style?: SubtitleStyle;
   /** 字幕フォントサイズ（省略時は 'medium'） */
   fontSize?: SubtitleFontSize;
+  /** 進捗コールバック（0-100の割合で呼ばれる） */
+  onProgress?: (percent: number) => void;
 }
 
 /**

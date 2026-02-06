@@ -141,6 +141,15 @@ export class LocalTempStorageClient implements TempStorageGateway {
   }
 
   /**
+   * Get the file size in bytes
+   */
+  async getFileSize(gcsUri: string): Promise<number> {
+    const filePath = this.parseUri(gcsUri);
+    const stats = await fs.promises.stat(filePath);
+    return stats.size;
+  }
+
+  /**
    * Check if video exists in local temporary storage
    */
   async exists(gcsUri: string): Promise<boolean> {

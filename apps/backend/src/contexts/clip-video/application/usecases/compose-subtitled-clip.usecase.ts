@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { NotFoundError, ValidationError } from '@clip-video/application/errors/errors.js';
 import type { ClipRepositoryGateway } from '@clip-video/domain/gateways/clip-repository.gateway.js';
@@ -9,6 +10,7 @@ import type { ClipSubtitleRepositoryGateway } from '@clip-video/domain/gateways/
 import type { TempStorageGateway } from '@shared/domain/gateways/temp-storage.gateway.js';
 import { createLogger } from '@shared/infrastructure/logging/logger.js';
 import type {
+  ComposeProgressPhase,
   OutlineColor,
   OutputFormat,
   PaddingColor,
@@ -36,6 +38,28 @@ export interface ComposeSubtitledClipUseCaseDeps {
   clipSubtitleRepository: ClipSubtitleRepositoryGateway;
   clipSubtitleComposer: ClipSubtitleComposerGateway;
   tempStorage: TempStorageGateway;
+}
+
+/**
+ * Create a throttled progress reporter that only updates DB
+ * when the rounded percent value actually changes.
+ */
+function createProgressReporter(
+  clipId: string,
+  phase: ComposeProgressPhase,
+  rangeStart: number,
+  rangeEnd: number,
+  updateFn: (clipId: string, phase: ComposeProgressPhase, percent: number) => Promise<void>
+): (internalPercent: number) => void {
+  let lastReported = -1;
+  return (internalPercent: number) => {
+    const mapped = rangeStart + (internalPercent / 100) * (rangeEnd - rangeStart);
+    const rounded = Math.round(mapped);
+    if (rounded !== lastReported) {
+      lastReported = rounded;
+      updateFn(clipId, phase, rounded).catch(() => {});
+    }
+  };
 }
 
 /**
@@ -85,17 +109,45 @@ export class ComposeSubtitledClipUseCase {
     const inputVideoPath = path.join(tempDir, 'input.mp4');
     const outputVideoPath = path.join(tempDir, 'output.mp4');
 
+    const updateProgress = this.deps.clipRepository.updateComposeProgress.bind(
+      this.deps.clipRepository
+    );
+
     try {
       // === Phase: downloading (0-20%) ===
-      await this.deps.clipRepository.updateComposeProgress(clipId, 'downloading', 0);
+      await updateProgress(clipId, 'downloading', 0);
       log.info('Downloading source video from GCS', { clipId, sourceGcsUri });
 
-      // 5. Download source video from GCS (using stream for memory efficiency)
+      // Get file size for progress tracking
+      let totalFileSize = 0;
+      try {
+        totalFileSize = await this.deps.tempStorage.getFileSize(sourceGcsUri);
+      } catch {
+        // File size unavailable — skip granular download progress
+      }
+
+      const downloadReporter = createProgressReporter(clipId, 'downloading', 0, 20, updateProgress);
+
+      // 5. Download source video from GCS (using stream with progress tracking)
       const gcsStream = this.deps.tempStorage.downloadAsStream(sourceGcsUri);
       const writeStream = fs.createWriteStream(inputVideoPath);
-      await pipeline(gcsStream, writeStream);
 
-      await this.deps.clipRepository.updateComposeProgress(clipId, 'downloading', 20);
+      if (totalFileSize > 0) {
+        let bytesReceived = 0;
+        const progressTracker = new Transform({
+          transform(chunk, _encoding, callback) {
+            bytesReceived += chunk.length;
+            downloadReporter((bytesReceived / totalFileSize) * 100);
+            this.push(chunk);
+            callback();
+          },
+        });
+        await pipeline(gcsStream, progressTracker, writeStream);
+      } else {
+        await pipeline(gcsStream, writeStream);
+      }
+
+      await updateProgress(clipId, 'downloading', 20);
       log.info('Download completed', { clipId });
 
       // 6. Apply format conversion if requested (before subtitle composition)
@@ -104,7 +156,7 @@ export class ComposeSubtitledClipUseCase {
 
       if (needsConversion) {
         // === Phase: converting (20-40%) ===
-        await this.deps.clipRepository.updateComposeProgress(clipId, 'converting', 20);
+        await updateProgress(clipId, 'converting', 20);
         log.info('Converting video format', { clipId, outputFormat });
 
         const convertedPath = path.join(tempDir, `${outputFormat}.mp4`);
@@ -114,6 +166,15 @@ export class ComposeSubtitledClipUseCase {
           outputFormat === 'vertical'
             ? { width: 1080, height: 1920 }
             : { width: 1920, height: 1080 };
+
+        const convertReporter = createProgressReporter(
+          clipId,
+          'converting',
+          20,
+          40,
+          updateProgress
+        );
+
         await this.convertToFormat(
           inputVideoPath,
           convertedPath,
@@ -121,25 +182,30 @@ export class ComposeSubtitledClipUseCase {
           srcHeight,
           target.width,
           target.height,
-          paddingColor
+          paddingColor,
+          convertReporter
         );
         subtitleInputPath = convertedPath;
 
-        await this.deps.clipRepository.updateComposeProgress(clipId, 'converting', 40);
+        await updateProgress(clipId, 'converting', 40);
         log.info('Format conversion completed', { clipId });
       }
 
-      // === Phase: composing (40-80%) ===
+      // === Phase: composing (40-80% or 20-80%) ===
       const composeStartPercent = needsConversion ? 40 : 20;
-      await this.deps.clipRepository.updateComposeProgress(
-        clipId,
-        'composing',
-        composeStartPercent
-      );
+      await updateProgress(clipId, 'composing', composeStartPercent);
       log.info('Composing subtitles onto video', { clipId });
 
       // 7. Get video dimensions for subtitle composition
       const { width, height } = await this.getVideoDimensions(subtitleInputPath);
+
+      const composeReporter = createProgressReporter(
+        clipId,
+        'composing',
+        composeStartPercent,
+        80,
+        updateProgress
+      );
 
       // 8. Compose subtitles onto video
       const composeResult = await this.deps.clipSubtitleComposer.compose({
@@ -152,33 +218,45 @@ export class ComposeSubtitledClipUseCase {
           outlineColor,
         },
         fontSize,
+        onProgress: composeReporter,
       });
 
       if (!composeResult.success) {
         throw new Error(`Failed to compose subtitles: ${composeResult.error.message}`);
       }
 
-      await this.deps.clipRepository.updateComposeProgress(clipId, 'composing', 80);
+      await updateProgress(clipId, 'composing', 80);
       log.info('Subtitle composition completed', { clipId });
 
       const finalOutputPath = outputVideoPath;
 
       // === Phase: uploading (80-100%) ===
-      await this.deps.clipRepository.updateComposeProgress(clipId, 'uploading', 80);
+      await updateProgress(clipId, 'uploading', 80);
       log.info('Uploading composed video to GCS', { clipId });
 
-      // 9. Upload composed video to GCS
+      // Get output file size for upload progress tracking
+      const outputStat = await fs.promises.stat(finalOutputPath);
+      const outputFileSize = outputStat.size;
+
+      const uploadReporter = createProgressReporter(clipId, 'uploading', 80, 95, updateProgress);
+
+      // 9. Upload composed video to GCS (with progress tracking)
       const gcsPath = `subtitled/${clip.videoId}/${clipId}.mp4`;
-      const uploadResult = await this.deps.tempStorage.uploadFromStream(
+      const uploadResult = await this.deps.tempStorage.uploadFromStreamWithProgress(
         {
           videoId: clip.videoId,
           path: gcsPath,
           contentType: 'video/mp4',
         },
-        fs.createReadStream(finalOutputPath)
+        fs.createReadStream(finalOutputPath),
+        (bytesTransferred: number) => {
+          if (outputFileSize > 0) {
+            uploadReporter((bytesTransferred / outputFileSize) * 100);
+          }
+        }
       );
 
-      await this.deps.clipRepository.updateComposeProgress(clipId, 'uploading', 95);
+      await updateProgress(clipId, 'uploading', 95);
 
       // 10. Generate signed URL for the uploaded video
       const signedUrl = await this.deps.tempStorage.getSignedUrl(uploadResult.gcsUri);
@@ -215,7 +293,8 @@ export class ComposeSubtitledClipUseCase {
     sourceHeight: number,
     targetWidth: number,
     targetHeight: number,
-    paddingColor: string
+    paddingColor: string,
+    onProgress?: (percent: number) => void
   ): Promise<void> {
     const sourceAspectRatio = sourceWidth / sourceHeight;
     const targetAspectRatio = targetWidth / targetHeight;
@@ -227,12 +306,26 @@ export class ComposeSubtitledClipUseCase {
     const padFilter = `pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2:color=${paddingColor}`;
     const videoFilter = `${scaleFilter},${padFilter}`;
 
+    let lastReportedPercent = -1;
+
     return new Promise<void>((resolve, reject) => {
       ffmpeg(inputPath)
         .videoFilters(videoFilter)
         .outputOptions(['-c:a', 'copy'])
         .output(outputPath)
-        .on('end', () => resolve())
+        .on('progress', (progress) => {
+          if (onProgress && progress.percent != null) {
+            const rounded = Math.round(progress.percent);
+            if (rounded !== lastReportedPercent) {
+              lastReportedPercent = rounded;
+              onProgress(rounded);
+            }
+          }
+        })
+        .on('end', () => {
+          onProgress?.(100);
+          resolve();
+        })
         .on('error', (err: Error) => reject(err))
         .run();
     });
