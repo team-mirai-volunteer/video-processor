@@ -14,7 +14,15 @@ import type {
   PaddingColor,
   SubtitleFontSize,
 } from '@video-processor/shared';
-import { CheckCircle, Download, ExternalLink, Loader2, RefreshCw, Video } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle,
+  Download,
+  ExternalLink,
+  Loader2,
+  RefreshCw,
+  Video,
+} from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 function useElapsedTime(isRunning: boolean): number {
@@ -65,6 +73,7 @@ type CompositionStep = 'idle' | 'composing' | 'composed' | 'uploading' | 'upload
 
 interface SubtitleCompositionStatusProps {
   clipId: string;
+  clipDurationSeconds?: number;
   step: CompositionStep;
   subtitledVideoUrl?: string | null;
   subtitledVideoDriveUrl?: string | null;
@@ -86,6 +95,7 @@ interface SubtitleCompositionStatusProps {
 
 export function SubtitleCompositionStatus({
   clipId,
+  clipDurationSeconds,
   step,
   subtitledVideoUrl,
   subtitledVideoDriveUrl,
@@ -331,6 +341,14 @@ export function SubtitleCompositionStatus({
             </div>
           )}
         </div>
+
+        {/* Clip length warning */}
+        {clipDurationSeconds != null && clipDurationSeconds > 90 && (
+          <div className="flex items-center gap-2 rounded-md bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>負荷軽減のため、1.5分を超えるクリップの生成は一時的にお控えください</span>
+          </div>
+        )}
 
         {/* Progress display during composition */}
         {isPolling && (
