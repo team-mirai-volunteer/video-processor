@@ -53,7 +53,7 @@ export function SubtitleEditor({
   const [editedSegments, setEditedSegments] = useState<ClipSubtitleSegment[]>(
     initialSubtitle?.segments ?? []
   );
-  const [subtitledVideoUrl, _setSubtitledVideoUrl] = useState<string | null | undefined>(
+  const [subtitledVideoUrl, setSubtitledVideoUrl] = useState<string | null | undefined>(
     initialSubtitledVideoUrl
   );
   const [subtitledVideoDriveUrl, setSubtitledVideoDriveUrl] = useState<string | null | undefined>(
@@ -196,11 +196,17 @@ export function SubtitleEditor({
     [clipId, subtitle?.status, showMessage]
   );
 
-  const handleComposeComplete = useCallback(() => {
-    setIsComposing(false);
-    showMessage('success', '動画の合成が完了しました');
-    onComposeComplete?.();
-  }, [showMessage, onComposeComplete]);
+  const handleComposeComplete = useCallback(
+    (newSubtitledVideoUrl: string | null) => {
+      setIsComposing(false);
+      if (newSubtitledVideoUrl) {
+        setSubtitledVideoUrl(newSubtitledVideoUrl);
+      }
+      showMessage('success', '動画の合成が完了しました');
+      onComposeComplete?.();
+    },
+    [showMessage, onComposeComplete]
+  );
 
   const handleUpload = useCallback(async () => {
     setIsUploading(true);

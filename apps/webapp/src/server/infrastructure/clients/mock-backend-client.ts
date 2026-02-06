@@ -331,6 +331,7 @@ export const mockBackendClient = {
       composeProgressPhase: null,
       composeProgressPercent: 100,
       composeErrorMessage: null,
+      subtitledVideoUrl: 'https://example.com/mock-subtitled-video.mp4',
     };
   },
 

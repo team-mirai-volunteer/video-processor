@@ -246,6 +246,7 @@ router.get('/clips/:clipId/compose-status', async (req, res, next) => {
       composeProgressPhase: clip.composeProgressPhase,
       composeProgressPercent: clip.composeProgressPercent,
       composeErrorMessage: clip.composeErrorMessage,
+      subtitledVideoUrl: clip.subtitledVideoUrl,
     };
 
     res.json(response);

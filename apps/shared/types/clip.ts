@@ -86,4 +86,5 @@ export interface ClipComposeStatusResponse {
   composeProgressPhase: ComposeProgressPhase | null;
   composeProgressPercent: number | null;
   composeErrorMessage: string | null;
+  subtitledVideoUrl: string | null;
 }

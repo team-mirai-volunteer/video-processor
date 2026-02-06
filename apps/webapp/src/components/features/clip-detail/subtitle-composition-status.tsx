@@ -75,7 +75,7 @@ interface SubtitleCompositionStatusProps {
     fontSize?: SubtitleFontSize
   ) => void;
   onUpload?: () => void;
-  onComposeComplete?: () => void;
+  onComposeComplete?: (subtitledVideoUrl: string | null) => void;
   isComposing?: boolean;
   isUploading?: boolean;
   canCompose?: boolean;
@@ -127,7 +127,7 @@ export function SubtitleCompositionStatus({
       setComposeError(status.composeErrorMessage);
 
       if (status.composeStatus === 'completed') {
-        onComposeComplete?.();
+        onComposeComplete?.(status.subtitledVideoUrl);
       }
     } catch (error) {
       console.error('Failed to fetch compose status:', error);
