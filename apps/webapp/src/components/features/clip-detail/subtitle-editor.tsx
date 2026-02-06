@@ -40,6 +40,8 @@ interface Message {
   text: string;
 }
 
+const MAX_COMPOSE_DURATION_SECONDS = 120;
+
 export function SubtitleEditor({
   clipId,
   clipDurationSeconds,
@@ -176,6 +178,13 @@ export function SubtitleEditor({
         showMessage('warning', '動画合成には字幕の確定が必要です');
         return;
       }
+      if (clipDurationSeconds !== undefined && clipDurationSeconds > MAX_COMPOSE_DURATION_SECONDS) {
+        showMessage(
+          'warning',
+          `現在、${MAX_COMPOSE_DURATION_SECONDS}秒を超える動画の合成はできません`
+        );
+        return;
+      }
       setIsComposing(true);
       setMessage(null);
       try {
@@ -195,7 +204,7 @@ export function SubtitleEditor({
         setIsComposing(false);
       }
     },
-    [clipId, subtitle?.status, showMessage]
+    [clipId, clipDurationSeconds, subtitle?.status, showMessage]
   );
 
   const handleComposeComplete = useCallback(
@@ -228,7 +237,9 @@ export function SubtitleEditor({
   }, [clipId, showMessage]);
 
   const isEditable = !!subtitle;
-  const canCompose = subtitle?.status === 'confirmed' && !subtitledVideoUrl;
+  const exceedsMaxDuration =
+    clipDurationSeconds !== undefined && clipDurationSeconds > MAX_COMPOSE_DURATION_SECONDS;
+  const canCompose = subtitle?.status === 'confirmed' && !subtitledVideoUrl && !exceedsMaxDuration;
   const compositionStep = subtitledVideoDriveUrl
     ? 'uploaded'
     : subtitledVideoUrl
@@ -402,6 +413,7 @@ export function SubtitleEditor({
           isComposing={isComposing}
           isUploading={isUploading}
           canCompose={canCompose}
+          exceedsMaxDuration={exceedsMaxDuration}
         />
       )}
     </div>

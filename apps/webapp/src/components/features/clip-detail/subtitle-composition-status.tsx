@@ -88,6 +88,7 @@ interface SubtitleCompositionStatusProps {
   isComposing?: boolean;
   isUploading?: boolean;
   canCompose?: boolean;
+  exceedsMaxDuration?: boolean;
   initialComposeStatus?: ComposeStatus | null;
   initialProgressPhase?: ComposeProgressPhase | null;
   initialProgressPercent?: number | null;
@@ -105,6 +106,7 @@ export function SubtitleCompositionStatus({
   isComposing = false,
   isUploading = false,
   canCompose = false,
+  exceedsMaxDuration = false,
   initialComposeStatus = null,
   initialProgressPhase = null,
   initialProgressPercent = null,
@@ -371,7 +373,13 @@ export function SubtitleCompositionStatus({
           </div>
         )}
 
-        {!isPolling && (
+        {exceedsMaxDuration && (
+          <div className="rounded-md bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800">
+            現在、120秒を超える動画の字幕合成は一時的に制限されています。
+          </div>
+        )}
+
+        {!isPolling && !exceedsMaxDuration && (
           <p className="text-xs text-muted-foreground">
             長い動画では合成に1〜2分かかります。バックグラウンドで処理されます。
           </p>
@@ -398,7 +406,12 @@ export function SubtitleCompositionStatus({
 
           {hasComposedVideo && subtitledVideoUrl && (
             <>
-              <Button variant="outline" size="sm" onClick={handleCompose} disabled={isPolling}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCompose}
+                disabled={isPolling || exceedsMaxDuration}
+              >
                 {isPolling ? (
                   <>
                     <Loader2 className="mr-2 h-3 w-3 animate-spin" />
