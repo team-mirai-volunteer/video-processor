@@ -5,6 +5,7 @@ import type {
   ClipSubtitleComposeParams,
   ClipSubtitleComposeResult,
   ClipSubtitleComposerGateway,
+  FormatConversionParams,
   SubtitleStyle,
 } from '@clip-video/domain/gateways/clip-subtitle-composer.gateway.js';
 import type { ClipSubtitleSegment } from '@clip-video/domain/models/clip-subtitle.js';
@@ -94,42 +95,51 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
       });
     }
 
-    // フォントサイズの決定（動画横幅ベース）
+    // フォーマット変換がある場合は出力サイズ基準でフォント計算
+    const outputWidth = params.formatConversion?.targetWidth ?? params.width;
+    const outputHeight = params.formatConversion?.targetHeight ?? params.height;
+
+    // フォントサイズの決定（出力動画横幅ベース）
     const fontSizeKey = params.fontSize ?? 'small';
     const { fontSize: fontSizePx, outlineWidth: outlineWidthPx } = calcFontMetrics(
       fontSizeKey,
-      params.width
+      outputWidth
     );
 
-    // 縦位置の計算
-    const verticalPosition = this.calculateVerticalPosition(params.width, params.height);
+    // 縦位置の計算（出力サイズ基準）
+    const verticalPosition = this.calculateVerticalPosition(outputWidth, outputHeight);
 
     // スタイルの合成
     const mergedStyle = this.mergeStyles(params.style, fontSizePx, outlineWidthPx);
 
     console.log(
-      `[ClipSubtitleComposeClient] Font size: ${fontSizeKey} (${fontSizePx}px), vertical position: ${verticalPosition}`
+      `[ClipSubtitleComposeClient] Font size: ${fontSizeKey} (${fontSizePx}px), vertical position: ${verticalPosition}, format conversion: ${params.formatConversion ? 'yes' : 'no'}`
     );
 
     try {
-      // drawtext フィルタチェーンを構築
+      // drawtext フィルタチェーンを構築（出力サイズ基準）
       const drawtextFilter = this.buildDrawtextFilter(
         params.segments,
-        params.width,
-        params.height,
+        outputWidth,
+        outputHeight,
         verticalPosition,
         mergedStyle
       );
 
+      // フォーマット変換がある場合はscale+padを先頭に追加して1パスで実行
+      const videoFilter = params.formatConversion
+        ? `${this.buildFormatConversionFilter(params.width, params.height, params.formatConversion)},${drawtextFilter}`
+        : drawtextFilter;
+
       console.log(
-        `[ClipSubtitleComposeClient] Composing ${params.segments.length} subtitles using drawtext direct rendering...`
+        `[ClipSubtitleComposeClient] Composing ${params.segments.length} subtitles${params.formatConversion ? ' with format conversion' : ''} in single pass...`
       );
 
       // FFmpeg実行
       const durationSeconds = await this.executeFFmpeg(
         params.inputVideoPath,
         params.outputPath,
-        drawtextFilter
+        videoFilter
       );
 
       console.log(
@@ -150,6 +160,26 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
         message: `Failed to compose subtitles: ${message}`,
       });
     }
+  }
+
+  /**
+   * Build scale+pad filter for format conversion
+   */
+  private buildFormatConversionFilter(
+    sourceWidth: number,
+    sourceHeight: number,
+    conversion: FormatConversionParams
+  ): string {
+    const { targetWidth, targetHeight, paddingColor } = conversion;
+    const sourceAspectRatio = sourceWidth / sourceHeight;
+    const targetAspectRatio = targetWidth / targetHeight;
+
+    const scaleFilter =
+      sourceAspectRatio > targetAspectRatio
+        ? `scale=${targetWidth}:-2`
+        : `scale=-2:${targetHeight}`;
+    const padFilter = `pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2:color=${paddingColor}`;
+    return `${scaleFilter},${padFilter}`;
   }
 
   /**
@@ -217,7 +247,18 @@ export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
     drawtextFilter: string
   ): Promise<number> {
     return new Promise((resolve, reject) => {
-      const args = ['-y', '-i', inputPath, '-vf', drawtextFilter, '-c:a', 'copy', outputPath];
+      const args = [
+        '-y',
+        '-i',
+        inputPath,
+        '-vf',
+        drawtextFilter,
+        '-preset',
+        'fast',
+        '-c:a',
+        'copy',
+        outputPath,
+      ];
 
       console.log('[ClipSubtitleComposeClient] FFmpeg args:', args.join(' '));
 
