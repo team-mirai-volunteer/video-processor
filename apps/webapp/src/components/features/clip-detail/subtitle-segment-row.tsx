@@ -76,25 +76,63 @@ export function SubtitleSegmentRow({
   return (
     <div
       className={cn(
-        'flex items-start gap-3 p-2 rounded-md transition-colors',
+        'flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 p-2 rounded-md transition-colors',
         isActive && 'bg-primary/10 border border-primary/30',
         !isActive && 'hover:bg-muted/50'
       )}
     >
-      <span className="text-xs text-muted-foreground w-6 text-center shrink-0 pt-2">
-        {segment.index + 1}
-      </span>
+      {/* 上段（スマホ）: 番号 + タイムスタンプ + 時間入力 */}
+      <div className="flex items-center gap-2 sm:gap-3 sm:contents">
+        <span className="text-xs text-muted-foreground w-6 text-center shrink-0">
+          {segment.index + 1}
+        </span>
 
-      <button
-        type="button"
-        onClick={handleSeek}
-        className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0 w-24 text-left pt-2"
-        title="この位置から再生"
-      >
-        {formatDuration(segment.startTimeSeconds)} - {formatDuration(segment.endTimeSeconds)}
-      </button>
+        <button
+          type="button"
+          onClick={handleSeek}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0 w-24 text-left"
+          title="この位置から再生"
+        >
+          {formatDuration(segment.startTimeSeconds)} - {formatDuration(segment.endTimeSeconds)}
+        </button>
 
-      <div className="flex-1 flex flex-col gap-1">
+        {/* 時間入力（スマホ用） */}
+        {isEditable && (
+          <div className="flex sm:hidden items-center gap-1 shrink-0 ml-auto">
+            <Input
+              type="number"
+              value={formatTimeValue(segment.startTimeSeconds)}
+              onChange={handleStartTimeChange}
+              className="w-16 h-7 text-xs"
+              step={0.1}
+              min={0}
+              title="開始時間（秒）"
+            />
+            <span className="text-muted-foreground text-xs">-</span>
+            <Input
+              type="number"
+              value={formatTimeValue(segment.endTimeSeconds)}
+              onChange={handleEndTimeChange}
+              className="w-16 h-7 text-xs"
+              step={0.1}
+              min={0}
+              title="終了時間（秒）"
+            />
+          </div>
+        )}
+
+        {hasOverflowLine && (
+          <span
+            className="text-xs text-red-500 shrink-0 sm:hidden"
+            title="16文字を超えている行があります"
+          >
+            超過
+          </span>
+        )}
+      </div>
+
+      {/* テキスト入力エリア */}
+      <div className="flex-1 min-w-0 flex flex-col gap-1">
         {segment.lines.map((line, lineIndex) => (
           <div key={`line-${segment.index}-${lineIndex}`} className="flex items-center gap-1">
             {isEditable ? (
@@ -103,15 +141,15 @@ export function SubtitleSegmentRow({
                   value={line}
                   onChange={(e) => handleLineChange(lineIndex, e.target.value)}
                   className={cn(
-                    'flex-1 h-8 text-sm',
+                    'flex-1 min-w-0 h-8 text-sm',
                     line.length > SUBTITLE_MAX_CHARS_PER_LINE && 'border-red-500'
                   )}
                   placeholder={`${lineIndex + 1}行目 (${SUBTITLE_MAX_CHARS_PER_LINE}文字以内)`}
-                  maxLength={SUBTITLE_MAX_CHARS_PER_LINE + 10} // 少し余裕を持たせる
+                  maxLength={SUBTITLE_MAX_CHARS_PER_LINE + 10}
                 />
                 <span
                   className={cn(
-                    'text-xs w-10 text-right',
+                    'text-xs w-8 text-right shrink-0',
                     line.length > SUBTITLE_MAX_CHARS_PER_LINE
                       ? 'text-red-500'
                       : 'text-muted-foreground'
@@ -123,7 +161,7 @@ export function SubtitleSegmentRow({
                   <button
                     type="button"
                     onClick={() => handleRemoveLine(lineIndex)}
-                    className="text-xs text-muted-foreground hover:text-red-500 px-1"
+                    className="text-xs text-muted-foreground hover:text-red-500 px-1 shrink-0"
                     title="この行を削除"
                   >
                     ✕
@@ -146,8 +184,9 @@ export function SubtitleSegmentRow({
         )}
       </div>
 
+      {/* 時間入力（PC用） */}
       {isEditable && (
-        <div className="flex items-center gap-1 shrink-0 pt-1">
+        <div className="hidden sm:flex items-center gap-1 shrink-0 pt-1">
           <Input
             type="number"
             value={formatTimeValue(segment.startTimeSeconds)}
@@ -171,7 +210,10 @@ export function SubtitleSegmentRow({
       )}
 
       {hasOverflowLine && (
-        <span className="text-xs text-red-500 shrink-0 pt-2" title="16文字を超えている行があります">
+        <span
+          className="hidden sm:block text-xs text-red-500 shrink-0 pt-2"
+          title="16文字を超えている行があります"
+        >
           超過
         </span>
       )}

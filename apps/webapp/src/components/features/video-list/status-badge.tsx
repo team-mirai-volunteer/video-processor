@@ -25,5 +25,9 @@ const statusConfig: Record<
 
 export function StatusBadge({ status }: StatusBadgeProps) {
   const config = statusConfig[status] ?? { label: status, variant: 'default' as const };
-  return <Badge variant={config.variant}>{config.label}</Badge>;
+  return (
+    <Badge variant={config.variant} className="whitespace-nowrap">
+      {config.label}
+    </Badge>
+  );
 }

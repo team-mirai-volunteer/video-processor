@@ -55,7 +55,7 @@ export function ClipCard({ clip }: ClipCardProps) {
         )}
 
         {clip.status === 'completed' && (
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             {clip.googleDriveUrl && (
               <Button variant="outline" size="sm" asChild>
                 <a href={clip.googleDriveUrl} target="_blank" rel="noopener noreferrer">
