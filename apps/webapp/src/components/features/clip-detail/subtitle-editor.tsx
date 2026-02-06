@@ -23,6 +23,7 @@ import { SubtitleSegmentRow } from './subtitle-segment-row';
 
 interface SubtitleEditorProps {
   clipId: string;
+  clipDurationSeconds?: number;
   initialSubtitle: ClipSubtitle | null;
   currentTimeSeconds?: number;
   subtitledVideoUrl?: string | null;
@@ -41,6 +42,7 @@ interface Message {
 
 export function SubtitleEditor({
   clipId,
+  clipDurationSeconds,
   initialSubtitle,
   currentTimeSeconds = 0,
   subtitledVideoUrl: initialSubtitledVideoUrl,
@@ -390,6 +392,7 @@ export function SubtitleEditor({
       {subtitle?.status === 'confirmed' && (
         <SubtitleCompositionStatus
           clipId={clipId}
+          clipDurationSeconds={clipDurationSeconds}
           step={compositionStep}
           subtitledVideoUrl={subtitledVideoUrl}
           subtitledVideoDriveUrl={subtitledVideoDriveUrl}
