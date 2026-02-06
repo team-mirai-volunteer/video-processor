@@ -4,7 +4,10 @@ import * as path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { NotFoundError, ValidationError } from '@clip-video/application/errors/errors.js';
 import type { ClipRepositoryGateway } from '@clip-video/domain/gateways/clip-repository.gateway.js';
-import type { ClipSubtitleComposerGateway } from '@clip-video/domain/gateways/clip-subtitle-composer.gateway.js';
+import type {
+  ClipSubtitleComposerGateway,
+  FormatConversionParams,
+} from '@clip-video/domain/gateways/clip-subtitle-composer.gateway.js';
 import type { ClipSubtitleRepositoryGateway } from '@clip-video/domain/gateways/clip-subtitle-repository.gateway.js';
 import type { TempStorageGateway } from '@shared/domain/gateways/temp-storage.gateway.js';
 import { createLogger } from '@shared/infrastructure/logging/logger.js';
@@ -98,52 +101,31 @@ export class ComposeSubtitledClipUseCase {
       await this.deps.clipRepository.updateComposeProgress(clipId, 'downloading', 20);
       log.info('Download completed', { clipId });
 
-      // 6. Apply format conversion if requested (before subtitle composition)
-      let subtitleInputPath = inputVideoPath;
+      // === Phase: composing (20-80%) — フォーマット変換 + 字幕合成を1パスで実行 ===
+      await this.deps.clipRepository.updateComposeProgress(clipId, 'composing', 20);
+      log.info('Composing subtitles onto video', { clipId, outputFormat });
+
+      // 6. Get source video dimensions
+      const { width, height } = await this.getVideoDimensions(inputVideoPath);
+
+      // 7. Build format conversion params (if needed)
       const needsConversion = outputFormat === 'vertical' || outputFormat === 'horizontal';
-
+      let formatConversion: FormatConversionParams | undefined;
       if (needsConversion) {
-        // === Phase: converting (20-40%) ===
-        await this.deps.clipRepository.updateComposeProgress(clipId, 'converting', 20);
-        log.info('Converting video format', { clipId, outputFormat });
-
-        const convertedPath = path.join(tempDir, `${outputFormat}.mp4`);
-        const { width: srcWidth, height: srcHeight } =
-          await this.getVideoDimensions(inputVideoPath);
         const target =
           outputFormat === 'vertical'
             ? { width: 1080, height: 1920 }
             : { width: 1920, height: 1080 };
-        await this.convertToFormat(
-          inputVideoPath,
-          convertedPath,
-          srcWidth,
-          srcHeight,
-          target.width,
-          target.height,
-          paddingColor
-        );
-        subtitleInputPath = convertedPath;
-
-        await this.deps.clipRepository.updateComposeProgress(clipId, 'converting', 40);
-        log.info('Format conversion completed', { clipId });
+        formatConversion = {
+          targetWidth: target.width,
+          targetHeight: target.height,
+          paddingColor,
+        };
       }
 
-      // === Phase: composing (40-80%) ===
-      const composeStartPercent = needsConversion ? 40 : 20;
-      await this.deps.clipRepository.updateComposeProgress(
-        clipId,
-        'composing',
-        composeStartPercent
-      );
-      log.info('Composing subtitles onto video', { clipId });
-
-      // 7. Get video dimensions for subtitle composition
-      const { width, height } = await this.getVideoDimensions(subtitleInputPath);
-
-      // 8. Compose subtitles onto video
+      // 8. Compose subtitles (+ format conversion) in single FFmpeg pass
       const composeResult = await this.deps.clipSubtitleComposer.compose({
-        inputVideoPath: subtitleInputPath,
+        inputVideoPath,
         segments: subtitle.segments,
         outputPath: outputVideoPath,
         width,
@@ -152,6 +134,7 @@ export class ComposeSubtitledClipUseCase {
           outlineColor,
         },
         fontSize,
+        formatConversion,
       });
 
       if (!composeResult.success) {
@@ -203,39 +186,6 @@ export class ComposeSubtitledClipUseCase {
       // Cleanup temp files
       await this.cleanup(tempDir);
     }
-  }
-
-  /**
-   * Convert video to specified format with padding
-   */
-  private convertToFormat(
-    inputPath: string,
-    outputPath: string,
-    sourceWidth: number,
-    sourceHeight: number,
-    targetWidth: number,
-    targetHeight: number,
-    paddingColor: string
-  ): Promise<void> {
-    const sourceAspectRatio = sourceWidth / sourceHeight;
-    const targetAspectRatio = targetWidth / targetHeight;
-
-    const scaleFilter =
-      sourceAspectRatio > targetAspectRatio
-        ? `scale=${targetWidth}:-2`
-        : `scale=-2:${targetHeight}`;
-    const padFilter = `pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2:color=${paddingColor}`;
-    const videoFilter = `${scaleFilter},${padFilter}`;
-
-    return new Promise<void>((resolve, reject) => {
-      ffmpeg(inputPath)
-        .videoFilters(videoFilter)
-        .outputOptions(['-c:a', 'copy'])
-        .output(outputPath)
-        .on('end', () => resolve())
-        .on('error', (err: Error) => reject(err))
-        .run();
-    });
   }
 
   /**
