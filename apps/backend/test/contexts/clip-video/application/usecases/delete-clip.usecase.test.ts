@@ -16,6 +16,8 @@ describe('DeleteClipUseCase', () => {
       findByVideoId: vi.fn().mockResolvedValue([]),
       findAllPaginated: vi.fn().mockResolvedValue({ clips: [], total: 0 }),
       delete: vi.fn().mockResolvedValue(undefined),
+      updateComposeStatus: vi.fn(),
+      updateComposeProgress: vi.fn(),
     };
 
     useCase = new DeleteClipUseCase({
@@ -44,6 +46,10 @@ describe('DeleteClipUseCase', () => {
       subtitledVideoDriveUrl: null,
       clipVideoGcsUri: null,
       clipVideoGcsExpiresAt: null,
+      composeStatus: null,
+      composeProgressPhase: null,
+      composeProgressPercent: null,
+      composeErrorMessage: null,
     });
     vi.mocked(clipRepository.findById).mockResolvedValue(existingClip);
 

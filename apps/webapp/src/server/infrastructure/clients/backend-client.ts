@@ -1,7 +1,7 @@
 import type {
   CacheVideoResponse,
+  ClipComposeStatusResponse,
   ComposeSubtitledClipRequest,
-  ComposeSubtitledClipResponse,
   ComposeVideoAcceptedResponse,
   ComposeVideoRequest,
   ComposeVideoResponse,
@@ -204,11 +204,18 @@ export const backendClient = {
   async composeSubtitledClip(
     clipId: string,
     request?: ComposeSubtitledClipRequest
-  ): Promise<ComposeSubtitledClipResponse> {
-    return fetchBackend<ComposeSubtitledClipResponse>(`/api/clips/${clipId}/compose`, {
+  ): Promise<{ message: string; clipId: string }> {
+    return fetchBackend<{ message: string; clipId: string }>(`/api/clips/${clipId}/compose`, {
       method: 'POST',
       body: JSON.stringify(request ?? {}),
     });
+  },
+
+  async getClipComposeStatus(
+    clipId: string,
+    options?: { revalidate?: number | false }
+  ): Promise<ClipComposeStatusResponse> {
+    return fetchBackend<ClipComposeStatusResponse>(`/api/clips/${clipId}/compose-status`, options);
   },
 
   async uploadSubtitledClipToDrive(clipId: string): Promise<UploadSubtitledClipResponse> {

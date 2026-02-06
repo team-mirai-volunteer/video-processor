@@ -1,6 +1,6 @@
 import type {
   CacheVideoResponse,
-  ComposeSubtitledClipResponse,
+  ClipComposeStatusResponse,
   ConfirmClipSubtitleResponse,
   CreateReferenceCharacterResponse,
   CreateShortsProjectRequest,
@@ -318,10 +318,20 @@ export const mockBackendClient = {
     };
   },
 
-  async composeSubtitledClip(clipId: string): Promise<ComposeSubtitledClipResponse> {
+  async composeSubtitledClip(clipId: string): Promise<{ message: string; clipId: string }> {
     return {
+      message: 'Composition started',
       clipId,
-      subtitledVideoUrl: `https://storage.googleapis.com/mock-bucket/clips/${clipId}/subtitled.mp4`,
+    };
+  },
+
+  async getClipComposeStatus(_clipId: string): Promise<ClipComposeStatusResponse> {
+    return {
+      composeStatus: 'completed',
+      composeProgressPhase: null,
+      composeProgressPercent: 100,
+      composeErrorMessage: null,
+      subtitledVideoUrl: 'https://example.com/mock-subtitled-video.mp4',
     };
   },
 

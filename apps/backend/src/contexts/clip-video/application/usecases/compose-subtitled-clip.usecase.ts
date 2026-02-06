@@ -1,11 +1,13 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { pipeline } from 'node:stream/promises';
 import { NotFoundError, ValidationError } from '@clip-video/application/errors/errors.js';
 import type { ClipRepositoryGateway } from '@clip-video/domain/gateways/clip-repository.gateway.js';
 import type { ClipSubtitleComposerGateway } from '@clip-video/domain/gateways/clip-subtitle-composer.gateway.js';
 import type { ClipSubtitleRepositoryGateway } from '@clip-video/domain/gateways/clip-subtitle-repository.gateway.js';
 import type { TempStorageGateway } from '@shared/domain/gateways/temp-storage.gateway.js';
+import { createLogger } from '@shared/infrastructure/logging/logger.js';
 import type {
   OutlineColor,
   OutputFormat,
@@ -13,6 +15,8 @@ import type {
   SubtitleFontSize,
 } from '@video-processor/shared';
 import ffmpeg from 'fluent-ffmpeg';
+
+const log = createLogger('ComposeSubtitledClipUseCase');
 
 export interface ComposeSubtitledClipInput {
   clipId: string;
@@ -50,6 +54,8 @@ export class ComposeSubtitledClipUseCase {
       fontSize = 'medium',
     } = input;
 
+    log.info('Starting subtitle composition', { clipId, outputFormat });
+
     // 1. Get clip
     const clip = await this.deps.clipRepository.findById(clipId);
     if (!clip) {
@@ -71,19 +77,36 @@ export class ComposeSubtitledClipUseCase {
       throw new NotFoundError('ClipVideo', clipId);
     }
 
+    // Mark as processing
+    await this.deps.clipRepository.updateComposeStatus(clipId, 'processing');
+
     // 4. Create temp directory for processing
     const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'subtitle-compose-'));
     const inputVideoPath = path.join(tempDir, 'input.mp4');
     const outputVideoPath = path.join(tempDir, 'output.mp4');
 
     try {
-      // 5. Download source video from GCS
-      const videoBuffer = await this.deps.tempStorage.download(sourceGcsUri);
-      await fs.promises.writeFile(inputVideoPath, videoBuffer);
+      // === Phase: downloading (0-20%) ===
+      await this.deps.clipRepository.updateComposeProgress(clipId, 'downloading', 0);
+      log.info('Downloading source video from GCS', { clipId, sourceGcsUri });
+
+      // 5. Download source video from GCS (using stream for memory efficiency)
+      const gcsStream = this.deps.tempStorage.downloadAsStream(sourceGcsUri);
+      const writeStream = fs.createWriteStream(inputVideoPath);
+      await pipeline(gcsStream, writeStream);
+
+      await this.deps.clipRepository.updateComposeProgress(clipId, 'downloading', 20);
+      log.info('Download completed', { clipId });
 
       // 6. Apply format conversion if requested (before subtitle composition)
       let subtitleInputPath = inputVideoPath;
-      if (outputFormat === 'vertical' || outputFormat === 'horizontal') {
+      const needsConversion = outputFormat === 'vertical' || outputFormat === 'horizontal';
+
+      if (needsConversion) {
+        // === Phase: converting (20-40%) ===
+        await this.deps.clipRepository.updateComposeProgress(clipId, 'converting', 20);
+        log.info('Converting video format', { clipId, outputFormat });
+
         const convertedPath = path.join(tempDir, `${outputFormat}.mp4`);
         const { width: srcWidth, height: srcHeight } =
           await this.getVideoDimensions(inputVideoPath);
@@ -101,7 +124,19 @@ export class ComposeSubtitledClipUseCase {
           paddingColor
         );
         subtitleInputPath = convertedPath;
+
+        await this.deps.clipRepository.updateComposeProgress(clipId, 'converting', 40);
+        log.info('Format conversion completed', { clipId });
       }
+
+      // === Phase: composing (40-80%) ===
+      const composeStartPercent = needsConversion ? 40 : 20;
+      await this.deps.clipRepository.updateComposeProgress(
+        clipId,
+        'composing',
+        composeStartPercent
+      );
+      log.info('Composing subtitles onto video', { clipId });
 
       // 7. Get video dimensions for subtitle composition
       const { width, height } = await this.getVideoDimensions(subtitleInputPath);
@@ -123,7 +158,14 @@ export class ComposeSubtitledClipUseCase {
         throw new Error(`Failed to compose subtitles: ${composeResult.error.message}`);
       }
 
+      await this.deps.clipRepository.updateComposeProgress(clipId, 'composing', 80);
+      log.info('Subtitle composition completed', { clipId });
+
       const finalOutputPath = outputVideoPath;
+
+      // === Phase: uploading (80-100%) ===
+      await this.deps.clipRepository.updateComposeProgress(clipId, 'uploading', 80);
+      log.info('Uploading composed video to GCS', { clipId });
 
       // 9. Upload composed video to GCS
       const gcsPath = `subtitled/${clip.videoId}/${clipId}.mp4`;
@@ -136,17 +178,27 @@ export class ComposeSubtitledClipUseCase {
         fs.createReadStream(finalOutputPath)
       );
 
-      // 9. Generate signed URL for the uploaded video
+      await this.deps.clipRepository.updateComposeProgress(clipId, 'uploading', 95);
+
+      // 10. Generate signed URL for the uploaded video
       const signedUrl = await this.deps.tempStorage.getSignedUrl(uploadResult.gcsUri);
 
-      // 10. Update clip with subtitled video info
-      const updatedClip = clip.withSubtitledVideoGcsInfo(uploadResult.gcsUri, signedUrl);
+      // 11. Update clip with subtitled video info and mark as completed
+      const updatedClip = clip.completeCompose(uploadResult.gcsUri, signedUrl);
       await this.deps.clipRepository.save(updatedClip);
+
+      log.info('Subtitle composition completed successfully', { clipId, signedUrl });
 
       return {
         clipId,
         subtitledVideoUrl: signedUrl,
       };
+    } catch (error) {
+      // Mark as failed
+      log.error('Subtitle composition failed', error as Error, { clipId });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      await this.deps.clipRepository.updateComposeStatus(clipId, 'failed', errorMessage);
+      throw error;
     } finally {
       // Cleanup temp files
       await this.cleanup(tempDir);

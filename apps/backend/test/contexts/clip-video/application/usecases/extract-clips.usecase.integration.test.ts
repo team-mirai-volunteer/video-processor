@@ -18,6 +18,7 @@ import { FFmpegClient } from '@shared/infrastructure/clients/ffmpeg.client.js';
 import { LocalStorageClient } from '@shared/infrastructure/clients/local-storage.client.js';
 import { LocalTempStorageClient } from '@shared/infrastructure/clients/local-temp-storage.client.js';
 import { OpenAIClient } from '@shared/infrastructure/clients/openai.client.js';
+import type { ComposeProgressPhase, ComposeStatus } from '@video-processor/shared';
 import { v4 as uuidv4 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -191,6 +192,18 @@ class InMemoryClipRepository implements ClipRepositoryGateway {
   async delete(id: string): Promise<void> {
     this.clips.delete(id);
   }
+
+  async updateComposeStatus(
+    _clipId: string,
+    _status: ComposeStatus,
+    _errorMessage?: string
+  ): Promise<void> {}
+
+  async updateComposeProgress(
+    _clipId: string,
+    _phase: ComposeProgressPhase,
+    _percent: number
+  ): Promise<void> {}
 }
 
 describe.skipIf(!runIntegrationTests)('ExtractClipsUseCase Integration', () => {
