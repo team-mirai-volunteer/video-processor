@@ -89,29 +89,29 @@ export default function HomePage() {
         </p>
       </div>
 
-      {/* 自分で切り抜く方法（折りたたみ） */}
-      <details>
-        <summary className="flex cursor-pointer items-center gap-2 text-lg font-bold">
-          <Scissors className="h-5 w-5" />
-          自分で切り抜き箇所を選びたい方へ
-        </summary>
-        <Card className="mt-4">
-          <CardContent className="space-y-4 pt-6">
-            <ol className="list-decimal space-y-2 pl-5">
-              <li>「切り抜きできる動画一覧はこちら」から動画を選ぶ</li>
-              <li>動画の詳細ページで「処理を開始」ボタンを押す（文字起こしが自動で行われます）</li>
-              <li>文字起こしが完了したら、切り抜きたい箇所を指示して「切り抜き作成」を実行</li>
-              <li>できあがったクリップをダウンロードしてSNSに投稿！</li>
-            </ol>
-            <Button asChild>
-              <Link href="/videos">
-                切り抜きできる動画一覧はこちら
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </details>
+      {/* 自分で切り抜く方法 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Scissors className="h-5 w-5" />
+            自分で切り抜き箇所を選びたい方へ
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ol className="list-decimal space-y-2 pl-5">
+            <li>「切り抜きできる動画一覧はこちら」から動画を選ぶ</li>
+            <li>動画の詳細ページで「処理を開始」ボタンを押す（文字起こしが自動で行われます）</li>
+            <li>文字起こしが完了したら、切り抜きたい箇所を指示して「切り抜き作成」を実行</li>
+            <li>できあがったクリップをダウンロードしてSNSに投稿！</li>
+          </ol>
+          <Button asChild>
+            <Link href="/videos">
+              切り抜きできる動画一覧はこちら
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* フッターリンク */}
       <div className="border-t pt-6 text-center">
