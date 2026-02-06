@@ -12,7 +12,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDate } from '@/lib/utils';
 import type { AllClipSummary, Pagination } from '@video-processor/shared';
-import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Subtitles } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -61,7 +61,7 @@ export function ClipListTable({ clips, pagination }: ClipListTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead>元動画</TableHead>
-              <TableHead>DL</TableHead>
+              <TableHead>アクション</TableHead>
               <TableHead className="min-w-[20ch]">クリップタイトル</TableHead>
               <TableHead>動画長</TableHead>
               <TableHead className="min-w-[20ch] max-w-2xl">切り抜き文章</TableHead>
@@ -77,19 +77,28 @@ export function ClipListTable({ clips, pagination }: ClipListTableProps) {
                   </Link>
                 </TableCell>
                 <TableCell>
-                  {clip.googleDriveUrl ? (
-                    <a
-                      href={clip.googleDriveUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-black rounded hover:bg-gray-800 transition-colors"
+                  <div className="flex items-center gap-1">
+                    <Link
+                      href={`/clips/${clip.id}`}
+                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
                     >
-                      <Download className="h-3 w-3" />
-                      DL
-                    </a>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
+                      <Subtitles className="h-3 w-3" />
+                      字幕をつける
+                    </Link>
+                    {clip.googleDriveUrl ? (
+                      <a
+                        href={clip.googleDriveUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-black rounded hover:bg-gray-800 transition-colors"
+                      >
+                        <Download className="h-3 w-3" />
+                        DL
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <Link href={`/clips/${clip.id}`} className="underline hover:text-primary">
