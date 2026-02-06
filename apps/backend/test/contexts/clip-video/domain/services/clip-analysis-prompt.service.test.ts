@@ -109,9 +109,9 @@ describe('ClipAnalysisPromptService', () => {
       const result = service.parseResponse(response);
 
       expect(result.clips).toHaveLength(1);
-      expect(result.clips[0]!.title).toBe('テストクリップ');
-      expect(result.clips[0]!.startTimeSeconds).toBe(0);
-      expect(result.clips[0]!.endTimeSeconds).toBe(10);
+      expect(result.clips[0]?.title).toBe('テストクリップ');
+      expect(result.clips[0]?.startTimeSeconds).toBe(0);
+      expect(result.clips[0]?.endTimeSeconds).toBe(10);
     });
 
     it('should parse JSON wrapped in markdown code block', () => {
@@ -121,7 +121,7 @@ describe('ClipAnalysisPromptService', () => {
       const result = service.parseResponse(response);
 
       expect(result.clips).toHaveLength(1);
-      expect(result.clips[0]!.title).toBe('テスト');
+      expect(result.clips[0]?.title).toBe('テスト');
     });
 
     it('should parse JSON wrapped in plain code block', () => {
@@ -184,8 +184,8 @@ describe('ClipAnalysisPromptService', () => {
       const result = service.parseResponse(response);
 
       expect(result.clips).toHaveLength(2);
-      expect(result.clips[0]!.title).toBe('Clip 1');
-      expect(result.clips[1]!.title).toBe('Clip 2');
+      expect(result.clips[0]?.title).toBe('Clip 1');
+      expect(result.clips[1]?.title).toBe('Clip 2');
     });
   });
 });

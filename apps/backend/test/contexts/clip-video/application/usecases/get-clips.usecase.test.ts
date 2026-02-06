@@ -85,11 +85,11 @@ describe('GetClipsUseCase', () => {
       const result = await useCase.executeForVideo('video-1');
 
       expect(result.data).toHaveLength(2);
-      expect(result.data[0]!.id).toBe('clip-1');
-      expect(result.data[0]!.title).toBe('Clip clip-1');
-      expect(result.data[0]!.startTimeSeconds).toBe(10);
-      expect(result.data[0]!.endTimeSeconds).toBe(40);
-      expect(result.data[0]!.durationSeconds).toBe(30);
+      expect(result.data[0]?.id).toBe('clip-1');
+      expect(result.data[0]?.title).toBe('Clip clip-1');
+      expect(result.data[0]?.startTimeSeconds).toBe(10);
+      expect(result.data[0]?.endTimeSeconds).toBe(40);
+      expect(result.data[0]?.durationSeconds).toBe(30);
     });
 
     it('should return empty array when video has no clips', async () => {

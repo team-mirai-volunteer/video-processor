@@ -53,8 +53,8 @@ describe('GetAllClipsUseCase', () => {
     const result = await useCase.execute({ page: 1, limit: 10 });
 
     expect(result.data).toHaveLength(2);
-    expect(result.data[0]!.id).toBe('clip-1');
-    expect(result.data[0]!.videoTitle).toBe('Video 1');
+    expect(result.data[0]?.id).toBe('clip-1');
+    expect(result.data[0]?.videoTitle).toBe('Video 1');
     expect(result.pagination).toEqual({
       page: 1,
       limit: 10,
