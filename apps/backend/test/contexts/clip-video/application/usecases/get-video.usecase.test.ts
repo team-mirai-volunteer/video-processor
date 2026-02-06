@@ -141,9 +141,9 @@ describe('GetVideoUseCase', () => {
     expect(result.id).toBe('video-1');
     expect(result.title).toBe('Video video-1');
     expect(result.clips).toHaveLength(1);
-    expect(result.clips[0].id).toBe('clip-1');
+    expect(result.clips[0]!.id).toBe('clip-1');
     expect(result.processingJobs).toHaveLength(1);
-    expect(result.processingJobs[0].id).toBe('job-1');
+    expect(result.processingJobs[0]!.id).toBe('job-1');
     expect(result.transcription).not.toBeNull();
     expect(result.transcription?.id).toBe('transcription-1');
   });
