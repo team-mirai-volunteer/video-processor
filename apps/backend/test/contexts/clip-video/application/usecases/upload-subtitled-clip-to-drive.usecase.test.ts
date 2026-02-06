@@ -15,6 +15,8 @@ describe('UploadSubtitledClipToDriveUseCase', () => {
     findByVideoId: vi.fn(),
     findAllPaginated: vi.fn(),
     delete: vi.fn(),
+    updateComposeStatus: vi.fn(),
+    updateComposeProgress: vi.fn(),
   };
 
   const mockStorage: StorageGateway = {
@@ -69,6 +71,10 @@ describe('UploadSubtitledClipToDriveUseCase', () => {
       subtitledVideoDriveUrl: null,
       clipVideoGcsUri: 'gs://bucket/clips/test.mp4',
       clipVideoGcsExpiresAt: new Date(Date.now() + 3600000),
+      composeStatus: null,
+      composeProgressPhase: null,
+      composeProgressPercent: null,
+      composeErrorMessage: null,
       ...overrides,
     });
   };

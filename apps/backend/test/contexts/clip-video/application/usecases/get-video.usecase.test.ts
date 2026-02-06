@@ -58,6 +58,10 @@ describe('GetVideoUseCase', () => {
       subtitledVideoDriveUrl: null,
       clipVideoGcsUri: null,
       clipVideoGcsExpiresAt: null,
+      composeStatus: null,
+      composeProgressPhase: null,
+      composeProgressPercent: null,
+      composeErrorMessage: null,
     });
 
   const createProcessingJob = (id: string) =>
@@ -101,6 +105,8 @@ describe('GetVideoUseCase', () => {
       findByVideoId: vi.fn().mockResolvedValue([]),
       findAllPaginated: vi.fn(),
       delete: vi.fn(),
+      updateComposeStatus: vi.fn(),
+      updateComposeProgress: vi.fn(),
     };
 
     processingJobRepository = {

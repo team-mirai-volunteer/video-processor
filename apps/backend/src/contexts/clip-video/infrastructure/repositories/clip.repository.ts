@@ -6,7 +6,7 @@ import type {
 import { Clip, type ClipProps } from '@clip-video/domain/models/clip.js';
 import type { PrismaClient } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
-import type { ClipStatus } from '@video-processor/shared';
+import type { ClipStatus, ComposeProgressPhase, ComposeStatus } from '@video-processor/shared';
 
 export class ClipRepository implements ClipRepositoryGateway {
   constructor(private readonly prisma: PrismaClient) {}
@@ -35,6 +35,10 @@ export class ClipRepository implements ClipRepositoryGateway {
         subtitledVideoDriveUrl: props.subtitledVideoDriveUrl,
         clipVideoGcsUri: props.clipVideoGcsUri,
         clipVideoGcsExpiresAt: props.clipVideoGcsExpiresAt,
+        composeStatus: props.composeStatus,
+        composeProgressPhase: props.composeProgressPhase,
+        composeProgressPercent: props.composeProgressPercent,
+        composeErrorMessage: props.composeErrorMessage,
       },
       update: {
         googleDriveFileId: props.googleDriveFileId,
@@ -53,6 +57,10 @@ export class ClipRepository implements ClipRepositoryGateway {
         subtitledVideoDriveUrl: props.subtitledVideoDriveUrl,
         clipVideoGcsUri: props.clipVideoGcsUri,
         clipVideoGcsExpiresAt: props.clipVideoGcsExpiresAt,
+        composeStatus: props.composeStatus,
+        composeProgressPhase: props.composeProgressPhase,
+        composeProgressPercent: props.composeProgressPercent,
+        composeErrorMessage: props.composeErrorMessage,
       },
     });
   }
@@ -87,6 +95,10 @@ export class ClipRepository implements ClipRepositoryGateway {
             subtitledVideoDriveUrl: props.subtitledVideoDriveUrl,
             clipVideoGcsUri: props.clipVideoGcsUri,
             clipVideoGcsExpiresAt: props.clipVideoGcsExpiresAt,
+            composeStatus: props.composeStatus,
+            composeProgressPhase: props.composeProgressPhase,
+            composeProgressPercent: props.composeProgressPercent,
+            composeErrorMessage: props.composeErrorMessage,
           },
           update: {
             googleDriveFileId: props.googleDriveFileId,
@@ -105,6 +117,10 @@ export class ClipRepository implements ClipRepositoryGateway {
             subtitledVideoDriveUrl: props.subtitledVideoDriveUrl,
             clipVideoGcsUri: props.clipVideoGcsUri,
             clipVideoGcsExpiresAt: props.clipVideoGcsExpiresAt,
+            composeStatus: props.composeStatus,
+            composeProgressPhase: props.composeProgressPhase,
+            composeProgressPercent: props.composeProgressPercent,
+            composeErrorMessage: props.composeErrorMessage,
           },
         });
       })
@@ -164,6 +180,38 @@ export class ClipRepository implements ClipRepositoryGateway {
     });
   }
 
+  async updateComposeStatus(
+    clipId: string,
+    status: ComposeStatus,
+    errorMessage?: string
+  ): Promise<void> {
+    await this.prisma.clip.update({
+      where: { id: clipId },
+      data: {
+        composeStatus: status,
+        composeErrorMessage: errorMessage ?? null,
+        composeProgressPhase: status === 'processing' ? null : undefined,
+        composeProgressPercent: status === 'processing' ? null : undefined,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  async updateComposeProgress(
+    clipId: string,
+    phase: ComposeProgressPhase,
+    percent: number
+  ): Promise<void> {
+    await this.prisma.clip.update({
+      where: { id: clipId },
+      data: {
+        composeProgressPhase: phase,
+        composeProgressPercent: Math.round(percent),
+        updatedAt: new Date(),
+      },
+    });
+  }
+
   private toDomain(record: {
     id: string;
     videoId: string;
@@ -184,6 +232,10 @@ export class ClipRepository implements ClipRepositoryGateway {
     subtitledVideoDriveUrl: string | null;
     clipVideoGcsUri: string | null;
     clipVideoGcsExpiresAt: Date | null;
+    composeStatus: string | null;
+    composeProgressPhase: string | null;
+    composeProgressPercent: number | null;
+    composeErrorMessage: string | null;
   }): Clip {
     const props: ClipProps = {
       id: record.id,
@@ -205,6 +257,10 @@ export class ClipRepository implements ClipRepositoryGateway {
       subtitledVideoDriveUrl: record.subtitledVideoDriveUrl,
       clipVideoGcsUri: record.clipVideoGcsUri,
       clipVideoGcsExpiresAt: record.clipVideoGcsExpiresAt,
+      composeStatus: record.composeStatus as ComposeStatus | null,
+      composeProgressPhase: record.composeProgressPhase as ComposeProgressPhase | null,
+      composeProgressPercent: record.composeProgressPercent,
+      composeErrorMessage: record.composeErrorMessage,
     };
     return Clip.fromProps(props);
   }

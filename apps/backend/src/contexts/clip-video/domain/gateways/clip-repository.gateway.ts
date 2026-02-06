@@ -1,3 +1,4 @@
+import type { ComposeProgressPhase, ComposeStatus } from '@video-processor/shared';
 import type { Clip } from '../models/clip.js';
 
 /**
@@ -54,4 +55,18 @@ export interface ClipRepositoryGateway {
    * Delete a clip by ID
    */
   delete(id: string): Promise<void>;
+
+  /**
+   * Update compose status
+   */
+  updateComposeStatus(clipId: string, status: ComposeStatus, errorMessage?: string): Promise<void>;
+
+  /**
+   * Update compose progress
+   */
+  updateComposeProgress(
+    clipId: string,
+    phase: ComposeProgressPhase,
+    percent: number
+  ): Promise<void>;
 }

@@ -73,6 +73,10 @@ export class GetVideoUseCase {
         subtitledVideoDriveUrl: clip.subtitledVideoDriveUrl,
         clipVideoGcsUri: clip.clipVideoGcsUri,
         clipVideoGcsExpiresAt: clip.clipVideoGcsExpiresAt,
+        composeStatus: clip.composeStatus,
+        composeProgressPhase: clip.composeProgressPhase,
+        composeProgressPercent: clip.composeProgressPercent,
+        composeErrorMessage: clip.composeErrorMessage,
       })),
       processingJobs: processingJobs.map((job) => ({
         id: job.id,

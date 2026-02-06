@@ -45,6 +45,10 @@ describe('GenerateClipSubtitlesUseCase', () => {
       subtitledVideoDriveUrl: null,
       clipVideoGcsUri: null,
       clipVideoGcsExpiresAt: null,
+      composeStatus: null,
+      composeProgressPhase: null,
+      composeProgressPercent: null,
+      composeErrorMessage: null,
     });
 
   const createTranscription = () =>
@@ -96,6 +100,8 @@ describe('GenerateClipSubtitlesUseCase', () => {
       findByVideoId: vi.fn(),
       findAllPaginated: vi.fn(),
       delete: vi.fn(),
+      updateComposeStatus: vi.fn(),
+      updateComposeProgress: vi.fn(),
     };
 
     clipSubtitleRepository = {

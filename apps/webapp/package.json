@@ -19,6 +19,7 @@
     "@blocknote/shadcn": "^0.46.2",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-collapsible": "^1.1.12",
+    "@radix-ui/react-progress": "^1.1.8",
     "@radix-ui/react-slot": "^1.1.1",
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.13",

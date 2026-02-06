@@ -59,6 +59,12 @@ model Clip {
   clipVideoGcsUri       String?   @map("clip_video_gcs_uri")
   clipVideoGcsExpiresAt DateTime? @map("clip_video_gcs_expires_at")
 
+  // 字幕合成進捗
+  composeStatus          String?  @map("compose_status")          // idle | processing | completed | failed
+  composeProgressPhase   String?  @map("compose_progress_phase")  // downloading | converting | composing | uploading
+  composeProgressPercent Int?     @map("compose_progress_percent") // 0-100
+  composeErrorMessage    String?  @map("compose_error_message")
+
   video    Video         @relation(fields: [videoId], references: [id], onDelete: Cascade)
   subtitle ClipSubtitle?
 

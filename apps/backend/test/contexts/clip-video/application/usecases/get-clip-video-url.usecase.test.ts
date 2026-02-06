@@ -36,6 +36,10 @@ describe('GetClipVideoUrlUseCase', () => {
       subtitledVideoDriveUrl: null,
       clipVideoGcsUri: null,
       clipVideoGcsExpiresAt: null,
+      composeStatus: null,
+      composeProgressPhase: null,
+      composeProgressPercent: null,
+      composeErrorMessage: null,
       ...overrides,
     });
 
@@ -47,6 +51,8 @@ describe('GetClipVideoUrlUseCase', () => {
       findByVideoId: vi.fn(),
       findAllPaginated: vi.fn(),
       delete: vi.fn(),
+      updateComposeStatus: vi.fn(),
+      updateComposeProgress: vi.fn(),
     };
 
     storageGateway = {

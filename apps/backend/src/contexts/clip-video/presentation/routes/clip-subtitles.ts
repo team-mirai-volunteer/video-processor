@@ -16,7 +16,8 @@ import { GcsClient } from '@shared/infrastructure/clients/gcs.client.js';
 import { GoogleDriveClient } from '@shared/infrastructure/clients/google-drive.client.js';
 import { LocalTempStorageClient } from '@shared/infrastructure/clients/local-temp-storage.client.js';
 import { prisma } from '@shared/infrastructure/database/connection.js';
-import type { UpdateClipSubtitleRequest } from '@video-processor/shared';
+import { logger } from '@shared/infrastructure/logging/logger.js';
+import type { ClipComposeStatusResponse, UpdateClipSubtitleRequest } from '@video-processor/shared';
 import { type Router as ExpressRouter, Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -162,7 +163,7 @@ router.get('/clips/:clipId/video-url', async (req, res, next) => {
 
 /**
  * POST /api/clips/:clipId/compose
- * Compose subtitles onto a clip video
+ * Compose subtitles onto a clip video (async - returns 202 immediately)
  */
 router.post('/clips/:clipId/compose', async (req, res, next) => {
   try {
@@ -197,14 +198,57 @@ router.post('/clips/:clipId/compose', async (req, res, next) => {
     const fontSize = validFontSizes.includes(body.fontSize as (typeof validFontSizes)[number])
       ? (body.fontSize as (typeof validFontSizes)[number])
       : ('small' as const);
-    const result = await composeSubtitledClipUseCase.execute({
-      clipId: clipId ?? '',
-      outputFormat,
-      paddingColor,
-      outlineColor,
-      fontSize,
+
+    // Return immediately with 202 Accepted
+    res.status(202).json({
+      message: 'Composition started',
+      clipId,
     });
-    res.json(result);
+
+    // Execute composition in background (fire and forget)
+    composeSubtitledClipUseCase
+      .execute({
+        clipId: clipId ?? '',
+        outputFormat,
+        paddingColor,
+        outlineColor,
+        fontSize,
+      })
+      .catch((error) => {
+        logger.error('[ClipSubtitlesRoutes] Background composition failed', error as Error, {
+          clipId,
+        });
+      });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/clips/:clipId/compose-status
+ * Get compose progress status for a clip
+ */
+router.get('/clips/:clipId/compose-status', async (req, res, next) => {
+  try {
+    const { clipId } = req.params;
+    const clip = await clipRepository.findById(clipId ?? '');
+
+    if (!clip) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: `Clip ${clipId} not found`,
+      });
+      return;
+    }
+
+    const response: ClipComposeStatusResponse = {
+      composeStatus: clip.composeStatus,
+      composeProgressPhase: clip.composeProgressPhase,
+      composeProgressPercent: clip.composeProgressPercent,
+      composeErrorMessage: clip.composeErrorMessage,
+    };
+
+    res.json(response);
   } catch (error) {
     next(error);
   }

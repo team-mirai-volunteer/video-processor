@@ -52,6 +52,10 @@ describe('GetClipsUseCase', () => {
       subtitledVideoDriveUrl: null,
       clipVideoGcsUri: null,
       clipVideoGcsExpiresAt: null,
+      composeStatus: null,
+      composeProgressPhase: null,
+      composeProgressPercent: null,
+      composeErrorMessage: null,
     });
 
   beforeEach(() => {
@@ -70,6 +74,8 @@ describe('GetClipsUseCase', () => {
       findByVideoId: vi.fn().mockResolvedValue([]),
       findAllPaginated: vi.fn(),
       delete: vi.fn(),
+      updateComposeStatus: vi.fn(),
+      updateComposeProgress: vi.fn(),
     };
 
     useCase = new GetClipsUseCase({ videoRepository, clipRepository });

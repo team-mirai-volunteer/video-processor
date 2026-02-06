@@ -1,5 +1,5 @@
 import { type Result, err, ok } from '@shared/domain/types/result.js';
-import type { ClipStatus } from '@video-processor/shared';
+import type { ClipStatus, ComposeProgressPhase, ComposeStatus } from '@video-processor/shared';
 
 export type ClipError =
   | { type: 'INVALID_TIME_RANGE'; message: string }
@@ -27,6 +27,11 @@ export interface ClipProps {
   // 動画プレイヤー用キャッシュ
   clipVideoGcsUri: string | null;
   clipVideoGcsExpiresAt: Date | null;
+  // 字幕合成進捗
+  composeStatus: ComposeStatus | null;
+  composeProgressPhase: ComposeProgressPhase | null;
+  composeProgressPercent: number | null;
+  composeErrorMessage: string | null;
 }
 
 export interface CreateClipParams {
@@ -62,6 +67,11 @@ export class Clip {
   // 動画プレイヤー用キャッシュ
   readonly clipVideoGcsUri: string | null;
   readonly clipVideoGcsExpiresAt: Date | null;
+  // 字幕合成進捗
+  readonly composeStatus: ComposeStatus | null;
+  readonly composeProgressPhase: ComposeProgressPhase | null;
+  readonly composeProgressPercent: number | null;
+  readonly composeErrorMessage: string | null;
 
   private constructor(props: ClipProps) {
     this.id = props.id;
@@ -83,6 +93,10 @@ export class Clip {
     this.subtitledVideoDriveUrl = props.subtitledVideoDriveUrl;
     this.clipVideoGcsUri = props.clipVideoGcsUri;
     this.clipVideoGcsExpiresAt = props.clipVideoGcsExpiresAt;
+    this.composeStatus = props.composeStatus;
+    this.composeProgressPhase = props.composeProgressPhase;
+    this.composeProgressPercent = props.composeProgressPercent;
+    this.composeErrorMessage = props.composeErrorMessage;
   }
 
   /**
@@ -130,6 +144,10 @@ export class Clip {
         subtitledVideoDriveUrl: null,
         clipVideoGcsUri: null,
         clipVideoGcsExpiresAt: null,
+        composeStatus: null,
+        composeProgressPhase: null,
+        composeProgressPercent: null,
+        composeErrorMessage: null,
       })
     );
   }
@@ -172,6 +190,10 @@ export class Clip {
         subtitledVideoDriveUrl: null,
         clipVideoGcsUri: null,
         clipVideoGcsExpiresAt: null,
+        composeStatus: null,
+        composeProgressPhase: null,
+        composeProgressPercent: null,
+        composeErrorMessage: null,
       })
     );
   }
@@ -278,6 +300,66 @@ export class Clip {
       subtitledVideoDriveUrl: this.subtitledVideoDriveUrl,
       clipVideoGcsUri: this.clipVideoGcsUri,
       clipVideoGcsExpiresAt: this.clipVideoGcsExpiresAt,
+      composeStatus: this.composeStatus,
+      composeProgressPhase: this.composeProgressPhase,
+      composeProgressPercent: this.composeProgressPercent,
+      composeErrorMessage: this.composeErrorMessage,
     };
+  }
+
+  /**
+   * Start compose processing
+   */
+  startCompose(): Clip {
+    return new Clip({
+      ...this.toProps(),
+      composeStatus: 'processing',
+      composeProgressPhase: null,
+      composeProgressPercent: null,
+      composeErrorMessage: null,
+      updatedAt: new Date(),
+    });
+  }
+
+  /**
+   * Update compose progress
+   */
+  withComposeProgress(phase: ComposeProgressPhase, percent: number): Clip {
+    return new Clip({
+      ...this.toProps(),
+      composeProgressPhase: phase,
+      composeProgressPercent: Math.round(percent),
+      updatedAt: new Date(),
+    });
+  }
+
+  /**
+   * Complete compose processing
+   */
+  completeCompose(gcsUri: string, url: string): Clip {
+    return new Clip({
+      ...this.toProps(),
+      composeStatus: 'completed',
+      composeProgressPhase: null,
+      composeProgressPercent: null,
+      composeErrorMessage: null,
+      subtitledVideoGcsUri: gcsUri,
+      subtitledVideoUrl: url,
+      updatedAt: new Date(),
+    });
+  }
+
+  /**
+   * Fail compose processing
+   */
+  failCompose(errorMessage: string): Clip {
+    return new Clip({
+      ...this.toProps(),
+      composeStatus: 'failed',
+      composeProgressPhase: null,
+      composeProgressPercent: null,
+      composeErrorMessage: errorMessage,
+      updatedAt: new Date(),
+    });
   }
 }
