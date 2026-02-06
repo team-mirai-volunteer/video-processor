@@ -28,7 +28,7 @@ function Header() {
             href="/videos"
             className="text-xs sm:text-sm font-bold hover:text-primary whitespace-nowrap"
           >
-            動画から作る
+            動画から切り抜く
           </Link>
         </nav>
       </div>
