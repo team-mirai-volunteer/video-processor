@@ -4,6 +4,16 @@
 export type ClipStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 /**
+ * Compose status for subtitled video
+ */
+export type ComposeStatus = 'idle' | 'processing' | 'completed' | 'failed';
+
+/**
+ * Progress phase for subtitle composition
+ */
+export type ComposeProgressPhase = 'downloading' | 'converting' | 'composing' | 'uploading';
+
+/**
  * Clip entity type
  * Represents a short video clip extracted from the original video
  */
@@ -29,6 +39,11 @@ export interface Clip {
   // 動画プレイヤー用キャッシュ
   clipVideoGcsUri: string | null;
   clipVideoGcsExpiresAt: Date | null;
+  // 字幕合成進捗
+  composeStatus: ComposeStatus | null;
+  composeProgressPhase: ComposeProgressPhase | null;
+  composeProgressPercent: number | null;
+  composeErrorMessage: string | null;
 }
 
 /**
@@ -61,4 +76,14 @@ export interface ClipExtractionData {
  */
 export interface ClipExtractionResponse {
   clips: ClipExtractionData[];
+}
+
+/**
+ * Response for compose status endpoint
+ */
+export interface ClipComposeStatusResponse {
+  composeStatus: ComposeStatus | null;
+  composeProgressPhase: ComposeProgressPhase | null;
+  composeProgressPercent: number | null;
+  composeErrorMessage: string | null;
 }

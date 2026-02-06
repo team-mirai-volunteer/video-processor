@@ -34,6 +34,8 @@ describe('ExtractClipsUseCase', () => {
     findByVideoId: vi.fn(),
     findAllPaginated: vi.fn(),
     delete: vi.fn(),
+    updateComposeStatus: vi.fn(),
+    updateComposeProgress: vi.fn(),
   };
 
   const mockTranscriptionRepository: TranscriptionRepositoryGateway = {

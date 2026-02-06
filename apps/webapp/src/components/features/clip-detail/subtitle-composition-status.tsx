@@ -4,14 +4,18 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import { getClipComposeStatus } from '@/server/presentation/clip-video/actions/composeSubtitledClip';
 import type {
+  ComposeProgressPhase,
+  ComposeStatus,
   OutlineColor,
   OutputFormat,
   PaddingColor,
   SubtitleFontSize,
 } from '@video-processor/shared';
 import { CheckCircle, Download, ExternalLink, Loader2, RefreshCw, Video } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 function useElapsedTime(isRunning: boolean): number {
   const [elapsed, setElapsed] = useState(0);
@@ -42,9 +46,25 @@ function formatElapsed(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+function getPhaseLabel(phase: ComposeProgressPhase | null): string {
+  switch (phase) {
+    case 'downloading':
+      return '動画をダウンロード中...';
+    case 'converting':
+      return 'フォーマット変換中...';
+    case 'composing':
+      return '字幕を合成中...';
+    case 'uploading':
+      return 'アップロード中...';
+    default:
+      return '処理中...';
+  }
+}
+
 type CompositionStep = 'idle' | 'composing' | 'composed' | 'uploading' | 'uploaded';
 
 interface SubtitleCompositionStatusProps {
+  clipId: string;
   step: CompositionStep;
   subtitledVideoUrl?: string | null;
   subtitledVideoDriveUrl?: string | null;
@@ -55,28 +75,75 @@ interface SubtitleCompositionStatusProps {
     fontSize?: SubtitleFontSize
   ) => void;
   onUpload?: () => void;
+  onComposeComplete?: () => void;
   isComposing?: boolean;
   isUploading?: boolean;
   canCompose?: boolean;
+  initialComposeStatus?: ComposeStatus | null;
+  initialProgressPhase?: ComposeProgressPhase | null;
+  initialProgressPercent?: number | null;
 }
 
 export function SubtitleCompositionStatus({
+  clipId,
   step,
   subtitledVideoUrl,
   subtitledVideoDriveUrl,
   onCompose,
   onUpload,
+  onComposeComplete,
   isComposing = false,
   isUploading = false,
   canCompose = false,
+  initialComposeStatus = null,
+  initialProgressPhase = null,
+  initialProgressPercent = null,
 }: SubtitleCompositionStatusProps) {
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('original');
   const [paddingColor, setPaddingColor] = useState<PaddingColor>('#000000');
   const [outlineColor, setOutlineColor] = useState<OutlineColor>('#30bca7');
   const [fontSize, setFontSize] = useState<SubtitleFontSize>('large');
 
-  const composeElapsed = useElapsedTime(isComposing);
+  // Progress polling state
+  const [composeStatus, setComposeStatus] = useState<ComposeStatus | null>(initialComposeStatus);
+  const [progressPhase, setProgressPhase] = useState<ComposeProgressPhase | null>(
+    initialProgressPhase
+  );
+  const [progressPercent, setProgressPercent] = useState<number | null>(initialProgressPercent);
+  const [composeError, setComposeError] = useState<string | null>(null);
+
+  const isPolling = composeStatus === 'processing' || isComposing;
+
+  const composeElapsed = useElapsedTime(isPolling);
   const uploadElapsed = useElapsedTime(isUploading);
+
+  // Poll for compose status when processing
+  const pollComposeStatus = useCallback(async () => {
+    try {
+      const status = await getClipComposeStatus(clipId);
+      setComposeStatus(status.composeStatus);
+      setProgressPhase(status.composeProgressPhase);
+      setProgressPercent(status.composeProgressPercent);
+      setComposeError(status.composeErrorMessage);
+
+      if (status.composeStatus === 'completed') {
+        onComposeComplete?.();
+      }
+    } catch (error) {
+      console.error('Failed to fetch compose status:', error);
+    }
+  }, [clipId, onComposeComplete]);
+
+  useEffect(() => {
+    if (!isPolling) return;
+
+    // Initial poll
+    pollComposeStatus();
+
+    // Poll every 2 seconds
+    const interval = setInterval(pollComposeStatus, 2000);
+    return () => clearInterval(interval);
+  }, [isPolling, pollComposeStatus]);
 
   const showComposeButton = step === 'idle' && canCompose;
   const showUploadButton = (step === 'composed' || subtitledVideoUrl) && !subtitledVideoDriveUrl;
@@ -103,14 +170,22 @@ export function SubtitleCompositionStatus({
       <CardContent className="space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <Badge
-            variant={hasComposedVideo ? 'default' : 'secondary'}
+            variant={
+              hasComposedVideo
+                ? 'default'
+                : composeStatus === 'failed'
+                  ? 'destructive'
+                  : 'secondary'
+            }
             className="flex items-center gap-1"
           >
-            {isComposing ? (
+            {isPolling ? (
               <>
                 <Loader2 className="h-3 w-3 animate-spin" />
                 合成中...
               </>
+            ) : composeStatus === 'failed' ? (
+              'エラー'
             ) : hasComposedVideo ? (
               <>
                 <CheckCircle className="h-3 w-3" />
@@ -158,12 +233,12 @@ export function SubtitleCompositionStatus({
                   key={value}
                   type="button"
                   onClick={() => setOutputFormat(value)}
-                  disabled={isComposing}
+                  disabled={isPolling}
                   className={`px-3 py-1.5 text-sm rounded-md transition-all ${
                     outputFormat === value
                       ? 'bg-background text-foreground shadow-sm font-medium'
                       : 'text-muted-foreground hover:text-foreground'
-                  } ${isComposing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  } ${isPolling ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 >
                   {label}
                 </button>
@@ -186,12 +261,12 @@ export function SubtitleCompositionStatus({
                   key={value}
                   type="button"
                   onClick={() => setFontSize(value)}
-                  disabled={isComposing}
+                  disabled={isPolling}
                   className={`px-3 py-1.5 text-sm rounded-md transition-all ${
                     fontSize === value
                       ? 'bg-background text-foreground shadow-sm font-medium'
                       : 'text-muted-foreground hover:text-foreground'
-                  } ${isComposing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  } ${isPolling ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 >
                   {label}
                 </button>
@@ -214,13 +289,13 @@ export function SubtitleCompositionStatus({
                 key={value}
                 type="button"
                 onClick={() => setOutlineColor(value)}
-                disabled={isComposing}
+                disabled={isPolling}
                 title={label}
                 className={`w-8 h-8 rounded-full border-2 transition-all ${
                   outlineColor === value
                     ? 'border-primary ring-2 ring-primary/30 scale-110'
                     : 'border-gray-300 hover:scale-105'
-                } ${isComposing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                } ${isPolling ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 style={{ backgroundColor: value }}
               />
             ))}
@@ -243,13 +318,13 @@ export function SubtitleCompositionStatus({
                   key={value}
                   type="button"
                   onClick={() => setPaddingColor(value)}
-                  disabled={isComposing}
+                  disabled={isPolling}
                   title={label}
                   className={`w-8 h-8 rounded-full border-2 transition-all ${
                     paddingColor === value
                       ? 'border-primary ring-2 ring-primary/30 scale-110'
                       : 'border-gray-300 hover:scale-105'
-                  } ${isComposing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  } ${isPolling ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                   style={{ backgroundColor: value }}
                 />
               ))}
@@ -257,9 +332,32 @@ export function SubtitleCompositionStatus({
           )}
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          長い動画では合成に1〜2分かかります。合成中はページを離れないでください。
-        </p>
+        {/* Progress display during composition */}
+        {isPolling && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">{getPhaseLabel(progressPhase)}</span>
+              <span className="font-medium">{progressPercent ?? 0}%</span>
+            </div>
+            <Progress value={progressPercent ?? 0} className="h-2" />
+            <p className="text-xs text-muted-foreground">
+              経過時間: {formatElapsed(composeElapsed)}
+            </p>
+          </div>
+        )}
+
+        {/* Error display */}
+        {composeStatus === 'failed' && composeError && (
+          <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+            {composeError}
+          </div>
+        )}
+
+        {!isPolling && (
+          <p className="text-xs text-muted-foreground">
+            長い動画では合成に1〜2分かかります。バックグラウンドで処理されます。
+          </p>
+        )}
 
         <div className="flex flex-wrap gap-2">
           {showComposeButton && (
@@ -267,12 +365,12 @@ export function SubtitleCompositionStatus({
               variant="outline"
               size="sm"
               onClick={handleCompose}
-              disabled={isComposing || !canCompose}
+              disabled={isPolling || !canCompose}
             >
-              {isComposing ? (
+              {isPolling ? (
                 <>
                   <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                  合成中... {formatElapsed(composeElapsed)}
+                  合成中...
                 </>
               ) : (
                 '動画を合成'
@@ -282,11 +380,11 @@ export function SubtitleCompositionStatus({
 
           {hasComposedVideo && subtitledVideoUrl && (
             <>
-              <Button variant="outline" size="sm" onClick={handleCompose} disabled={isComposing}>
-                {isComposing ? (
+              <Button variant="outline" size="sm" onClick={handleCompose} disabled={isPolling}>
+                {isPolling ? (
                   <>
                     <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                    再合成中... {formatElapsed(composeElapsed)}
+                    再合成中...
                   </>
                 ) : (
                   <>

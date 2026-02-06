@@ -72,6 +72,10 @@ describe.skipIf(!runIntegrationTests)('ClipRepository Integration', () => {
       subtitledVideoDriveUrl: null,
       clipVideoGcsUri: null,
       clipVideoGcsExpiresAt: null,
+      composeStatus: null,
+      composeProgressPhase: null,
+      composeProgressPercent: null,
+      composeErrorMessage: null,
     });
 
   describe('delete', () => {

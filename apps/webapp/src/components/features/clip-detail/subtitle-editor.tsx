@@ -29,6 +29,7 @@ interface SubtitleEditorProps {
   subtitledVideoDriveUrl?: string | null;
   onSeek?: (timeSeconds: number) => void;
   onSubtitleUpdate?: (subtitle: ClipSubtitle) => void;
+  onComposeComplete?: () => void;
 }
 
 type MessageType = 'success' | 'error' | 'warning';
@@ -46,12 +47,13 @@ export function SubtitleEditor({
   subtitledVideoDriveUrl: initialSubtitledVideoDriveUrl,
   onSeek,
   onSubtitleUpdate,
+  onComposeComplete,
 }: SubtitleEditorProps) {
   const [subtitle, setSubtitle] = useState<ClipSubtitle | null>(initialSubtitle);
   const [editedSegments, setEditedSegments] = useState<ClipSubtitleSegment[]>(
     initialSubtitle?.segments ?? []
   );
-  const [subtitledVideoUrl, setSubtitledVideoUrl] = useState<string | null | undefined>(
+  const [subtitledVideoUrl, _setSubtitledVideoUrl] = useState<string | null | undefined>(
     initialSubtitledVideoUrl
   );
   const [subtitledVideoDriveUrl, setSubtitledVideoDriveUrl] = useState<string | null | undefined>(
@@ -175,25 +177,30 @@ export function SubtitleEditor({
       setIsComposing(true);
       setMessage(null);
       try {
-        const result = await composeSubtitledClip(clipId, {
+        await composeSubtitledClip(clipId, {
           outputFormat,
           paddingColor,
           outlineColor,
           fontSize,
         });
-        setSubtitledVideoUrl(result.subtitledVideoUrl);
-        showMessage('success', '動画の合成に成功しました');
+        // 非同期処理開始 - ポーリングで進捗を監視
+        showMessage('success', '動画合成を開始しました');
       } catch (error) {
         showMessage(
           'error',
-          `動画合成に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`
+          `動画合成の開始に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`
         );
-      } finally {
         setIsComposing(false);
       }
     },
     [clipId, subtitle?.status, showMessage]
   );
+
+  const handleComposeComplete = useCallback(() => {
+    setIsComposing(false);
+    showMessage('success', '動画の合成が完了しました');
+    onComposeComplete?.();
+  }, [showMessage, onComposeComplete]);
 
   const handleUpload = useCallback(async () => {
     setIsUploading(true);
@@ -376,11 +383,13 @@ export function SubtitleEditor({
 
       {subtitle?.status === 'confirmed' && (
         <SubtitleCompositionStatus
+          clipId={clipId}
           step={compositionStep}
           subtitledVideoUrl={subtitledVideoUrl}
           subtitledVideoDriveUrl={subtitledVideoDriveUrl}
           onCompose={handleCompose}
           onUpload={handleUpload}
+          onComposeComplete={handleComposeComplete}
           isComposing={isComposing}
           isUploading={isUploading}
           canCompose={canCompose}

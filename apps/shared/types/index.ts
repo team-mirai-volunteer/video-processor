@@ -12,10 +12,13 @@ export type {
 // Clip types
 export type {
   Clip,
+  ClipComposeStatusResponse,
   ClipExtractionData,
   ClipExtractionResponse,
   ClipStatus,
   ClipSummary,
+  ComposeProgressPhase,
+  ComposeStatus,
 } from './clip.js';
 
 // ClipSubtitle types

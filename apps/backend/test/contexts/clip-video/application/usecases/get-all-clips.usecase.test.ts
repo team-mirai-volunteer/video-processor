@@ -28,6 +28,10 @@ describe('GetAllClipsUseCase', () => {
       subtitledVideoDriveUrl: null,
       clipVideoGcsUri: null,
       clipVideoGcsExpiresAt: null,
+      composeStatus: null,
+      composeProgressPhase: null,
+      composeProgressPercent: null,
+      composeErrorMessage: null,
     });
 
   beforeEach(() => {
@@ -44,6 +48,8 @@ describe('GetAllClipsUseCase', () => {
         total: 2,
       }),
       delete: vi.fn(),
+      updateComposeStatus: vi.fn(),
+      updateComposeProgress: vi.fn(),
     };
 
     useCase = new GetAllClipsUseCase({ clipRepository });
