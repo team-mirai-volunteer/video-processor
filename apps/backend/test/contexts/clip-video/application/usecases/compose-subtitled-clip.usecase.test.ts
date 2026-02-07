@@ -28,6 +28,7 @@ describe('ComposeSubtitledClipUseCase', () => {
   };
 
   const mockClipSubtitleComposer: ClipSubtitleComposerGateway = {
+    getVideoDimensions: vi.fn(),
     compose: vi.fn(),
   };
 
@@ -37,6 +38,7 @@ describe('ComposeSubtitledClipUseCase', () => {
     uploadFromStreamWithProgress: vi.fn(),
     download: vi.fn(),
     downloadAsStream: vi.fn(),
+    getFileSize: vi.fn(),
     exists: vi.fn(),
     getSignedUrl: vi.fn(),
   };

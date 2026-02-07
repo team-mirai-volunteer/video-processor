@@ -37,10 +37,20 @@ export function ClipCard({ clip }: ClipCardProps) {
                 <Clock className="h-3 w-3" />
                 {formatDuration(clip.startTimeSeconds)} - {formatDuration(clip.endTimeSeconds)}
               </span>
-              <span>({formatDuration(clip.durationSeconds)})</span>
+              <span className="font-semibold text-foreground">
+                {formatDuration(clip.durationSeconds)}
+              </span>
             </CardDescription>
           </div>
-          <Badge variant={config.variant}>{config.label}</Badge>
+          <div className="flex items-center gap-2">
+            {clip.subtitledVideoDriveUrl && (
+              <Badge variant="outline" className="gap-1">
+                <Subtitles className="h-3 w-3" />
+                字幕付き
+              </Badge>
+            )}
+            <Badge variant={config.variant}>{config.label}</Badge>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

@@ -39,6 +39,7 @@ export class GetAllClipsUseCase {
         videoId: clip.videoId,
         videoTitle,
         durationSeconds: clip.durationSeconds,
+        hasSubtitledVideo: clip.subtitledVideoDriveUrl !== null,
         createdAt: clip.createdAt,
       })),
       pagination: {

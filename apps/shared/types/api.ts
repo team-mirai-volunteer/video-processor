@@ -111,6 +111,7 @@ export interface AllClipSummary {
   videoId: string;
   videoTitle: string | null;
   durationSeconds: number;
+  hasSubtitledVideo: boolean;
   createdAt: Date;
 }
 

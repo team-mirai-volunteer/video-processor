@@ -73,6 +73,13 @@ export interface TempStorageGateway {
   downloadAsStream(gcsUri: string): NodeJS.ReadableStream;
 
   /**
+   * Get the file size in bytes
+   * @param gcsUri GCS URI of the file
+   * @returns File size in bytes
+   */
+  getFileSize(gcsUri: string): Promise<number>;
+
+  /**
    * Check if video exists in temporary storage
    * @param gcsUri GCS URI to check
    */

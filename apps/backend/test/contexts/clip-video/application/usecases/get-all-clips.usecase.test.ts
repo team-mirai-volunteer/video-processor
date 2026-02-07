@@ -133,6 +133,7 @@ describe('GetAllClipsUseCase', () => {
         videoId: 'video-1',
         videoTitle: 'Video 1',
         durationSeconds: 30,
+        hasSubtitledVideo: false,
       })
     );
   });
