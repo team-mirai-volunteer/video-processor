@@ -1,5 +1,4 @@
 import { ClipListTable } from '@/components/features/clip-list/clip-list-table';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { loadAllClips } from '@/server/presentation/clip-video/loaders/loadAllClips';
 
 export const dynamic = 'force-dynamic';
@@ -24,15 +23,7 @@ export default async function ClipsPage({ searchParams }: ClipsPageProps) {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>全クリップ</CardTitle>
-          <CardDescription>登録された動画から生成されたクリップの一覧です</CardDescription>
-        </CardHeader>
-        <CardContent className="px-0">
-          <ClipListTable clips={response.data} pagination={response.pagination} />
-        </CardContent>
-      </Card>
+      <ClipListTable clips={response.data} pagination={response.pagination} />
     </div>
   );
 }
