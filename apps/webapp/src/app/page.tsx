@@ -1,11 +1,76 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, Github, Heart, ListOrdered, Scissors, Share2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  Github,
+  Heart,
+  ListOrdered,
+  Scissors,
+  Share2,
+} from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 
 export default function HomePage() {
   return (
     <div className="mx-auto max-w-2xl space-y-8">
+      {/* 選挙活動注意バナー */}
+      <div className="overflow-hidden rounded-lg">
+        <Image
+          src="/election_caution.png"
+          alt="投票日当日は選挙活動は禁止です！選挙活動は選挙前日23:59までにお願いします"
+          width={800}
+          height={600}
+          className="w-full"
+          priority
+        />
+      </div>
+
+      {/* 投票日当日の禁止事項 */}
+      <div className="rounded-lg border-2 border-red-500 bg-red-50 p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <AlertTriangle className="h-6 w-6 text-red-600" />
+          <h2 className="text-lg font-bold text-red-700">投票日当日にやってはいけないこと</h2>
+        </div>
+        <ul className="space-y-2 text-sm text-red-800">
+          <li className="flex items-start gap-2">
+            <span className="font-bold text-red-600">×</span>
+            <span>
+              <strong>SNSでの呼びかけNG</strong>
+              ：「●●候補をお願いします」「●●党に投票しよう」などの投稿はできません
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="font-bold text-red-600">×</span>
+            <span>
+              <strong>いいね・シェア・リポストNG</strong>
+              ：過去の投稿であっても、選挙日当日に反応することは禁止されています
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="font-bold text-red-600">×</span>
+            <span>
+              <strong>プロフィールの更新NG</strong>
+              ：選挙運動に関するウェブサイトやSNSプロフィールの更新もできません
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="font-bold text-red-600">×</span>
+            <span>
+              <strong>特定候補を想起させる投稿NG</strong>
+              ：「〇〇候補に投票しました」もNG（「選挙に行こう」のみOK）
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="font-bold text-red-600">×</span>
+            <span>
+              <strong>ポスター・ビラ配布NG</strong>：貼り直し作業も厳禁です
+            </span>
+          </li>
+        </ul>
+      </div>
+
       {/* ヒーローセクション */}
       <div className="space-y-3">
         <h1 className="text-3xl font-bold">あなたの切り抜き動画で、チームみらいを届けよう！</h1>
