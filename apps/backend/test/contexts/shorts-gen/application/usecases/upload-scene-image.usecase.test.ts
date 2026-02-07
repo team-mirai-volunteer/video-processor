@@ -84,6 +84,7 @@ describe('UploadSceneImageUseCase', () => {
       }),
       download: vi.fn().mockResolvedValue(Buffer.from('')),
       downloadAsStream: vi.fn(),
+      getFileSize: vi.fn().mockResolvedValue(0),
       exists: vi.fn().mockResolvedValue(false),
       getSignedUrl: vi.fn().mockResolvedValue('https://storage.example.com/signed-url?token=abc'),
     };

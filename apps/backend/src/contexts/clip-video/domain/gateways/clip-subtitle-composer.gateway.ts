@@ -58,6 +58,8 @@ export interface ClipSubtitleComposeParams {
   style?: SubtitleStyle;
   /** 字幕フォントサイズ（省略時は 'medium'） */
   fontSize?: SubtitleFontSize;
+  /** 進捗コールバック（0-100の割合で呼ばれる） */
+  onProgress?: (percent: number) => void;
   /** フォーマット変換（指定時はscale+pad+drawtextを1パスで実行） */
   formatConversion?: FormatConversionParams;
 }
@@ -73,10 +75,25 @@ export interface ClipSubtitleComposeResult {
 }
 
 /**
+ * 動画の寸法情報
+ */
+export interface VideoDimensions {
+  width: number;
+  height: number;
+}
+
+/**
  * ClipSubtitle Composer Gateway
  * クリップ動画に字幕を焼き込む処理を担当するインターフェース
  */
 export interface ClipSubtitleComposerGateway {
+  /**
+   * 動画の寸法を取得する
+   * @param videoPath 動画ファイルのパス
+   * @returns 動画の幅と高さ
+   */
+  getVideoDimensions(videoPath: string): Promise<VideoDimensions>;
+
   /**
    * クリップ動画に字幕を合成する
    * @param params 合成パラメータ
