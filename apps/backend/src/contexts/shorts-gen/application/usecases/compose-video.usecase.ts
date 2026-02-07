@@ -161,6 +161,9 @@ export class ComposeVideoUseCase {
       // 3. Create temp directory for downloads and output
       tempDir = await this.localFileGateway.createTempDir('compose-video');
 
+      // === Phase: preparing (0-10%) ===
+      await this.composedVideoRepository.updateProgress(composedVideo.id, 'preparing', 0);
+
       // 4. Fetch project for dimensions
       const project = await this.projectRepository.findById(projectId);
       if (!project) {
@@ -170,6 +173,8 @@ export class ComposeVideoUseCase {
         projectId: project.id,
         resolution: `${project.resolutionWidth}x${project.resolutionHeight}`,
       });
+
+      await this.composedVideoRepository.updateProgress(composedVideo.id, 'preparing', 3);
 
       // 4. Fetch scenes by scriptId (ordered)
       const scenes = await this.sceneRepository.findByScriptId(scriptId);
@@ -183,12 +188,21 @@ export class ComposeVideoUseCase {
       const allAssets = await this.sceneAssetRepository.findBySceneIds(sceneIds);
       log.info('Found assets', { count: allAssets.length });
 
+      await this.composedVideoRepository.updateProgress(composedVideo.id, 'preparing', 10);
+
       // Group assets by scene
       const scenesWithAssets = this.groupAssetsWithScenes(scenes, allAssets);
 
+      // === Phase: downloading (10-30%) ===
+      await this.composedVideoRepository.updateProgress(composedVideo.id, 'downloading', 10);
+
       // 7. Build ComposeSceneInput for each scene (downloads GCS files to tempDir)
       const composeScenes: ComposeSceneInput[] = [];
-      for (const { scene, voiceAsset, subtitleAssets, backgroundImageAsset } of scenesWithAssets) {
+      const totalScenes = scenesWithAssets.length;
+      for (let i = 0; i < totalScenes; i++) {
+        const sceneWithAssets = scenesWithAssets[i];
+        if (!sceneWithAssets) continue;
+        const { scene, voiceAsset, subtitleAssets, backgroundImageAsset } = sceneWithAssets;
         const sceneInput = await this.buildComposeSceneInput(
           scene,
           voiceAsset,
@@ -197,6 +211,14 @@ export class ComposeVideoUseCase {
           tempDir
         );
         composeScenes.push(sceneInput);
+
+        // Update progress: 10-28% proportionally across scenes
+        const downloadPercent = 10 + Math.round(((i + 1) / totalScenes) * 18);
+        await this.composedVideoRepository.updateProgress(
+          composedVideo.id,
+          'downloading',
+          downloadPercent
+        );
       }
       log.info('Built compose scene inputs', { count: composeScenes.length });
 
@@ -216,7 +238,12 @@ export class ComposeVideoUseCase {
         log.info('Resolved BGM path', { bgmKey: effectiveBgmKey, bgmPath });
       }
 
+      await this.composedVideoRepository.updateProgress(composedVideo.id, 'downloading', 30);
+
       const outputPath = this.localFileGateway.join(tempDir, `composed_${composedVideo.id}.mp4`);
+
+      // === Phase: composing (30-90%) ===
+      await this.composedVideoRepository.updateProgress(composedVideo.id, 'composing', 30);
 
       // 9. Call VideoComposeGateway
       log.info('Starting FFmpeg composition...', { outputPath });
@@ -235,6 +262,11 @@ export class ComposeVideoUseCase {
       const { durationSeconds, fileSizeBytes } = composeResult.value;
       log.info('FFmpeg composition completed', { durationSeconds, fileSizeBytes });
 
+      await this.composedVideoRepository.updateProgress(composedVideo.id, 'composing', 90);
+
+      // === Phase: uploading (90-100%) ===
+      await this.composedVideoRepository.updateProgress(composedVideo.id, 'uploading', 90);
+
       // 10. Upload to temp storage (GCS)
       log.info('Uploading composed video to storage...');
       const videoBuffer = await this.localFileGateway.readFile(outputPath);
@@ -244,6 +276,8 @@ export class ComposeVideoUseCase {
       });
       const fileUrl = uploadResult.gcsUri;
       log.info('Uploaded to storage', { fileUrl, expiresAt: uploadResult.expiresAt });
+
+      await this.composedVideoRepository.updateProgress(composedVideo.id, 'uploading', 100);
 
       // 11. Update composed video to completed
       const completeResult = composedVideo.complete(fileUrl, durationSeconds);

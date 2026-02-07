@@ -30,10 +30,19 @@ function getStatusBadge(status: string) {
   }
 }
 
+const PHASE_LABELS: Record<string, string> = {
+  preparing: '準備中',
+  downloading: 'アセットダウンロード中',
+  composing: '動画合成中',
+  uploading: 'アップロード中',
+};
+
 export function VideoPreview({
   videoUrl,
   durationSeconds,
   status,
+  progressPhase,
+  progressPercent,
   errorMessage,
 }: VideoPreviewProps) {
   const isCompleted = status === 'completed' && videoUrl;
@@ -87,9 +96,20 @@ export function VideoPreview({
           </div>
         </div>
       ) : status === 'processing' || status === 'pending' ? (
-        <div className="rounded-lg border bg-muted/50 aspect-[9/16] max-w-[280px] mx-auto flex flex-col items-center justify-center gap-3">
+        <div className="rounded-lg border bg-muted/50 aspect-[9/16] max-w-[280px] mx-auto flex flex-col items-center justify-center gap-3 px-6">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
-          <span className="text-sm text-muted-foreground">動画を合成中...</span>
+          <span className="text-sm text-muted-foreground">
+            {progressPhase ? PHASE_LABELS[progressPhase] || progressPhase : '動画を合成中...'}
+            {progressPercent != null && ` (${progressPercent}%)`}
+          </span>
+          {progressPercent != null && (
+            <div className="w-full bg-muted rounded-full h-2">
+              <div
+                className="bg-primary h-2 rounded-full transition-all duration-500"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          )}
         </div>
       ) : (
         <div className="rounded-lg border bg-muted/50 aspect-[9/16] max-w-[280px] mx-auto flex flex-col items-center justify-center gap-3">

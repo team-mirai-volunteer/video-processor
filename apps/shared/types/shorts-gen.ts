@@ -99,6 +99,7 @@ export interface GetShortsPlanningResponse {
 
 // ComposedVideo types
 export type ComposedVideoStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type ComposedVideoProgressPhase = 'preparing' | 'downloading' | 'composing' | 'uploading';
 
 export interface ComposedVideo {
   id: string;
@@ -107,6 +108,8 @@ export interface ComposedVideo {
   fileUrl: string | null;
   durationSeconds: number | null;
   status: ComposedVideoStatus;
+  progressPhase: ComposedVideoProgressPhase | null;
+  progressPercent: number | null;
   errorMessage: string | null;
   bgmKey: string | null;
   createdAt: string;
@@ -138,6 +141,8 @@ export interface GetComposedVideoResponse {
   fileUrl: string | null;
   durationSeconds: number | null;
   status: string;
+  progressPhase: string | null;
+  progressPercent: number | null;
   errorMessage: string | null;
   bgmKey: string | null;
   createdAt: string;

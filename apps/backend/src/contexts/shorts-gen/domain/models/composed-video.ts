@@ -5,13 +5,19 @@ import { type Result, err, ok } from '@shared/domain/types/result.js';
  */
 export type ComposedVideoStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
+/**
+ * Progress phase for video composition
+ */
+export type ComposedVideoProgressPhase = 'preparing' | 'downloading' | 'composing' | 'uploading';
+
 export type ShortsComposedVideoError =
   | { type: 'INVALID_PROJECT_ID'; message: string }
   | { type: 'INVALID_SCRIPT_ID'; message: string }
   | { type: 'INVALID_STATUS'; message: string }
   | { type: 'INVALID_FILE_URL'; message: string }
   | { type: 'INVALID_DURATION'; message: string }
-  | { type: 'INVALID_STATE_TRANSITION'; message: string };
+  | { type: 'INVALID_STATE_TRANSITION'; message: string }
+  | { type: 'INVALID_PROGRESS'; message: string };
 
 export interface ShortsComposedVideoProps {
   id: string;
@@ -20,6 +26,8 @@ export interface ShortsComposedVideoProps {
   fileUrl: string | null;
   durationSeconds: number | null;
   status: ComposedVideoStatus;
+  progressPhase: ComposedVideoProgressPhase | null;
+  progressPercent: number | null;
   errorMessage: string | null;
   bgmKey: string | null;
   createdAt: Date;
@@ -56,6 +64,8 @@ export class ShortsComposedVideo {
   readonly fileUrl: string | null;
   readonly durationSeconds: number | null;
   readonly status: ComposedVideoStatus;
+  readonly progressPhase: ComposedVideoProgressPhase | null;
+  readonly progressPercent: number | null;
   readonly errorMessage: string | null;
   readonly bgmKey: string | null;
   readonly createdAt: Date;
@@ -68,6 +78,8 @@ export class ShortsComposedVideo {
     this.fileUrl = props.fileUrl;
     this.durationSeconds = props.durationSeconds;
     this.status = props.status;
+    this.progressPhase = props.progressPhase;
+    this.progressPercent = props.progressPercent;
     this.errorMessage = props.errorMessage;
     this.bgmKey = props.bgmKey;
     this.createdAt = props.createdAt;
@@ -104,6 +116,8 @@ export class ShortsComposedVideo {
         fileUrl: null,
         durationSeconds: null,
         status: 'pending',
+        progressPhase: null,
+        progressPercent: null,
         errorMessage: null,
         bgmKey: params.bgmKey ?? null,
         createdAt: now,
@@ -174,6 +188,8 @@ export class ShortsComposedVideo {
         status: 'completed',
         fileUrl,
         durationSeconds,
+        progressPhase: null,
+        progressPercent: null,
         errorMessage: null,
         updatedAt: new Date(),
       })
@@ -195,6 +211,8 @@ export class ShortsComposedVideo {
       new ShortsComposedVideo({
         ...this.toProps(),
         status: 'failed',
+        progressPhase: null,
+        progressPercent: null,
         errorMessage,
         updatedAt: new Date(),
       })
@@ -218,7 +236,40 @@ export class ShortsComposedVideo {
         status: 'pending',
         fileUrl: null,
         durationSeconds: null,
+        progressPhase: null,
+        progressPercent: null,
         errorMessage: null,
+        updatedAt: new Date(),
+      })
+    );
+  }
+
+  /**
+   * Update progress phase and percentage
+   */
+  withProgress(
+    phase: ComposedVideoProgressPhase,
+    percent: number
+  ): Result<ShortsComposedVideo, ShortsComposedVideoError> {
+    if (this.status !== 'processing') {
+      return err({
+        type: 'INVALID_PROGRESS',
+        message: `Cannot update progress when status is ${this.status}`,
+      });
+    }
+
+    if (percent < 0 || percent > 100) {
+      return err({
+        type: 'INVALID_PROGRESS',
+        message: `Progress percent must be between 0 and 100, got ${percent}`,
+      });
+    }
+
+    return ok(
+      new ShortsComposedVideo({
+        ...this.toProps(),
+        progressPhase: phase,
+        progressPercent: Math.round(percent),
         updatedAt: new Date(),
       })
     );
@@ -260,6 +311,8 @@ export class ShortsComposedVideo {
       fileUrl: this.fileUrl,
       durationSeconds: this.durationSeconds,
       status: this.status,
+      progressPhase: this.progressPhase,
+      progressPercent: this.progressPercent,
       errorMessage: this.errorMessage,
       bgmKey: this.bgmKey,
       createdAt: this.createdAt,

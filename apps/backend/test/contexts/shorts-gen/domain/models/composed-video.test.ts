@@ -22,6 +22,8 @@ describe('ShortsComposedVideo', () => {
         expect(result.value.status).toBe('pending');
         expect(result.value.fileUrl).toBe(null);
         expect(result.value.durationSeconds).toBe(null);
+        expect(result.value.progressPhase).toBe(null);
+        expect(result.value.progressPercent).toBe(null);
         expect(result.value.bgmKey).toBe(null);
       }
     });
@@ -101,6 +103,8 @@ describe('ShortsComposedVideo', () => {
         fileUrl: 'https://storage.example.com/video.mp4',
         durationSeconds: 45.5,
         status: 'completed',
+        progressPhase: null,
+        progressPercent: null,
         errorMessage: null,
         bgmKey: 'bgm-001',
         createdAt: now,
@@ -138,6 +142,8 @@ describe('ShortsComposedVideo', () => {
         fileUrl: 'https://storage.example.com/video.mp4',
         durationSeconds: 45.5,
         status: 'completed',
+        progressPhase: null,
+        progressPercent: null,
         errorMessage: null,
         bgmKey: null,
         createdAt: now,
@@ -160,6 +166,8 @@ describe('ShortsComposedVideo', () => {
         fileUrl: null,
         durationSeconds: null,
         status: 'failed',
+        progressPhase: null,
+        progressPercent: null,
         errorMessage: 'Previous error',
         bgmKey: null,
         createdAt: now,
@@ -310,6 +318,8 @@ describe('ShortsComposedVideo', () => {
         expect(resetResult.value.status).toBe('pending');
         expect(resetResult.value.fileUrl).toBe(null);
         expect(resetResult.value.durationSeconds).toBe(null);
+        expect(resetResult.value.progressPhase).toBe(null);
+        expect(resetResult.value.progressPercent).toBe(null);
         expect(resetResult.value.errorMessage).toBe(null);
       }
     });
@@ -323,6 +333,8 @@ describe('ShortsComposedVideo', () => {
         fileUrl: 'https://storage.example.com/video.mp4',
         durationSeconds: 45.5,
         status: 'completed',
+        progressPhase: null,
+        progressPercent: null,
         errorMessage: null,
         bgmKey: null,
         createdAt: now,
@@ -383,6 +395,130 @@ describe('ShortsComposedVideo', () => {
     });
   });
 
+  describe('withProgress', () => {
+    it('should update progress phase and percent when processing', () => {
+      const videoResult = ShortsComposedVideo.create(
+        { projectId: 'project-123', scriptId: 'script-123' },
+        generateId
+      );
+      expect(videoResult.success).toBe(true);
+      if (!videoResult.success) return;
+
+      const processingResult = videoResult.value.startProcessing();
+      expect(processingResult.success).toBe(true);
+      if (!processingResult.success) return;
+
+      const progressResult = processingResult.value.withProgress('composing', 50);
+      expect(progressResult.success).toBe(true);
+      if (progressResult.success) {
+        expect(progressResult.value.progressPhase).toBe('composing');
+        expect(progressResult.value.progressPercent).toBe(50);
+        expect(progressResult.value.status).toBe('processing');
+      }
+    });
+
+    it('should return error when not processing', () => {
+      const videoResult = ShortsComposedVideo.create(
+        { projectId: 'project-123', scriptId: 'script-123' },
+        generateId
+      );
+      expect(videoResult.success).toBe(true);
+      if (!videoResult.success) return;
+
+      const result = videoResult.value.withProgress('preparing', 5);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe('INVALID_PROGRESS');
+      }
+    });
+
+    it('should return error for percent below 0', () => {
+      const videoResult = ShortsComposedVideo.create(
+        { projectId: 'project-123', scriptId: 'script-123' },
+        generateId
+      );
+      expect(videoResult.success).toBe(true);
+      if (!videoResult.success) return;
+
+      const processingResult = videoResult.value.startProcessing();
+      expect(processingResult.success).toBe(true);
+      if (!processingResult.success) return;
+
+      const result = processingResult.value.withProgress('composing', -1);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe('INVALID_PROGRESS');
+      }
+    });
+
+    it('should return error for percent above 100', () => {
+      const videoResult = ShortsComposedVideo.create(
+        { projectId: 'project-123', scriptId: 'script-123' },
+        generateId
+      );
+      expect(videoResult.success).toBe(true);
+      if (!videoResult.success) return;
+
+      const processingResult = videoResult.value.startProcessing();
+      expect(processingResult.success).toBe(true);
+      if (!processingResult.success) return;
+
+      const result = processingResult.value.withProgress('composing', 101);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe('INVALID_PROGRESS');
+      }
+    });
+
+    it('should round percent to integer', () => {
+      const videoResult = ShortsComposedVideo.create(
+        { projectId: 'project-123', scriptId: 'script-123' },
+        generateId
+      );
+      expect(videoResult.success).toBe(true);
+      if (!videoResult.success) return;
+
+      const processingResult = videoResult.value.startProcessing();
+      expect(processingResult.success).toBe(true);
+      if (!processingResult.success) return;
+
+      const progressResult = processingResult.value.withProgress('downloading', 25.7);
+      expect(progressResult.success).toBe(true);
+      if (progressResult.success) {
+        expect(progressResult.value.progressPercent).toBe(26);
+      }
+    });
+  });
+
+  describe('complete clears progress', () => {
+    it('should clear progress fields when completing', () => {
+      const videoResult = ShortsComposedVideo.create(
+        { projectId: 'project-123', scriptId: 'script-123' },
+        generateId
+      );
+      expect(videoResult.success).toBe(true);
+      if (!videoResult.success) return;
+
+      const processingResult = videoResult.value.startProcessing();
+      expect(processingResult.success).toBe(true);
+      if (!processingResult.success) return;
+
+      const progressResult = processingResult.value.withProgress('composing', 90);
+      expect(progressResult.success).toBe(true);
+      if (!progressResult.success) return;
+
+      const completeResult = progressResult.value.complete(
+        'https://storage.example.com/video.mp4',
+        60.5
+      );
+      expect(completeResult.success).toBe(true);
+      if (completeResult.success) {
+        expect(completeResult.value.progressPhase).toBe(null);
+        expect(completeResult.value.progressPercent).toBe(null);
+      }
+    });
+  });
+
   describe('isReady', () => {
     it('should return true when completed with file URL', () => {
       const now = new Date();
@@ -393,6 +529,8 @@ describe('ShortsComposedVideo', () => {
         fileUrl: 'https://storage.example.com/video.mp4',
         durationSeconds: 45.5,
         status: 'completed',
+        progressPhase: null,
+        progressPercent: null,
         errorMessage: null,
         bgmKey: null,
         createdAt: now,
@@ -439,6 +577,8 @@ describe('ShortsComposedVideo', () => {
         fileUrl: 'https://storage.example.com/video.mp4',
         durationSeconds: 45.5,
         status: 'completed',
+        progressPhase: null,
+        progressPercent: null,
         errorMessage: null,
         bgmKey: null,
         createdAt: now,
@@ -465,6 +605,8 @@ describe('ShortsComposedVideo', () => {
       expect(props.status).toBe('pending');
       expect(props.fileUrl).toBe(null);
       expect(props.durationSeconds).toBe(null);
+      expect(props.progressPhase).toBe(null);
+      expect(props.progressPercent).toBe(null);
       expect(props.bgmKey).toBe('bgm-key');
       expect(props.createdAt).toBeInstanceOf(Date);
       expect(props.updatedAt).toBeInstanceOf(Date);

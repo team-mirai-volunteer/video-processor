@@ -94,6 +94,8 @@ interface GetComposedVideoResponse {
   fileUrl: string | null;
   durationSeconds: number | null;
   status: string;
+  progressPhase: string | null;
+  progressPercent: number | null;
   errorMessage: string | null;
   bgmKey: string | null;
   createdAt: string;
@@ -210,6 +212,8 @@ router.get('/project/:projectId', async (req, res, next) => {
       fileUrl: await toSignedUrl(composedVideo.fileUrl),
       durationSeconds: composedVideo.durationSeconds,
       status: composedVideo.status,
+      progressPhase: composedVideo.progressPhase,
+      progressPercent: composedVideo.progressPercent,
       errorMessage: composedVideo.errorMessage,
       bgmKey: composedVideo.bgmKey,
       createdAt: composedVideo.createdAt.toISOString(),
@@ -255,6 +259,8 @@ router.get('/script/:scriptId', async (req, res, next) => {
       fileUrl: await toSignedUrl(composedVideo.fileUrl),
       durationSeconds: composedVideo.durationSeconds,
       status: composedVideo.status,
+      progressPhase: composedVideo.progressPhase,
+      progressPercent: composedVideo.progressPercent,
       errorMessage: composedVideo.errorMessage,
       bgmKey: composedVideo.bgmKey,
       createdAt: composedVideo.createdAt.toISOString(),
@@ -300,6 +306,8 @@ router.get('/:id', async (req, res, next) => {
       fileUrl: await toSignedUrl(composedVideo.fileUrl),
       durationSeconds: composedVideo.durationSeconds,
       status: composedVideo.status,
+      progressPhase: composedVideo.progressPhase,
+      progressPercent: composedVideo.progressPercent,
       errorMessage: composedVideo.errorMessage,
       bgmKey: composedVideo.bgmKey,
       createdAt: composedVideo.createdAt.toISOString(),
