@@ -157,7 +157,8 @@ export class ComposeSubtitledClipUseCase {
       log.info('Composing subtitles onto video', { clipId, outputFormat });
 
       // 6. Get source video dimensions
-      const { width, height } = await this.getVideoDimensions(inputVideoPath);
+      const { width, height } =
+        await this.deps.clipSubtitleComposer.getVideoDimensions(inputVideoPath);
 
       // 7. Build format conversion params (if needed)
       const needsConversion = outputFormat === 'vertical' || outputFormat === 'horizontal';
@@ -251,39 +252,6 @@ export class ComposeSubtitledClipUseCase {
       // Cleanup temp files
       await this.cleanup(tempDir);
     }
-  }
-
-  /**
-   * Get video dimensions using ffprobe
-   */
-  private getVideoDimensions(videoPath: string): Promise<{ width: number; height: number }> {
-    // Dynamic import to avoid issues during testing
-    const ffmpeg = require('fluent-ffmpeg');
-    return new Promise((resolve, reject) => {
-      ffmpeg.ffprobe(
-        videoPath,
-        (
-          err: Error | null,
-          metadata: { streams: Array<{ codec_type: string; width?: number; height?: number }> }
-        ) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-
-          const videoStream = metadata.streams.find((s) => s.codec_type === 'video');
-          if (!videoStream || !videoStream.width || !videoStream.height) {
-            reject(new Error('Could not determine video dimensions'));
-            return;
-          }
-
-          resolve({
-            width: videoStream.width,
-            height: videoStream.height,
-          });
-        }
-      );
-    });
   }
 
   /**

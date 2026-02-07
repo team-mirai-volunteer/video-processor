@@ -7,6 +7,7 @@ import type {
   ClipSubtitleComposerGateway,
   FormatConversionParams,
   SubtitleStyle,
+  VideoDimensions,
 } from '@clip-video/domain/gateways/clip-subtitle-composer.gateway.js';
 import type { ClipSubtitleSegment } from '@clip-video/domain/models/clip-subtitle.js';
 import { type Result, err, ok } from '@shared/domain/types/result.js';
@@ -73,6 +74,60 @@ function calcFontMetrics(
  * 3. 1回のFFmpeg呼び出しで完結（PNG中間ステップ不要）
  */
 export class ClipSubtitleComposeClient implements ClipSubtitleComposerGateway {
+  /**
+   * Get video dimensions using ffprobe
+   */
+  getVideoDimensions(videoPath: string): Promise<VideoDimensions> {
+    return new Promise((resolve, reject) => {
+      const args = [
+        '-v',
+        'error',
+        '-select_streams',
+        'v:0',
+        '-show_entries',
+        'stream=width,height',
+        '-of',
+        'json',
+        videoPath,
+      ];
+
+      const ffprobeProcess = spawn('ffprobe', args);
+      let stdout = '';
+      let stderr = '';
+
+      ffprobeProcess.stdout.on('data', (data: Buffer) => {
+        stdout += data.toString();
+      });
+
+      ffprobeProcess.stderr.on('data', (data: Buffer) => {
+        stderr += data.toString();
+      });
+
+      ffprobeProcess.on('close', (code) => {
+        if (code !== 0) {
+          reject(new Error(`ffprobe failed: ${stderr}`));
+          return;
+        }
+
+        try {
+          const result = JSON.parse(stdout);
+          const stream = result.streams?.[0];
+          if (!stream?.width || !stream?.height) {
+            reject(new Error('Could not determine video dimensions'));
+            return;
+          }
+          resolve({ width: stream.width, height: stream.height });
+        } catch {
+          reject(new Error(`Failed to parse ffprobe output: ${stdout}`));
+        }
+      });
+
+      ffprobeProcess.on('error', (error) => {
+        reject(new Error(`Failed to spawn ffprobe: ${error.message}`));
+      });
+    });
+  }
+
   /**
    * Compose subtitles onto a video clip using drawtext direct rendering
    */

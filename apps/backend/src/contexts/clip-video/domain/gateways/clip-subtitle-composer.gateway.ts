@@ -75,10 +75,25 @@ export interface ClipSubtitleComposeResult {
 }
 
 /**
+ * 動画の寸法情報
+ */
+export interface VideoDimensions {
+  width: number;
+  height: number;
+}
+
+/**
  * ClipSubtitle Composer Gateway
  * クリップ動画に字幕を焼き込む処理を担当するインターフェース
  */
 export interface ClipSubtitleComposerGateway {
+  /**
+   * 動画の寸法を取得する
+   * @param videoPath 動画ファイルのパス
+   * @returns 動画の幅と高さ
+   */
+  getVideoDimensions(videoPath: string): Promise<VideoDimensions>;
+
   /**
    * クリップ動画に字幕を合成する
    * @param params 合成パラメータ
