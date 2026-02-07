@@ -29,6 +29,18 @@ export type ClipSubtitleComposeError =
   | { type: 'COMPOSE_FAILED'; message: string };
 
 /**
+ * フォーマット変換パラメータ（字幕合成と同時に1パスで実行）
+ */
+export interface FormatConversionParams {
+  /** 変換先の幅 */
+  targetWidth: number;
+  /** 変換先の高さ */
+  targetHeight: number;
+  /** パディング色（hex, e.g. '#000000'） */
+  paddingColor: string;
+}
+
+/**
  * 字幕合成のパラメータ
  */
 export interface ClipSubtitleComposeParams {
@@ -48,6 +60,8 @@ export interface ClipSubtitleComposeParams {
   fontSize?: SubtitleFontSize;
   /** 進捗コールバック（0-100の割合で呼ばれる） */
   onProgress?: (percent: number) => void;
+  /** フォーマット変換（指定時はscale+pad+drawtextを1パスで実行） */
+  formatConversion?: FormatConversionParams;
 }
 
 /**

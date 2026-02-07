@@ -14,7 +14,15 @@ import type {
   PaddingColor,
   SubtitleFontSize,
 } from '@video-processor/shared';
-import { CheckCircle, Download, ExternalLink, Loader2, RefreshCw, Video } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle,
+  Download,
+  ExternalLink,
+  Loader2,
+  RefreshCw,
+  Video,
+} from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 function useElapsedTime(isRunning: boolean): number {
@@ -65,6 +73,7 @@ type CompositionStep = 'idle' | 'composing' | 'composed' | 'uploading' | 'upload
 
 interface SubtitleCompositionStatusProps {
   clipId: string;
+  clipDurationSeconds?: number;
   step: CompositionStep;
   subtitledVideoUrl?: string | null;
   subtitledVideoDriveUrl?: string | null;
@@ -79,6 +88,7 @@ interface SubtitleCompositionStatusProps {
   isComposing?: boolean;
   isUploading?: boolean;
   canCompose?: boolean;
+  exceedsMaxDuration?: boolean;
   initialComposeStatus?: ComposeStatus | null;
   initialProgressPhase?: ComposeProgressPhase | null;
   initialProgressPercent?: number | null;
@@ -86,6 +96,7 @@ interface SubtitleCompositionStatusProps {
 
 export function SubtitleCompositionStatus({
   clipId,
+  clipDurationSeconds,
   step,
   subtitledVideoUrl,
   subtitledVideoDriveUrl,
@@ -95,6 +106,7 @@ export function SubtitleCompositionStatus({
   isComposing = false,
   isUploading = false,
   canCompose = false,
+  exceedsMaxDuration = false,
   initialComposeStatus = null,
   initialProgressPhase = null,
   initialProgressPercent = null,
@@ -332,6 +344,14 @@ export function SubtitleCompositionStatus({
           )}
         </div>
 
+        {/* Clip length warning */}
+        {clipDurationSeconds != null && clipDurationSeconds > 90 && (
+          <div className="flex items-center gap-2 rounded-md bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>負荷軽減のため、1.5分を超えるクリップの生成は一時的にお控えください</span>
+          </div>
+        )}
+
         {/* Progress display during composition */}
         {isPolling && (
           <div className="space-y-2">
@@ -353,7 +373,13 @@ export function SubtitleCompositionStatus({
           </div>
         )}
 
-        {!isPolling && (
+        {exceedsMaxDuration && (
+          <div className="rounded-md bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800">
+            現在、120秒を超える動画の字幕合成は一時的に制限されています。
+          </div>
+        )}
+
+        {!isPolling && !exceedsMaxDuration && (
           <p className="text-xs text-muted-foreground">
             長い動画では合成に1〜2分かかります。バックグラウンドで処理されます。
           </p>
@@ -380,7 +406,12 @@ export function SubtitleCompositionStatus({
 
           {hasComposedVideo && subtitledVideoUrl && (
             <>
-              <Button variant="outline" size="sm" onClick={handleCompose} disabled={isPolling}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCompose}
+                disabled={isPolling || exceedsMaxDuration}
+              >
                 {isPolling ? (
                   <>
                     <Loader2 className="mr-2 h-3 w-3 animate-spin" />

@@ -23,7 +23,7 @@ import type {
   TranscriptionPhase,
   VideoWithRelations,
 } from '@video-processor/shared';
-import { ChevronDown, Loader2, PlayCircle, RotateCcw } from 'lucide-react';
+import { AlertTriangle, ChevronDown, Loader2, PlayCircle, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface ProcessingPipelineProps {
@@ -106,6 +106,8 @@ function deriveStepStatuses(
     refine: hasRefinedTranscription ? 'completed' : hasTranscription ? 'ready' : 'pending',
   };
 }
+
+const MAX_VIDEO_DURATION_SECONDS = 120;
 
 export function ProcessingPipeline({
   video,
@@ -467,6 +469,9 @@ export function ProcessingPipeline({
     setExpandedStep((prev) => (prev === stepKey ? null : stepKey));
   }, []);
 
+  const isVideoTooLong =
+    video.durationSeconds !== null && video.durationSeconds > MAX_VIDEO_DURATION_SECONDS;
+
   const isAnyStepRunning =
     steps.cache.status === 'running' ||
     steps.extractAudio.status === 'running' ||
@@ -566,7 +571,7 @@ export function ProcessingPipeline({
         isExpanded={expandedStep === 'cache'}
         onToggle={() => toggleStep('cache')}
         onExecute={handleCacheVideo}
-        canExecute={!isAnyStepRunning && !resettingStep}
+        canExecute={!isAnyStepRunning && !resettingStep && !isVideoTooLong}
         error={steps.cache.error}
         progressMessage={steps.cache.status === 'running' ? progressMessage : undefined}
         onReset={handleResetCache}
@@ -590,7 +595,12 @@ export function ProcessingPipeline({
         isExpanded={expandedStep === 'extractAudio'}
         onToggle={() => toggleStep('extractAudio')}
         onExecute={handleExtractAudio}
-        canExecute={!isAnyStepRunning && !resettingStep && steps.cache.status === 'completed'}
+        canExecute={
+          !isAnyStepRunning &&
+          !resettingStep &&
+          !isVideoTooLong &&
+          steps.cache.status === 'completed'
+        }
         error={steps.extractAudio.error}
         progressMessage={steps.extractAudio.status === 'running' ? progressMessage : undefined}
         onReset={handleResetTranscribe}
@@ -617,6 +627,7 @@ export function ProcessingPipeline({
         canExecute={
           !isAnyStepRunning &&
           !resettingStep &&
+          !isVideoTooLong &&
           (steps.extractAudio.status === 'completed' || steps.cache.status === 'completed')
         }
         error={steps.transcribe.error}
@@ -642,7 +653,12 @@ export function ProcessingPipeline({
         isExpanded={expandedStep === 'refine'}
         onToggle={() => toggleStep('refine')}
         onExecute={handleRefineTranscript}
-        canExecute={!isAnyStepRunning && !resettingStep && steps.transcribe.status === 'completed'}
+        canExecute={
+          !isAnyStepRunning &&
+          !resettingStep &&
+          !isVideoTooLong &&
+          steps.transcribe.status === 'completed'
+        }
         error={steps.refine.error}
         progressMessage={steps.refine.status === 'running' ? progressMessage : undefined}
         onReset={handleResetRefine}
@@ -717,7 +733,7 @@ export function ProcessingPipeline({
           <Button
             size="sm"
             onClick={handleRunAllSteps}
-            disabled={isAnyStepRunning || runningAllSteps || resetting}
+            disabled={isAnyStepRunning || runningAllSteps || resetting || isVideoTooLong}
           >
             {runningAllSteps ? (
               <>
@@ -733,7 +749,19 @@ export function ProcessingPipeline({
           </Button>
         </div>
       </CardHeader>
-      <CardContent>{pipelineSteps}</CardContent>
+      <CardContent>
+        {isVideoTooLong && (
+          <div className="flex items-start gap-2 p-3 mb-4 text-sm bg-amber-50 text-amber-800 rounded-md border border-amber-200">
+            <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <div>
+              現在、{MAX_VIDEO_DURATION_SECONDS}
+              秒を超える動画の字幕作成には対応していません（この動画:{' '}
+              {formatDuration(video.durationSeconds as number)}）。
+            </div>
+          </div>
+        )}
+        {pipelineSteps}
+      </CardContent>
     </Card>
   );
 }

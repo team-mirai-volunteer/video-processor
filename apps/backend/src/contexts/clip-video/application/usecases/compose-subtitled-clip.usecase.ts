@@ -5,7 +5,10 @@ import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { NotFoundError, ValidationError } from '@clip-video/application/errors/errors.js';
 import type { ClipRepositoryGateway } from '@clip-video/domain/gateways/clip-repository.gateway.js';
-import type { ClipSubtitleComposerGateway } from '@clip-video/domain/gateways/clip-subtitle-composer.gateway.js';
+import type {
+  ClipSubtitleComposerGateway,
+  FormatConversionParams,
+} from '@clip-video/domain/gateways/clip-subtitle-composer.gateway.js';
 import type { ClipSubtitleRepositoryGateway } from '@clip-video/domain/gateways/clip-subtitle-repository.gateway.js';
 import type { TempStorageGateway } from '@shared/domain/gateways/temp-storage.gateway.js';
 import { createLogger } from '@shared/infrastructure/logging/logger.js';
@@ -16,7 +19,6 @@ import type {
   PaddingColor,
   SubtitleFontSize,
 } from '@video-processor/shared';
-import ffmpeg from 'fluent-ffmpeg';
 
 const log = createLogger('ComposeSubtitledClipUseCase');
 
@@ -150,66 +152,33 @@ export class ComposeSubtitledClipUseCase {
       await updateProgress(clipId, 'downloading', 20);
       log.info('Download completed', { clipId });
 
-      // 6. Apply format conversion if requested (before subtitle composition)
-      let subtitleInputPath = inputVideoPath;
+      // === Phase: composing (20-80%) — フォーマット変換 + 字幕合成を1パスで実行 ===
+      await this.deps.clipRepository.updateComposeProgress(clipId, 'composing', 20);
+      log.info('Composing subtitles onto video', { clipId, outputFormat });
+
+      // 6. Get source video dimensions
+      const { width, height } = await this.getVideoDimensions(inputVideoPath);
+
+      // 7. Build format conversion params (if needed)
       const needsConversion = outputFormat === 'vertical' || outputFormat === 'horizontal';
-
+      let formatConversion: FormatConversionParams | undefined;
       if (needsConversion) {
-        // === Phase: converting (20-40%) ===
-        await updateProgress(clipId, 'converting', 20);
-        log.info('Converting video format', { clipId, outputFormat });
-
-        const convertedPath = path.join(tempDir, `${outputFormat}.mp4`);
-        const { width: srcWidth, height: srcHeight } =
-          await this.getVideoDimensions(inputVideoPath);
         const target =
           outputFormat === 'vertical'
             ? { width: 1080, height: 1920 }
             : { width: 1920, height: 1080 };
-
-        const convertReporter = createProgressReporter(
-          clipId,
-          'converting',
-          20,
-          40,
-          updateProgress
-        );
-
-        await this.convertToFormat(
-          inputVideoPath,
-          convertedPath,
-          srcWidth,
-          srcHeight,
-          target.width,
-          target.height,
+        formatConversion = {
+          targetWidth: target.width,
+          targetHeight: target.height,
           paddingColor,
-          convertReporter
-        );
-        subtitleInputPath = convertedPath;
-
-        await updateProgress(clipId, 'converting', 40);
-        log.info('Format conversion completed', { clipId });
+        };
       }
 
-      // === Phase: composing (40-80% or 20-80%) ===
-      const composeStartPercent = needsConversion ? 40 : 20;
-      await updateProgress(clipId, 'composing', composeStartPercent);
-      log.info('Composing subtitles onto video', { clipId });
+      const composeReporter = createProgressReporter(clipId, 'composing', 20, 80, updateProgress);
 
-      // 7. Get video dimensions for subtitle composition
-      const { width, height } = await this.getVideoDimensions(subtitleInputPath);
-
-      const composeReporter = createProgressReporter(
-        clipId,
-        'composing',
-        composeStartPercent,
-        80,
-        updateProgress
-      );
-
-      // 8. Compose subtitles onto video
+      // 8. Compose subtitles (+ format conversion) in single FFmpeg pass
       const composeResult = await this.deps.clipSubtitleComposer.compose({
-        inputVideoPath: subtitleInputPath,
+        inputVideoPath,
         segments: subtitle.segments,
         outputPath: outputVideoPath,
         width,
@@ -219,6 +188,7 @@ export class ComposeSubtitledClipUseCase {
         },
         fontSize,
         onProgress: composeReporter,
+        formatConversion,
       });
 
       if (!composeResult.success) {
@@ -284,75 +254,35 @@ export class ComposeSubtitledClipUseCase {
   }
 
   /**
-   * Convert video to specified format with padding
-   */
-  private convertToFormat(
-    inputPath: string,
-    outputPath: string,
-    sourceWidth: number,
-    sourceHeight: number,
-    targetWidth: number,
-    targetHeight: number,
-    paddingColor: string,
-    onProgress?: (percent: number) => void
-  ): Promise<void> {
-    const sourceAspectRatio = sourceWidth / sourceHeight;
-    const targetAspectRatio = targetWidth / targetHeight;
-
-    const scaleFilter =
-      sourceAspectRatio > targetAspectRatio
-        ? `scale=${targetWidth}:-2`
-        : `scale=-2:${targetHeight}`;
-    const padFilter = `pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2:color=${paddingColor}`;
-    const videoFilter = `${scaleFilter},${padFilter}`;
-
-    let lastReportedPercent = -1;
-
-    return new Promise<void>((resolve, reject) => {
-      ffmpeg(inputPath)
-        .videoFilters(videoFilter)
-        .outputOptions(['-c:a', 'copy'])
-        .output(outputPath)
-        .on('progress', (progress) => {
-          if (onProgress && progress.percent != null) {
-            const rounded = Math.round(progress.percent);
-            if (rounded !== lastReportedPercent) {
-              lastReportedPercent = rounded;
-              onProgress(rounded);
-            }
-          }
-        })
-        .on('end', () => {
-          onProgress?.(100);
-          resolve();
-        })
-        .on('error', (err: Error) => reject(err))
-        .run();
-    });
-  }
-
-  /**
    * Get video dimensions using ffprobe
    */
   private getVideoDimensions(videoPath: string): Promise<{ width: number; height: number }> {
+    // Dynamic import to avoid issues during testing
+    const ffmpeg = require('fluent-ffmpeg');
     return new Promise((resolve, reject) => {
-      ffmpeg.ffprobe(videoPath, (err, metadata) => {
-        if (err) {
-          reject(err);
-          return;
-        }
+      ffmpeg.ffprobe(
+        videoPath,
+        (
+          err: Error | null,
+          metadata: { streams: Array<{ codec_type: string; width?: number; height?: number }> }
+        ) => {
+          if (err) {
+            reject(err);
+            return;
+          }
 
-        const videoStream = metadata.streams.find((s) => s.codec_type === 'video');
-        if (!videoStream || !videoStream.width || !videoStream.height) {
-          reject(new Error('Could not determine video dimensions'));
-          return;
-        }
+          const videoStream = metadata.streams.find((s) => s.codec_type === 'video');
+          if (!videoStream || !videoStream.width || !videoStream.height) {
+            reject(new Error('Could not determine video dimensions'));
+            return;
+          }
 
-        resolve({
-          width: videoStream.width,
-          height: videoStream.height,
-        });
-      });
+          resolve({
+            width: videoStream.width,
+            height: videoStream.height,
+          });
+        }
+      );
     });
   }
 

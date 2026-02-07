@@ -8,25 +8,33 @@ export default function HomePage() {
     <div className="mx-auto max-w-2xl space-y-8">
       {/* ヒーローセクション */}
       <div className="space-y-3">
-        <h1 className="text-3xl font-bold">みらい動画スタジオ</h1>
-        <p className="text-lg text-muted-foreground">はじめての方も大歓迎！</p>
+        <h1 className="text-3xl font-bold">あなたの切り抜き動画で、チームみらいを届けよう！</h1>
+        <p className="text-lg text-muted-foreground">かんたんステップ。スマホだけでできます。</p>
       </div>
 
-      {/* 感謝と背景 */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-bold">切り抜き動画のご協力のお願い</h3>
-        <p className="flex items-start gap-2">
-          <Heart className="mt-1 h-5 w-5 shrink-0 text-pink-500" />
-          <span>いつもあたたかいご支援をありがとうございます。</span>
-        </p>
-        <p>
-          いまチームみらいでは、街頭演説・演説会など、日々たくさんの活動が行われています。
-          ただ、それらの活動はまだまだ十分に広がりきっていません。
-        </p>
-        <p>
-          残り数日、これまでチームみらいを知らなかった方にも想いを届けるために、SNSでの「切り抜きショート動画」の力がとても重要になっています。
-        </p>
-      </div>
+      {/* かんたんな使い方 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ListOrdered className="h-5 w-5" />
+            かんたんな使い方（まずはこちら！）
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ol className="list-decimal space-y-2 pl-5">
+            <li>下の「切り抜き動画を探す」からクリップ一覧を見る</li>
+            <li>気に入ったクリップを選んで、字幕をつける（AIが自動で考えてくれます！）</li>
+            <li>完成した動画をダウンロード</li>
+            <li>お好きなSNS（TikTok、X、Instagramなど）に投稿！</li>
+          </ol>
+          <Button asChild>
+            <Link href="/clips">
+              切り抜き動画を探す
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* 「切り抜き動画」とは？ */}
       <Card>
@@ -65,28 +73,21 @@ export default function HomePage() {
         </CardContent>
       </Card>
 
-      {/* かんたんな使い方 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ListOrdered className="h-5 w-5" />
-            かんたんな使い方（まずはこちら！）
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <ol className="list-decimal space-y-2 pl-5">
-            <li>下の「皆が切り抜いた動画はこちら」からクリップ一覧を見る</li>
-            <li>気に入ったクリップのGoogle Driveリンクからダウンロード</li>
-            <li>お好きなSNS（TikTok、X、Instagramなど）に投稿！</li>
-          </ol>
-          <Button asChild>
-            <Link href="/clips">
-              皆が切り抜いた動画はこちら
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
+      {/* 感謝と背景 */}
+      <div className="space-y-4">
+        <h3 className="text-xl font-bold">切り抜き動画のご協力のお願い</h3>
+        <p className="flex items-start gap-2">
+          <Heart className="mt-1 h-5 w-5 shrink-0 text-pink-500" />
+          <span>いつもあたたかいご支援をありがとうございます。</span>
+        </p>
+        <p>
+          いまチームみらいでは、街頭演説・演説会など、日々たくさんの活動が行われています。
+          ただ、それらの活動はまだまだ十分に広がりきっていません。
+        </p>
+        <p>
+          残り数日、これまでチームみらいを知らなかった方にも想いを届けるために、SNSでの「切り抜きショート動画」の力がとても重要になっています。
+        </p>
+      </div>
 
       {/* 自分で切り抜く方法 */}
       <Card>

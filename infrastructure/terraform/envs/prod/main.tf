@@ -88,10 +88,10 @@ module "cloud_run" {
   service_account_email = google_service_account.cloud_run.email
 
   # prod environment settings
-  cpu             = "4"
+  cpu             = "8"
   memory          = "16Gi"
   min_instances   = 1
-  max_instances   = 10
+  max_instances   = 30
   concurrency     = 80
   request_timeout = 900 # 15 minutes for large video processing
 
