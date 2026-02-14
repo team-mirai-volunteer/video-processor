@@ -1,4 +1,8 @@
-import type { ComposedVideoStatus, ShortsComposedVideo } from '../models/composed-video.js';
+import type {
+  ComposedVideoProgressPhase,
+  ComposedVideoStatus,
+  ShortsComposedVideo,
+} from '../models/composed-video.js';
 
 /**
  * ShortsComposedVideo Repository Gateway
@@ -10,6 +14,14 @@ export interface ShortsComposedVideoRepositoryGateway {
    * @param composedVideo 合成動画
    */
   save(composedVideo: ShortsComposedVideo): Promise<void>;
+
+  /**
+   * 進捗を更新する（軽量な部分更新）
+   * @param id 合成動画ID
+   * @param phase 進捗フェーズ
+   * @param percent 進捗パーセンテージ (0-100)
+   */
+  updateProgress(id: string, phase: ComposedVideoProgressPhase, percent: number): Promise<void>;
 
   /**
    * IDで合成動画を検索する

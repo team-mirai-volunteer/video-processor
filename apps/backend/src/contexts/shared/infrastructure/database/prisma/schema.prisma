@@ -262,6 +262,8 @@ model ShortsComposedVideo {
   fileUrl         String?  @map("file_url") // GCSのURL
   durationSeconds Decimal? @map("duration_seconds") @db.Decimal(10, 3)
   status          String   @default("pending") // pending | processing | completed | failed
+  progressPhase   String?  @map("progress_phase") // preparing | downloading | composing | uploading
+  progressPercent Int?     @map("progress_percent") // 0-100
   errorMessage    String?  @map("error_message")
   bgmKey          String?  @map("bgm_key") // 使用したBGMのキー
   createdAt       DateTime @default(now()) @map("created_at")

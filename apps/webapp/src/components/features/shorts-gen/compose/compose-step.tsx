@@ -93,6 +93,8 @@ export function ComposeStep({
         videoUrl={state.composedVideo?.fileUrl ?? null}
         durationSeconds={state.composedVideo?.durationSeconds ?? null}
         status={state.composedVideo?.status ?? 'idle'}
+        progressPhase={state.composedVideo?.progressPhase ?? null}
+        progressPercent={state.composedVideo?.progressPercent ?? null}
         errorMessage={state.composedVideo?.errorMessage ?? null}
       />
     </div>
