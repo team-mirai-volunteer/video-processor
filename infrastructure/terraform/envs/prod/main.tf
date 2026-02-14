@@ -63,9 +63,9 @@ module "cloud_sql" {
   vpc_id                 = module.networking.vpc_id
   private_vpc_connection = module.networking.private_vpc_connection
 
-  # prod environment settings - more robust configuration
-  tier                = "db-custom-2-4096"
-  availability_type   = "REGIONAL"
+  # prod environment settings (scaled down post-election)
+  tier                = "db-f1-micro"
+  availability_type   = "ZONAL"
   disk_size           = 20
   backup_enabled      = true
   deletion_protection = true
@@ -87,11 +87,11 @@ module "cloud_run" {
   migration_image       = var.migration_image
   service_account_email = google_service_account.cloud_run.email
 
-  # prod environment settings
-  cpu             = "8"
+  # prod environment settings (scaled down post-election)
+  cpu             = "4"
   memory          = "16Gi"
-  min_instances   = 1
-  max_instances   = 30
+  min_instances   = 0
+  max_instances   = 3
   concurrency     = 80
   request_timeout = 900 # 15 minutes for large video processing
 
