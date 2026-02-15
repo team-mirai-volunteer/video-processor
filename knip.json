@@ -6,8 +6,11 @@
       "ignore": [
         "src/**/*.test.ts",
         "test/**/*.ts",
-        "src/contexts/shared/infrastructure/clients/local-storage.client.ts"
+        "src/contexts/shared/infrastructure/clients/local-storage.client.ts",
+        "src/contexts/shared/infrastructure/clients/openai.client.ts",
+        "src/contexts/shorts-gen/infrastructure/clients/openai-agentic.client.ts"
       ],
+      "ignoreDependencies": ["@ai-sdk/openai", "openai"],
       "vitest": true
     },
     "apps/webapp": {

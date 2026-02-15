@@ -10,7 +10,7 @@ Google Drive上の長尺動画をAIで分析し、指定箇所を切り抜きす
 
 - Google Drive上の動画URLと切り抜き指示（自然言語）を入力
 - Google Speech-to-Text Chirp 2で文字起こしを作成
-- OpenAI GPT-4oが文字起こしを分析し、該当箇所のタイムスタンプを自動抽出
+- Claude（Anthropic）が文字起こしを分析し、該当箇所のタイムスタンプを自動抽出
 - FFmpegで指定箇所を切り抜き、Google Driveの「ショート用」フォルダに保存
 - 文字起こしを含むメタファイルも自動生成
 
@@ -49,8 +49,8 @@ Google Drive上の長尺動画をAIで分析し、指定箇所を切り抜きす
                            │
                            ▼
                     ┌────────────┐
-                    │ OpenAI API │
-                    │  (GPT-4o)  │
+                    │Anthropic   │
+                    │API (Claude)│
                     └────────────┘
 ```
 
@@ -60,7 +60,7 @@ Google Drive上の長尺動画をAIで分析し、指定箇所を切り抜きす
 |---------|------|
 | Frontend | Next.js 14 (App Router), React 18, shadcn/ui, Tailwind CSS |
 | Backend | Express, Prisma, TypeScript (DDD構成) |
-| AI/LLM | OpenAI GPT-4o, Google Speech-to-Text Chirp 2 |
+| AI/LLM | Anthropic Claude, Google Speech-to-Text Chirp 2 |
 | 動画処理 | FFmpeg |
 | Storage | Google Drive API, Google Cloud Storage |
 | Database | PostgreSQL (Cloud SQL) |
@@ -168,7 +168,7 @@ DATABASE_URL=postgresql://user:password@localhost:5432/video_processor
 GOOGLE_CLOUD_PROJECT=your-project-id
 GOOGLE_CREDENTIALS_JSON={"type":"service_account","project_id":"..."}
 CORS_ORIGIN=http://localhost:3000
-OPENAI_API_KEY=sk-proj-your-openai-api-key
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key
 GOOGLE_DRIVE_OUTPUT_FOLDER_ID=your-google-drive-folder-id
 ```
 

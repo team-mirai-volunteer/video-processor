@@ -266,7 +266,7 @@ export interface PlanningStreamChunk extends StreamChunk {
  * GeneratePlanningUseCase
  *
  * 企画書を生成するUseCase。
- * OpenAI Agentic AIを使用して、ユーザーの入力から企画書をマークダウン形式で生成し、
+ * Agentic AIを使用して、ユーザーの入力から企画書をマークダウン形式で生成し、
  * tool useを通じてDBに保存します。
  *
  * 対話的なフローをサポートし、SSE対応のストリーミング実行も可能です。
