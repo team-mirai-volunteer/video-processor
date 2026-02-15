@@ -27,7 +27,6 @@ import { FFmpegClient } from '@shared/infrastructure/clients/ffmpeg.client.js';
 import { GcsClient } from '@shared/infrastructure/clients/gcs.client.js';
 import { GoogleDriveClient } from '@shared/infrastructure/clients/google-drive.client.js';
 import { LocalTempStorageClient } from '@shared/infrastructure/clients/local-temp-storage.client.js';
-import { OpenAIClient } from '@shared/infrastructure/clients/openai.client.js';
 import { properNounDictionary } from '@shared/infrastructure/clients/proper-noun-dictionary.js';
 import { SpeechToTextClient } from '@shared/infrastructure/clients/speech-to-text.client.js';
 import { prisma } from '@shared/infrastructure/database/connection.js';
@@ -105,7 +104,7 @@ const extractClipsUseCase = new ExtractClipsUseCase({
   refinedTranscriptionRepository,
   storageGateway,
   tempStorageGateway,
-  aiGateway: new OpenAIClient(),
+  aiGateway: new AnthropicClient(),
   videoProcessingGateway: new FFmpegClient(),
   generateId: () => uuidv4(),
   outputFolderId: process.env.GOOGLE_DRIVE_OUTPUT_FOLDER_ID,
@@ -129,7 +128,7 @@ const refineTranscriptUseCase = new RefineTranscriptUseCase({
   refinedTranscriptionRepository,
   videoRepository,
   storageGateway,
-  aiGateway: new OpenAIClient(),
+  aiGateway: new AnthropicClient(),
   generateId: () => uuidv4(),
   loadDictionary,
   transcriptOutputFolderId: process.env.TRANSCRIPT_OUTPUT_FOLDER_ID,

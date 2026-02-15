@@ -21,10 +21,10 @@ import type { RefinedTranscription } from '@clip-video/domain/models/refined-tra
 import type { Transcription } from '@clip-video/domain/models/transcription.js';
 import { Video } from '@clip-video/domain/models/video.js';
 import type { ProperNounDictionary } from '@clip-video/domain/services/transcript-refinement-prompt.service.js';
+import { AnthropicClient } from '@shared/infrastructure/clients/anthropic.client.js';
 import { FFmpegClient } from '@shared/infrastructure/clients/ffmpeg.client.js';
 import { LocalStorageClient } from '@shared/infrastructure/clients/local-storage.client.js';
 import { LocalTempStorageClient } from '@shared/infrastructure/clients/local-temp-storage.client.js';
-import { OpenAIClient } from '@shared/infrastructure/clients/openai.client.js';
 import { properNounDictionary } from '@shared/infrastructure/clients/proper-noun-dictionary.js';
 import { SpeechToTextClient } from '@shared/infrastructure/clients/speech-to-text.client.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -278,14 +278,14 @@ describe.skipIf(!runIntegrationTests)('CreateTranscriptUseCase Integration', () 
     // ===== Refine Transcript =====
     // Act: Execute RefineTranscriptUseCase
     const refinedTranscriptionRepository = new InMemoryRefinedTranscriptionRepository();
-    const openaiClient = new OpenAIClient();
+    const anthropicClient = new AnthropicClient();
 
     const refineDeps: RefineTranscriptUseCaseDeps = {
       transcriptionRepository,
       refinedTranscriptionRepository,
       videoRepository,
       storageGateway: localStorageClient,
-      aiGateway: openaiClient,
+      aiGateway: anthropicClient,
       generateId: () => uuidv4(),
       loadDictionary,
     };

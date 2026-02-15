@@ -14,10 +14,10 @@ import type { Clip } from '@clip-video/domain/models/clip.js';
 import { RefinedTranscription } from '@clip-video/domain/models/refined-transcription.js';
 import { Transcription } from '@clip-video/domain/models/transcription.js';
 import { Video } from '@clip-video/domain/models/video.js';
+import { AnthropicClient } from '@shared/infrastructure/clients/anthropic.client.js';
 import { FFmpegClient } from '@shared/infrastructure/clients/ffmpeg.client.js';
 import { LocalStorageClient } from '@shared/infrastructure/clients/local-storage.client.js';
 import { LocalTempStorageClient } from '@shared/infrastructure/clients/local-temp-storage.client.js';
-import { OpenAIClient } from '@shared/infrastructure/clients/openai.client.js';
 import type { ComposeProgressPhase, ComposeStatus } from '@video-processor/shared';
 import { v4 as uuidv4 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -39,15 +39,15 @@ function isFFmpegAvailable(): boolean {
 }
 
 /**
- * Check if OpenAI API key is configured
+ * Check if Anthropic API key is configured
  */
-function isOpenAIConfigured(): boolean {
-  return !!process.env.OPENAI_API_KEY;
+function isAnthropicConfigured(): boolean {
+  return !!process.env.ANTHROPIC_API_KEY;
 }
 
 // Skip integration tests if INTEGRATION_TEST is not set or dependencies are not available
 const runIntegrationTests =
-  process.env.INTEGRATION_TEST === 'true' && isFFmpegAvailable() && isOpenAIConfigured();
+  process.env.INTEGRATION_TEST === 'true' && isFFmpegAvailable() && isAnthropicConfigured();
 
 /**
  * In-memory VideoRepository for testing
@@ -226,7 +226,7 @@ describe.skipIf(!runIntegrationTests)('ExtractClipsUseCase Integration', () => {
     localStorageClient = new LocalStorageClient(tempDir);
     localTempStorageClient = new LocalTempStorageClient(tempCacheDir);
     const ffmpegClient = new FFmpegClient();
-    const openAiClient = new OpenAIClient();
+    const anthropicClient = new AnthropicClient();
 
     // Initialize repositories
     videoRepository = new InMemoryVideoRepository();
@@ -242,7 +242,7 @@ describe.skipIf(!runIntegrationTests)('ExtractClipsUseCase Integration', () => {
       refinedTranscriptionRepository,
       storageGateway: localStorageClient,
       tempStorageGateway: localTempStorageClient,
-      aiGateway: openAiClient,
+      aiGateway: anthropicClient,
       videoProcessingGateway: ffmpegClient,
       generateId: () => uuidv4(),
     };

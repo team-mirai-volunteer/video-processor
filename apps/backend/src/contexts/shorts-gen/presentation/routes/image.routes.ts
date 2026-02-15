@@ -18,8 +18,8 @@ import {
   type ImageStorageGateway,
 } from '@shorts-gen/application/usecases/generate-images.usecase.js';
 import { UploadSceneImageUseCase } from '@shorts-gen/application/usecases/upload-scene-image.usecase.js';
+import { AnthropicAgenticClient } from '@shorts-gen/infrastructure/clients/anthropic-agentic.client.js';
 import { NanoBananaImageGenClient } from '@shorts-gen/infrastructure/clients/nano-banana-image-gen.client.js';
-import { OpenAiAgenticClient } from '@shorts-gen/infrastructure/clients/openai-agentic.client.js';
 import { ShortsReferenceCharacterRepository } from '@shorts-gen/infrastructure/repositories/reference-character.repository.js';
 import { ShortsSceneAssetRepository } from '@shorts-gen/infrastructure/repositories/scene-asset.repository.js';
 import { ShortsSceneRepository } from '@shorts-gen/infrastructure/repositories/scene.repository.js';
@@ -115,7 +115,7 @@ let generateImagesUseCase: GenerateImagesUseCase | null = null;
 
 function getGenerateImagePromptsUseCase(): GenerateImagePromptsUseCase {
   if (!generateImagePromptsUseCase) {
-    const agenticAiGateway = new OpenAiAgenticClient();
+    const agenticAiGateway = new AnthropicAgenticClient();
 
     generateImagePromptsUseCase = new GenerateImagePromptsUseCase({
       sceneRepository,
