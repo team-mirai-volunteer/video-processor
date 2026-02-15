@@ -6,7 +6,7 @@ import {
   GeneratePublishTextUseCase,
 } from '@shorts-gen/application/usecases/generate-publish-text.usecase.js';
 import type { ShortsPublishText } from '@shorts-gen/domain/models/publish-text.js';
-import { OpenAiAgenticClient } from '@shorts-gen/infrastructure/clients/openai-agentic.client.js';
+import { AnthropicAgenticClient } from '@shorts-gen/infrastructure/clients/anthropic-agentic.client.js';
 import {
   ShortsPlanningRepository,
   ShortsPublishTextRepository,
@@ -25,7 +25,7 @@ const sceneRepository = new ShortsSceneRepository(prisma);
 const publishTextRepository = new ShortsPublishTextRepository(prisma);
 
 // Initialize gateways
-const agenticAiGateway = new OpenAiAgenticClient();
+const agenticAiGateway = new AnthropicAgenticClient();
 
 // Initialize use case
 const generatePublishTextUseCase = new GeneratePublishTextUseCase({
