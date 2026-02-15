@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 function Header() {
   return (
-    <header className="border-b">
+    <header className="bg-[#00B900] text-white">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-1.5 font-bold text-sm sm:text-xl shrink-0">
           <Video className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
@@ -20,13 +20,13 @@ function Header() {
         <nav className="flex items-center gap-2 sm:gap-6">
           <Link
             href="/clips"
-            className="text-xs sm:text-sm font-bold hover:text-primary whitespace-nowrap"
+            className="text-xs sm:text-sm font-bold hover:text-white/80 whitespace-nowrap"
           >
             切り抜きを探す
           </Link>
           <Link
             href="/videos"
-            className="text-xs sm:text-sm font-bold hover:text-primary whitespace-nowrap"
+            className="text-xs sm:text-sm font-bold hover:text-white/80 whitespace-nowrap"
           >
             動画から切り抜く
           </Link>
