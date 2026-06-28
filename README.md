@@ -1,6 +1,6 @@
 # Video Processor
 
-Google Drive上の長尺動画をAIで分析し、指定箇所を切り抜きするツールです。
+Google Drive上の長尺動画をAIで分析し、指定箇所を切り抜くツールです。
 
 ## 概要
 
