@@ -7,7 +7,11 @@ const BACKEND_API_KEY = process.env.BACKEND_API_KEY || '';
  * POST /api/shorts-gen/projects/:projectId/planning
  * Create planning directly (without AI generation)
  */
-export async function POST(request: NextRequest, { params }: { params: { projectId: string } }) {
+export async function POST(
+  request: NextRequest,
+  props: { params: Promise<{ projectId: string }> }
+) {
+  const params = await props.params;
   const { projectId } = params;
 
   try {
